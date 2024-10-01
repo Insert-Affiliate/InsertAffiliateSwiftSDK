@@ -1,0 +1,15 @@
+{
+  "originHash" : "c866d08d0befa70cc036eef75c91bf57694ec90013982d5d0d7c48416cd2ddd9",
+  "pins" : [
+    {
+      "identity" : "iap-swift-lib",
+      "kind" : "remoteSourceControl",
+      "location" : "https://github.com/iridescent-dev/iap-swift-lib.git",
+      "state" : {
+        "revision" : "dc8e1d3fbdde1960c75ec50ba46b76a427af6097",
+        "version" : "1.0.4"
+      }
+    }
+  ],
+  "version" : 3
+}
