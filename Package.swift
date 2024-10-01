@@ -5,20 +5,32 @@ import PackageDescription
 
 let package = Package(
     name: "InsertAffiliateSwift",
+    platforms: [
+       .iOS(.v12)
+    ],
     products: [
         // Products define the executables and libraries a package produces, making them visible to other packages.
         .library(
             name: "InsertAffiliateSwift",
             targets: ["InsertAffiliateSwift"]),
     ],
+    dependencies: [
+            .package(url: "https://github.com/iridescent-dev/iap-swift-lib.git", from: "1.0.4")
+    ],
     targets: [
         // Targets are the basic building blocks of a package, defining a module or a test suite.
         // Targets can depend on other targets in this package and products from dependencies.
         .target(
-            name: "InsertAffiliateSwift"),
+            name: "InsertAffiliateSwift",
+            dependencies: [
+                .product(name: "InAppPurchaseLib", package: "iap-swift-lib")
+            ],
+            path: "Sources"
+        ),
         .testTarget(
             name: "InsertAffiliateSwiftTests",
-            dependencies: ["InsertAffiliateSwift"]
+            dependencies: ["InsertAffiliateSwift"],
+            path: "Tests"
         ),
     ]
 )
