@@ -4,7 +4,8 @@
 
 ## Overview
 
-`InsertAffiliateSwift` is a Swift SDK designed for iOS applications that integrate with the Insert Affiliate platform. This SDK provides functionalities to handle affiliate links, fetch offer codes, and open redeem URLs seamlessly within your app.
+`InsertAffiliateSwift` is a Swift SDK designed for iOS applications that integrate with the [Insert Affiliate platform](https://insertaffiliate.com/). This SDK provides functionalities to handle affiliate links, fetch offer codes, and open redeem URLs seamlessly within your app. For more detailed information, refer to the [Insert Affiliate documentation](https://docs.insertaffiliate.com/).
+
 
 ### Features
 
