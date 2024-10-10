@@ -4,14 +4,13 @@
 
 ## Overview
 
-`InsertAffiliateSwift` is a Swift SDK designed for iOS applications that integrate with the [Insert Affiliate platform](https://insertaffiliate.com/). This SDK provides functionalities to handle affiliate links, fetch offer codes, and open redeem URLs seamlessly within your app. For more detailed information, refer to the [Insert Affiliate documentation](https://docs.insertaffiliate.com/).
-
+The **InsertAffiliateSwift SDK** is designed for iOS applications, providing seamless integration with the [Insert Affiliate platform](https://insertaffiliate.com). This SDK enables functionalities such as managing affiliate links, handling in-app purchases (IAP), and utilising deep links. For more details and to access the Insert Affiliate dashboard, visit [app.insertaffiliate.com](https://app.insertaffiliate.com).
 
 ### Features
 
 - **Unique Device ID**: Generates and stores a short unique device ID to identify users.
 - **Affiliate Identifier Management**: Set and retrieve the affiliate identifier based on user-specific links.
-- **In-App Purchase (IAP) Initialization**: Easily reinitialize in-app purchases with the option to validate using an affiliate identifier.
+- **In-App Purchase (IAP) Initialisation**: Easily reinitialise in-app purchases with the option to validate using an affiliate identifier.
 - **Offer Code Handling**: Fetch offer codes from the Insert Affiliate API and open redeem URLs directly in the App Store.
 
 ## Installation
@@ -24,6 +23,7 @@ To integrate the `InsertAffiliateSwift` SDK into your project, add the following
 
 ## Usage
 ### Import the SDK
+
 Import the SDK in your Swift files:
 
 ```swift
@@ -38,21 +38,99 @@ InsertAffiliateSwift.setInsertAffiliateIdentifier(referringLink: "your_affiliate
 ```
 
 ## Fetching Offer Codes
+
 To fetch an offer code and conditionally open the redeem URL:
 
 ```swift
 InsertAffiliateSwift.fetchAndConditionallyOpenUrl(affiliateLink: "your_affiliate_link", offerCodeUrlId: "your_offer_code_url_id")
 ```
 
-## Reinitializing In-App Purchases
-If you need to reinitialize in-app purchases, use the following method:
+## Reinitialising In-App Purchases
+
+To reinitialise in-app purchases, use the following method:
+
+- Replace `{{ your_iaptic_app_name }}` with your **Iaptic App Name**. You can find this [here](https://www.iaptic.com/account).
+- Replace `{{ your_iaptic_secret_key }}` with your **Iaptic Secret Key**. You can find this [here](https://www.iaptic.com/settings).
 
 ```swift
 let iapProducts: [IAPProduct] = [] // Your IAP products array
-let validatorUrl = "https://your-validator-url.com"
+let validatorUrl = "https://validator.iaptic.com/v3/validate?appName={{ your_iaptic_app_name }}&apiKey={{ your_iaptic_app_key_goes_here}}",
 
 InsertAffiliateSwift.reinitializeIAP(iapProductsArray: iapProducts, validatorUrlString: validatorUrl)
 ```
 
-## Contribution
-Contributions are welcome! If you have suggestions for improvements or new features, please fork the repository and submit a pull request.
+## In-App Purchase Setup
+### Step 1: Add the In-App Purchase Platform Dependency
+
+In this example, the deep linking functionality is implemented using Iaptic.
+
+### Step 2: Modify Your `AppDelegate.swift` to Initialise In-App Purchases with Insert Affiliate:
+
+- Replace `{{ your_iaptic_app_name }}` with your **Iaptic App Name**. You can find this [here](https://www.iaptic.com/account).
+- Replace `{{ your_iaptic_secret_key }}` with your **Iaptic Secret Key**. You can find this [here](https://www.iaptic.com/settings).
+
+Here's the example code with placeholders for you to swap out:
+
+```swift
+import SwiftUI
+import InAppPurchaseLib
+import InsertAffiliateSwift
+
+class AppDelegate: UIResponder, UIApplicationDelegate {
+  func application(_ application: UIApplication, didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]? = nil) -> Bool {
+    InsertAffiliateSwift.reinitializeIAP(
+      iapProductsArray: [
+        IAPProduct(
+          productIdentifier: "{{ apple_in_app_purchase_subscription_id }}",
+          productType: .autoRenewableSubscription
+        )
+      ],
+      validatorUrlString: "https://validator.iaptic.com/v3/validate?appName={{ your_iaptic_app_name }}&apiKey={{ your_iaptic_app_key_goes_here }}"
+    )
+    return true
+  }
+}
+```
+
+## Deep Link Setup
+
+### Step 1: Add the Deep Linking Platform Dependency
+
+In this example, the deep linking functionality is implemented using Branch.io.
+
+### Step 2: Modify Your Deep Link initSession function in `AppDelegate.swift`
+
+After setting up your Branch integration, add the following code to initialise the Insert Affiliate SDK in your iOS app.
+
+- Replace `{{ your_iaptic_app_name }}` with your **Iaptic App Name**. You can find this [here](https://www.iaptic.com/account).
+- Replace `{{ your_iaptic_secret_key }}` with your **Iaptic Secret Key**. You can find this [here](https://www.iaptic.com/settings).
+
+Here's the example code with placeholders for you to swap out:
+
+```swift
+import SwiftUI
+import BranchSDK
+import InAppPurchaseLib
+import InsertAffiliateSwift
+
+class AppDelegate: UIResponder, UIApplicationDelegate {
+  func application(_ application: UIApplication, didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]? = nil) -> Bool {
+    Branch.getInstance().initSession(launchOptions: launchOptions) { (params, error) in
+      if let referringLink = params?["~referring_link"] as? String {
+        InsertAffiliateSwift.setInsertAffiliateIdentifier(referringLink: referringLink)
+        InsertAffiliateSwift.reinitializeIAP(
+          iapProductsArray: [
+            IAPProduct(
+              productIdentifier: "{{ apple_in_app_purchase_subscription_id }}",
+              productType: .autoRenewableSubscription
+            )
+          ],
+          validatorUrlString: "https://validator.iaptic.com/v3/validate?appName={{ your_iaptic_app_name }}&apiKey={{ your_iaptic_app_key_goes_here }}",
+          applicationUsername: uniqueAffiliateUsername
+        )
+      }
+    }
+    return true
+  }
+}
+```
