@@ -145,7 +145,7 @@ public struct InsertAffiliateSwift {
             return
         }
 
-        let apiUrlString = "https://api.insertaffiliate.com/\(process.env.API_VERSION)/trackEvent"
+        let apiUrlString = "https://api.insertaffiliate.com/v1/trackEvent"
         guard let apiUrl = URL(string: apiUrlString) else {
             print("[Insert Affiliate] Invalid API URL")
             return
