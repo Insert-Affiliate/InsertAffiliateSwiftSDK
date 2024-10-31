@@ -117,7 +117,7 @@ public struct InsertAffiliateSwift {
        } else {
            print("[Insert Affiliate] Invalid redeem URL")
        }
-   }
+    }
     
     public static func fetchAndConditionallyOpenUrl(affiliateLink: String, offerCodeUrlId: String) {
         fetchOfferCode(affiliateLink: affiliateLink) { offerCode in
@@ -127,5 +127,56 @@ public struct InsertAffiliateSwift {
                 print("[Insert Affiliate] No valid offer code found.")
             }
         }
+    }
+
+    public static func trackEvent(eventName: String) {
+        guard let deepLinkParam = returnInsertAffiliateIdentifier() else {
+            print("[Insert Affiliate] No affiliate identifier found. Please set one before tracking events.")
+            return
+        }
+
+        let payload: [String: Any] = [
+            "eventName": eventName,
+            "deepLinkParam": deepLinkParam
+        ]
+
+        guard let jsonData = try? JSONSerialization.data(withJSONObject: payload, options: []) else {
+            print("[Insert Affiliate] Failed to encode event payload")
+            return
+        }
+
+        let apiUrlString = "https://api.insertaffiliate.com/\(process.env.API_VERSION)/trackEvent"
+        guard let apiUrl = URL(string: apiUrlString) else {
+            print("[Insert Affiliate] Invalid API URL")
+            return
+        }
+
+        // Create and configure the request
+        var request = URLRequest(url: apiUrl)
+        request.httpMethod = "POST"
+        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        request.httpBody = jsonData
+
+        // Send the request
+        let task = URLSession.shared.dataTask(with: request) { data, response, error in
+            if let error = error {
+                print("[Insert Affiliate] Error tracking event: \(error.localizedDescription)")
+                return
+            }
+
+            guard let httpResponse = response as? HTTPURLResponse else {
+                print("[Insert Affiliate] No response received")
+                return
+            }
+
+            // Check for a successful response
+            if httpResponse.statusCode == 200 {
+                print("[Insert Affiliate] Event tracked successfully")
+            } else {
+                print("[Insert Affiliate] Failed to track event with status code: \(httpResponse.statusCode)")
+            }
+        }
+
+        task.resume()
     }
 }
