@@ -134,3 +134,28 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
   }
 }
 ```
+
+## Event Tracking (Beta)
+
+The **InsertAffiliateSwift SDK** now includes a beta feature for event tracking. You can use this feature to track specific user actions within your app. However, please note that this feature is currently in beta, and while we aim to secure its functionality, we cannot guarantee that it is fully resistant to tampering or manipulation at this stage.
+
+### Using `trackEvent`
+
+To track an event, use the `trackEvent` function. Make sure to set an affiliate identifier first; otherwise, event tracking won’t work. Here’s an example:
+
+```swift
+InsertAffiliateSwift.trackEvent(eventName: "your_event_name")
+```
+
+### Example Usage
+Set the Affiliate Identifier (required for tracking):
+
+```swift
+InsertAffiliateSwift.setInsertAffiliateIdentifier(referringLink: "your_affiliate_link")
+```
+
+#### Track an Event:
+
+```swift
+InsertAffiliateSwift.trackEvent(eventName: "user_signup")
+```
