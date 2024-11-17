@@ -18,7 +18,7 @@ The **InsertAffiliateSwift SDK** is designed for iOS applications, providing sea
 To integrate the `InsertAffiliateSwift` SDK into your project, add the following dependency in your `Package.swift`:
 
 ```swift
-.package(url: "https://github.com/Insert-Affiliate/InsertAffiliateSwiftSDK.git", from: "1.0.0")
+.package(url: "https://github.com/Insert-Affiliate/InsertAffiliateSwiftSDK.git", branch: "main")
 ```
 
 ## Usage
@@ -50,11 +50,11 @@ InsertAffiliateSwift.fetchAndConditionallyOpenUrl(affiliateLink: "your_affiliate
 To reinitialise in-app purchases, use the following method:
 
 - Replace `{{ your_iaptic_app_name }}` with your **Iaptic App Name**. You can find this [here](https://www.iaptic.com/account).
-- Replace `{{ your_iaptic_secret_key }}` with your **Iaptic Secret Key**. You can find this [here](https://www.iaptic.com/settings).
+- Replace `{{ your_iaptic_public_key }}` with your **Iaptic Public Key**. You can find this [here](https://www.iaptic.com/settings).
 
 ```swift
 let iapProducts: [IAPProduct] = [] // Your IAP products array
-let validatorUrl = "https://validator.iaptic.com/v3/validate?appName={{ your_iaptic_app_name }}&apiKey={{ your_iaptic_app_key_goes_here}}",
+let validatorUrl = "https://validator.iaptic.com/v3/validate?appName={{ your_iaptic_app_name }}&apiKey={{ your_iaptic_public_key}}",
 
 InsertAffiliateSwift.reinitializeIAP(iapProductsArray: iapProducts, validatorUrlString: validatorUrl)
 ```
@@ -67,7 +67,7 @@ In this example, the deep linking functionality is implemented using Iaptic.
 ### Step 2: Modify Your `AppDelegate.swift` to Initialise In-App Purchases with Insert Affiliate:
 
 - Replace `{{ your_iaptic_app_name }}` with your **Iaptic App Name**. You can find this [here](https://www.iaptic.com/account).
-- Replace `{{ your_iaptic_secret_key }}` with your **Iaptic Secret Key**. You can find this [here](https://www.iaptic.com/settings).
+- Replace `{{ your_iaptic_public_key }}` with your **Iaptic Public Key**. You can find this [here](https://www.iaptic.com/settings).
 
 Here's the example code with placeholders for you to swap out:
 
@@ -103,7 +103,7 @@ In this example, the deep linking functionality is implemented using Branch.io.
 After setting up your Branch integration, add the following code to initialise the Insert Affiliate SDK in your iOS app.
 
 - Replace `{{ your_iaptic_app_name }}` with your **Iaptic App Name**. You can find this [here](https://www.iaptic.com/account).
-- Replace `{{ your_iaptic_secret_key }}` with your **Iaptic Secret Key**. You can find this [here](https://www.iaptic.com/settings).
+- Replace `{{ your_iaptic_public_key }}` with your **Iaptic Public Key**. You can find this [here](https://www.iaptic.com/settings).
 
 Here's the example code with placeholders for you to swap out:
 
