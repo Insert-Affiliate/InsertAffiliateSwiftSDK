@@ -3,6 +3,48 @@ import UIKit
 import InAppPurchaseLib
 
 public struct InsertAffiliateSwift {
+    private static var companyCode: String?
+
+    public static func initialize(companyCode: String?) {
+        if let code = companyCode, !code.isEmpty {
+            self.companyCode = code
+            print("[Insert Affiliate] SDK initialised with company code: \(code)")
+        } else {
+            print("[Insert Affiliate] SDK initialised without a company code.")
+        }
+    }
+    
+    private static func isCompanyCodeSet() -> Bool {
+        return companyCode != nil
+    }
+
+    public static func enterShortCode(shortCode: String) {
+        let capitalisedShortCode = shortCode.uppercased()
+
+        guard capitalisedShortCode.count == 10 else {
+            print("[Insert Affiliate] Error: Short code must be exactly 10 characters long.")
+            return
+        }
+
+        // Check if the short code contains only letters and numbers
+        let alphanumericSet = CharacterSet.alphanumerics
+        let isValidShortCode = capitalisedShortCode.unicodeScalars.allSatisfy { alphanumericSet.contains($0) }
+        guard isValidShortCode else {
+            print("[Insert Affiliate] Error: Short code must contain only letters and numbers.")
+            return
+        }
+
+        // If all checks pass, set the Insert Affiliate Identifier
+        setInsertAffiliateIdentifier(referringLink: capitalisedShortCode)
+
+        // Return and print the Insert Affiliate Identifier
+        if let insertAffiliateIdentifier = returnInsertAffiliateIdentifier() {
+            print("[Insert Affiliate] Successfully set affiliate identifier: \(insertAffiliateIdentifier)")
+        } else {
+            print("[Insert Affiliate] Failed to set affiliate identifier.")
+        }
+    }
+
     internal static func returnShortUniqueDeviceID() -> String {
        if let savedShortUniqueDeviceID = UserDefaults.standard.string(forKey: "shortUniqueDeviceID") {
            return savedShortUniqueDeviceID
@@ -21,6 +63,8 @@ public struct InsertAffiliateSwift {
     }
     
     public static func setInsertAffiliateIdentifier(referringLink: String) {
+        // TODO: if its not a short code, call out to our backend & check if its a long referrring link that can be converted to a short code...
+        
         let insertAffiliateIdentifier = "\(referringLink)/\(returnShortUniqueDeviceID())"
         UserDefaults.standard.set(insertAffiliateIdentifier, forKey: "insertAffiliateIdentifier")
     }
