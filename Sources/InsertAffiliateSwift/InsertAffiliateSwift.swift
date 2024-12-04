@@ -2,23 +2,63 @@ import Foundation
 import UIKit
 import InAppPurchaseLib
 
-public struct InsertAffiliateSwift {
-    private static var companyCode: String?
+@available(iOS 13.0.0, *)
+actor InsertAffiliateState {
+    private var companyCode: String?
+    private var isInitialized = false
 
-    public static func initialize(companyCode: String?) {
+    func initialize(companyCode: String?) throws {
+        guard !isInitialized else {
+            throw NSError(domain: "InsertAffiliateSwift", code: 1, userInfo: [NSLocalizedDescriptionKey: "SDK is already initialized."])
+        }
+
         if let code = companyCode, !code.isEmpty {
             self.companyCode = code
-            print("[Insert Affiliate] SDK initialised with company code: \(code)")
+            isInitialized = true
+            print("[Insert Affiliate] SDK initialized with company code: \(code)")
         } else {
-            print("[Insert Affiliate] SDK initialised without a company code.")
+            self.companyCode = nil
+            isInitialized = true
+            print("[Insert Affiliate] SDK initialized without a company code.")
         }
     }
-    
-    private static func isCompanyCodeSet() -> Bool {
-        return companyCode != nil
+
+    func getCompanyCode() -> String? {
+        return companyCode
     }
 
-    public static func enterShortCode(shortCode: String) {
+    func reset() {
+        companyCode = nil
+        isInitialized = false
+        print("[Insert Affiliate] SDK has been reset.")
+    }
+}
+
+public struct InsertAffiliateSwift {
+    @available(iOS 13.0.0, *)
+    private static let state = InsertAffiliateState()
+
+    public static func initialize(companyCode: String?) {
+        guard #available(iOS 13.0, *) else {
+            print("[Insert Affiliate] This SDK requires iOS 13.0 or newer.")
+            return
+        }
+
+        Task {
+            do {
+                try await state.initialize(companyCode: companyCode)
+            } catch {
+                print("[Insert Affiliate] Error initializing SDK: \(error.localizedDescription)")
+            }
+        }
+    }
+
+    @available(iOS 13.0.0, *)
+    private static func isCompanyCodeSet() async -> Bool {
+        return await state.getCompanyCode() != nil
+    }
+
+    public static func setShortCode(shortCode: String) {
         let capitalisedShortCode = shortCode.uppercased()
 
         guard capitalisedShortCode.count == 10 else {
@@ -35,7 +75,7 @@ public struct InsertAffiliateSwift {
         }
 
         // If all checks pass, set the Insert Affiliate Identifier
-        setInsertAffiliateIdentifier(referringLink: capitalisedShortCode)
+        storeInsertAffiliateIdentifier(referringLink: capitalisedShortCode)
 
         // Return and print the Insert Affiliate Identifier
         if let insertAffiliateIdentifier = returnInsertAffiliateIdentifier() {
@@ -62,9 +102,98 @@ public struct InsertAffiliateSwift {
         return shortUniqueDeviceID
     }
     
-    public static func setInsertAffiliateIdentifier(referringLink: String) {
+    public static func setInsertAffiliateIdentifier(
+        referringLink: String,
+        completion: @escaping @Sendable (String?) -> Void
+    ) {
+        if #available(iOS 13.0, *) {
+            Task {
+                guard let companyCode = await state.getCompanyCode(), !companyCode.isEmpty else {
+                    print("[Insert Affiliate] Company code is not set. Please initialize the SDK with a valid company code.")
+                    completion(nil)
+                    return
+                }
+                
+                // Check if the referringLink is already a short code
+                if isShortCode(referringLink) {
+                    print("[Insert Affiliate] Referring link is already a short code")
+                    storeInsertAffiliateIdentifier(referringLink: referringLink)
+                    completion(referringLink)
+                    return
+                }
+                
+                guard let encodedAffiliateLink = referringLink.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) else {
+                    print("[Insert Affiliate] Failed to encode affiliate link")
+                    storeInsertAffiliateIdentifier(referringLink: referringLink)
+                    completion(nil)
+                    return
+                }
+
+                // Construct the URL with query parameters
+                let urlString = "http://192.168.1.154:3001/V1/convert-deep-link-to-short-link?companyId=\(companyCode)&deepLinkUrl=\(encodedAffiliateLink)"
+
+                guard let url = URL(string: urlString) else {
+                    print("[Insert Affiliate] Invalid URL")
+                    storeInsertAffiliateIdentifier(referringLink: referringLink)
+                    completion(nil)
+                    return
+                }
+
+                // Create the GET request
+                var request = URLRequest(url: url)
+                request.httpMethod = "GET"
+                request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+                let task = URLSession.shared.dataTask(with: request) { data, response, error in
+                       if let error = error {
+                           storeInsertAffiliateIdentifier(referringLink: referringLink)
+                           print("[Insert Affiliate] Error: \(error.localizedDescription)")
+                           completion(nil)
+                           return
+                       }
+                       
+                       guard let data = data else {
+                           storeInsertAffiliateIdentifier(referringLink: referringLink)
+                           print("[Insert Affiliate] No data received")
+                           completion(nil)
+                           return
+                       }
+
+                       do {
+                           // Parse JSON response
+                           if let json = try JSONSerialization.jsonObject(with: data, options: []) as? [String: Any],
+                              let shortLink = json["shortLink"] as? String {
+                               print("[Insert Affiliate] Short link received: \(shortLink)")
+                               storeInsertAffiliateIdentifier(referringLink: shortLink)
+                               completion(shortLink)
+                           } else {
+                               storeInsertAffiliateIdentifier(referringLink: referringLink)
+
+                               print("[Insert Affiliate] Unexpected JSON format")
+                               completion(nil)
+                           }
+                       } catch {
+                           storeInsertAffiliateIdentifier(referringLink: referringLink)
+                           print("[Insert Affiliate] Failed to parse JSON: \(error.localizedDescription)")
+                           completion(nil)
+                       }
+                   }
+                
+                task.resume()
+            }
+        }
+    }
+
+                                
+    private static func isShortCode(_ link: String) -> Bool {
+        // Check if the link is 10 characters long and contains only letters and numbers
+        let regex = "^[a-zA-Z0-9]{10}$"
+        let predicate = NSPredicate(format: "SELF MATCHES %@", regex)
+        return predicate.evaluate(with: link)
+    }
+
+    public static func storeInsertAffiliateIdentifier(referringLink: String) {
         // TODO: if its not a short code, call out to our backend & check if its a long referrring link that can be converted to a short code...
-        
+        print("storeInsertAffiliateIdentifier called with \(referringLink)")
         let insertAffiliateIdentifier = "\(referringLink)/\(returnShortUniqueDeviceID())"
         UserDefaults.standard.set(insertAffiliateIdentifier, forKey: "insertAffiliateIdentifier")
     }
@@ -103,7 +232,7 @@ public struct InsertAffiliateSwift {
             return
         }
 
-        let offerCodeUrlString = "https://api.insertaffiliate.com/v1/affiliateReturnOfferCode/" + encodedAffiliateLink
+        let offerCodeUrlString = "https://192.168.1.154:3001/v1/affiliateReturnOfferCode/" + encodedAffiliateLink
         
         guard let offerCodeUrl = URL(string: offerCodeUrlString) else {
             print("[Insert Affiliate] Invalid offer code URL")
@@ -189,7 +318,7 @@ public struct InsertAffiliateSwift {
             return
         }
 
-        let apiUrlString = "https://api.insertaffiliate.com/v1/trackEvent"
+        let apiUrlString = "http://192.168.1.154:3001/v1/trackEvent"
         guard let apiUrl = URL(string: apiUrlString) else {
             print("[Insert Affiliate] Invalid API URL")
             return

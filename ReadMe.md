@@ -30,6 +30,31 @@ Import the SDK in your Swift files:
 import InsertAffiliateSwift
 ```
 
+## Initialised in AppDelegate
+
+To ensure proper initialisation of the **InsertAffiliateSwift SDK**, you should call the `initialize` method early in your app's lifecycle, typically within the `AppDelegate`.
+
+### Example Setup in `AppDelegate.swift`
+
+Add the following to your `AppDelegate.swift`:
+
+- Replace `{{ your_company_code }}` with your **Insert Affiliate**. You can find this [here](http://app.insertaffiliate.com/settings).
+
+```swift
+import InsertAffiliateSwift
+
+@UIApplicationMain
+class AppDelegate: UIResponder, UIApplicationDelegate {
+    func application(
+        _ application: UIApplication,
+        didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]?
+    ) -> Bool {
+        InsertAffiliateSwift.initialize(companyCode: "{{ your_company_code }}")
+        return true
+    }
+}
+```
+
 ## Setting the Affiliate Identifier
 You can set the affiliate identifier using the following method:
 
@@ -117,17 +142,20 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
   func application(_ application: UIApplication, didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]? = nil) -> Bool {
     Branch.getInstance().initSession(launchOptions: launchOptions) { (params, error) in
       if let referringLink = params?["~referring_link"] as? String {
-        InsertAffiliateSwift.setInsertAffiliateIdentifier(referringLink: referringLink)
-        InsertAffiliateSwift.reinitializeIAP(
-          iapProductsArray: [
-            IAPProduct(
-              productIdentifier: "{{ apple_in_app_purchase_subscription_id }}",
-              productType: .autoRenewableSubscription
-            )
-          ],
-          validatorUrlString: "https://validator.iaptic.com/v3/validate?appName={{ your_iaptic_app_name }}&apiKey={{ your_iaptic_app_key_goes_here }}",
-          applicationUsername: uniqueAffiliateUsername
-        )
+        InsertAffiliateSwift.setInsertAffiliateIdentifier(referringLink: referringLink) { result in
+          guard let shortCode = result else {
+            return
+          }
+
+          InsertAffiliateSwift.reinitializeIAP(
+              iapProductsArray: [
+                  IAPProduct(
+                    productIdentifier: "{{ apple_in_app_purchase_subscription_id }}",
+                    productType: .autoRenewableSubscription
+                  )
+              ],
+            validatorUrlString: "https://validator.iaptic.com/v3/validate?appName={{ your_iaptic_app_name }}&apiKey={{ your_iaptic_app_key_goes_here }}",
+          )
       }
     }
     return true
@@ -145,6 +173,101 @@ To track an event, use the `trackEvent` function. Make sure to set an affiliate 
 
 ```swift
 InsertAffiliateSwift.trackEvent(eventName: "your_event_name")
+```
+
+## Short Codes (Beta)
+
+
+### Using 'setShortCode'
+
+Short codes are 10-character UUIDs that associate purchases with an affiliate. They are especially useful for influencers, as the codes can be easily shared in videos or marketing campaigns, enabling a more viral and engaging approach than traditional links (e.g., ideal for platforms like TikTok).
+
+For more information, visit the [Insert Affiliate Short Codes Documentation](https://docs.insertaffiliate.com/short-codes).
+
+---
+
+### Setting a Short Code
+
+Use the `setShortCode` method to associate a short code with an affiliate. This is ideal for scenarios where users enter the code via an input field, pop-up, or similar UI element.
+
+Short codes must meet the following criteria:
+- Exactly **10 characters long**.
+- Contain only **letters and numbers** (alphanumeric characters).
+- Replace {{ user_entered_short_code }} with the short code the user enters through your chosen input method, i.e. an input field / pop up element
+
+```swift
+InsertAffiliateSwift.setShortCode(shortCode: "{{user_entered_short_code}}")
+```
+
+---
+
+### Example Integration
+Below is an example of a SwiftUI implementation where users can input a short code and set it by tapping a button:
+
+```swift
+import SwiftUI
+import InsertAffiliateSwift
+
+struct ShortCodeView: View {
+  @State private var shortCode: String = ""
+  @State private var errorMessage: String?
+
+  var body: some View {
+    VStack(spacing: 20) {
+      Text("Enter your Short Code")
+        .font(.headline)
+
+      TextField("Short Code", text: $shortCode)
+        .textFieldStyle(RoundedBorderTextFieldStyle())
+        .autocapitalization(.allCharacters)
+        .padding()
+
+      Button(action: {
+          setShortCode()
+      }) {
+        Text("Set Short Code")
+          .frame(maxWidth: .infinity)
+          .padding()
+          .background(Color.blue)
+          .foregroundColor(.white)
+          .cornerRadius(8)
+      }
+
+      if let errorMessage = errorMessage {
+        Text(errorMessage)
+          .foregroundColor(.red)
+          .font(.subheadline)
+      }
+    }
+    .padding()
+  }
+
+  func setShortCode() {
+    let trimmedShortCode = shortCode.trimmingCharacters(in: .whitespacesAndNewlines).uppercased()
+
+    guard trimmedShortCode.count == 10 else {
+      errorMessage = "Short code must be exactly 10 characters long."
+      return
+    }
+
+    let alphanumericSet = CharacterSet.alphanumerics
+    guard trimmedShortCode.unicodeScalars.allSatisfy({ alphanumericSet.contains($0) }) else {
+      errorMessage = "Short code must contain only letters and numbers."
+      return
+    }
+
+    // Set the short code using InsertAffiliateSwift
+    InsertAffiliateSwift.setShortCode(shortCode: trimmedShortCode)
+    errorMessage = nil
+    print("[Short Code] Successfully set to: \(trimmedShortCode)")
+  }
+}
+
+struct ShortCodeView_Previews: PreviewProvider {
+  static var previews: some View {
+    ShortCodeView()
+  }
+}
 ```
 
 ### Example Usage
