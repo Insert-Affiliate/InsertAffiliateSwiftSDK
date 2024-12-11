@@ -186,7 +186,6 @@ public struct InsertAffiliateSwift {
 
     public static func storeInsertAffiliateIdentifier(referringLink: String) {
         // TODO: if its not a short code, call out to our backend & check if its a long referrring link that can be converted to a short code...
-        print("storeInsertAffiliateIdentifier called with \(referringLink)")
         let insertAffiliateIdentifier = "\(referringLink)-\(returnShortUniqueDeviceID())"
         UserDefaults.standard.set(insertAffiliateIdentifier, forKey: "insertAffiliateIdentifier")
     }

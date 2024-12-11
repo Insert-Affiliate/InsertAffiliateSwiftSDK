@@ -263,7 +263,6 @@ struct ShortCodeView: View {
     // Set the short code using InsertAffiliateSwift
     InsertAffiliateSwift.setShortCode(shortCode: trimmedShortCode)
     errorMessage = nil
-    print("[Short Code] Successfully set to: \(trimmedShortCode)")
   }
 }
 
