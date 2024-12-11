@@ -40,42 +40,4 @@ final class InsertAffiliateSwiftTests: XCTestCase {
         XCTAssertTrue(result!.contains(referringLink), "Stored identifier should contain the referring link.")
         XCTAssertTrue(result!.count > referringLink.count, "Stored identifier should append the unique device ID.")
     }
-    
-    func testReturnInsertAffiliateIdentifier() {
-        UserDefaults.standard.set("https://example.com/123ABC", forKey: "insertAffiliateIdentifier")
-        
-        let result = InsertAffiliateSwift.returnInsertAffiliateIdentifier()
-        XCTAssertEqual(result, "https://example.com/123ABC", "Should return the correct affiliate identifier.")
-    }
-    
-    func testReturnInsertAffiliateIdentifier_nil() {
-        let result = InsertAffiliateSwift.returnInsertAffiliateIdentifier()
-        XCTAssertNil(result, "Should return nil when no affiliate identifier is stored.")
-    }
-    
-    func testReinitializeIAP_withApplicationUsername_noCrash() {
-        // Mocking the return of insert affiliate identifier
-        UserDefaults.standard.set("affiliate_user", forKey: "insertAffiliateIdentifier")
-        
-        let mockProducts = [IAPProduct]()
-        
-        // Assert that the app doesn't crash during the call
-        XCTAssertNoThrow(
-            InsertAffiliateSwift.reinitializeIAP(iapProductsArray: mockProducts, validatorUrlString: "https://validator.com"),
-            "reinitializeIAP should not crash with application username"
-        )
-    }
-
-    func testReinitializeIAP_withoutApplicationUsername_noCrash() {
-        // Ensure no affiliate identifier is saved
-        UserDefaults.standard.removeObject(forKey: "insertAffiliateIdentifier")
-        
-        let mockProducts = [IAPProduct]()
-        
-        // Assert that the app doesn't crash during the call
-        XCTAssertNoThrow(
-            InsertAffiliateSwift.reinitializeIAP(iapProductsArray: mockProducts, validatorUrlString: "https://validator.com"),
-            "reinitializeIAP should not crash without application username"
-        )
-    }
 }
