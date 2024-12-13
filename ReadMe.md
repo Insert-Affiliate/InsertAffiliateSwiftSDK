@@ -81,7 +81,7 @@ To use Insert Affiliate, you must first set up a Receipt Verification platform t
 These platforms ensure secure and reliable validation, enabling seamless integration with Insert Affiliate.
 
 ### Option 1: Setup with RevenueCat
-After completing your account setup with RevenueCat, the follow code changes are required to integrate RevenueCat with Insert Affiliate:
+After completing your account setup and SDK setup with [RevenueCat](https://www.revenuecat.com/docs/getting-started/installation/ios), the follow code changes are required to integrate RevenueCat with Insert Affiliate:
 
 - Replace `{{ your_revenue_cat_api_key }}` with your **RevenueCat API Key**. You can find this [here](https://www.revenuecat.com/docs/welcome/authentication).
 
@@ -98,7 +98,6 @@ final class AppDelegate: UIResponder, UIApplicationDelegate, UNUserNotificationC
 
     if let applicationUsername = InsertAffiliateSwift.returnInsertAffiliateIdentifier() {
       Purchases.shared.logIn(applicationUsername) { (customerInfo, created, error) in
-        // customerInfo updated for my_app_user_id. If you are having issues, you can investigate here.
       }
     }
 
