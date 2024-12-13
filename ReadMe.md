@@ -76,7 +76,9 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
 ```
 
 ## In-App Purchase Setup [Required]
-To use Insert Affiliate, you must first set up a Receipt Verification platform to validate in-app purchases. This can be accomplished through one of our recommended partners: [RevenueCat](https://www.revenuecat.com/) or [Iaptic](https://www.iaptic.com/account). These platforms ensure secure and reliable validation, enabling seamless integration with Insert Affiliate.
+To use Insert Affiliate, you must first set up a Receipt Verification platform to validate in-app purchases through one of our partners: [RevenueCat](https://www.revenuecat.com/) or [Iaptic](https://www.iaptic.com/account). 
+
+These platforms ensure secure and reliable validation, enabling seamless integration with Insert Affiliate.
 
 ### Option 1: Setup with RevenueCat
 After completing your account setup with RevenueCat, the follow code changes are required to integrate RevenueCat with Insert Affiliate:
