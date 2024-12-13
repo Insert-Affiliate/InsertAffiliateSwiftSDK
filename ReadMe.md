@@ -5,7 +5,7 @@
 ## Overview
 
 The **InsertAffiliateSwift SDK** is designed for iOS applications, providing seamless integration with the [Insert Affiliate platform](https://insertaffiliate.com). 
-The InsertAffiliateSwift SDK simplifies affiliate link management, in-app purchases (IAP) initialization, and deep link integration, helping developers create a seamless user experience for affiliate tracking and monetization.
+The InsertAffiliateSwift SDK simplifies affiliate marketing for iOS apps with in-app-purchases, allowing developers to create a seamless user experience for affiliate tracking and monetisation.
 
 ### Features
 
@@ -43,7 +43,7 @@ To integrate the InsertAffiliateSwift SDK into your iOS app:
 ### Troubleshooting Tips:
 
 If you encounter build errors, ensure your project uses Swift 5.0+ and targets iOS 13.0 or later.
-For Xcode-specific issues, clean the build folder using Shift + Command + K and rebuild the project.
+For Xcode-specific issues, clean the build folder using ```Shift + Command + K``` and rebuild the project.
 
 ## Basic Usage
 ### Import the SDK
