@@ -1,6 +1,5 @@
 import Foundation
 import UIKit
-import InAppPurchaseLib
 
 @available(iOS 13.0.0, *)
 actor InsertAffiliateState {
