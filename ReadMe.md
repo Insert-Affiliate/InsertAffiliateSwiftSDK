@@ -19,8 +19,8 @@ To get started with the InsertAffiliateSwift SDK:
 
 1. [Install the SDK via Swift Package Manager](#installation)
 2. [Initialise the SDK in your AppDelegate or SwiftUI @main entry point](#basic-usage)
-3. [Set up deep linking (Required)](#deep-link-setup-required)
-4. [Set up in-app purchases (Required)](#in-app-purchase-setup-required)
+3. [Set up in-app purchases (Required)](#in-app-purchase-setup-required)
+4. [Set up deep linking (Required)](#deep-link-setup-required)
 5. Use additional features like affiliate tracking based on your app's requirements.
 
 
@@ -76,8 +76,7 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
 ```
 
 ## In-App Purchase Setup [Required]
-
-// TODO: explain that to use Insert Affiliate, you must first ensure to have a working Receipt Verification platform. This can be set up either with one of our partners: [RevenueCat](https://www.revenuecat.com/) or with [Iaptic](https://www.iaptic.com/account)
+To use Insert Affiliate, you must first set up a Receipt Verification platform to validate in-app purchases. This can be accomplished through one of our recommended partners: [RevenueCat](https://www.revenuecat.com/) or [Iaptic](https://www.iaptic.com/account). These platforms ensure secure and reliable validation, enabling seamless integration with Insert Affiliate.
 
 ### Option 1: Setup with RevenueCat
 After completing your account setup with RevenueCat, the follow code changes are required to integrate RevenueCat with Insert Affiliate:
