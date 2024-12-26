@@ -76,17 +76,14 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
 ```
 
 ## In-App Purchase Setup [Required]
-To use Insert Affiliate, you must first set up a Receipt Verification platform to validate in-app purchases through one of our partners: [RevenueCat](https://www.revenuecat.com/) or [Iaptic](https://www.iaptic.com/account). 
+Insert Affiliate requires a Receipt Verification platform to validate in-app purchases. You must choose **one** of our supported partners:
+- [RevenueCat](https://www.revenuecat.com/)
+- [Iaptic](https://www.iaptic.com/account)
 
-These platforms ensure secure and reliable validation, enabling seamless integration with Insert Affiliate.
+### Option 1: RevenueCat Integration
+#### 1. Code Setup
+First, complete the [RevenueCat SDK installation](https://www.revenuecat.com/docs/getting-started/installation/ios). Then modify your `AppDelegate.swift`:
 
-### Option 1: Setup with RevenueCat
-After completing your account setup and SDK setup with [RevenueCat](https://www.revenuecat.com/docs/getting-started/installation/ios), the follow code changes are required to integrate RevenueCat with Insert Affiliate:
-
-- Replace `{{ your_revenue_cat_api_key }}` with your **RevenueCat API Key**. You can find this [here](https://www.revenuecat.com/docs/welcome/authentication).
-
-
-#### Modify Your `AppDelegate.swift` to Initialise In-App Purchases with Insert Affiliate:
 ```swift
 import SwiftUI
 import RevenueCat
@@ -105,16 +102,27 @@ final class AppDelegate: UIResponder, UIApplicationDelegate, UNUserNotificationC
   }
 }
 ```
+Replace `{{ your_revenue_cat_api_key }}` with your **RevenueCat API Key**. You can find this [here](https://www.revenuecat.com/docs/welcome/authentication).
 
-### Option 2: Setup with Iaptic
-After completing your account setup with Iaptic, the follow code changes are required to integrate Iaptic with Insert Affiliate:
+#### 2. Webhook Setup
 
-##### Modify Your `AppDelegate.swift` to Initialise In-App Purchases with Insert Affiliate:
+1. Go to RevenueCat and [create a new webhook](https://www.revenuecat.com/docs/integrations/webhooks)
 
-Here's the example code with placeholders for you to swap out:
+2. Configure the webhook with these settings:
+   - Webhook URL: `https://api.insertaffiliate.com/v1/api/revenuecat-webhook`
+   - Authorization header: Use the value from your Insert Affiliate dashboard (you'll get this in step 4)
 
-- Replace `{{ your_iaptic_app_name }}` with your **Iaptic App Name**. You can find this [here](https://www.iaptic.com/account).
-- Replace `{{ your_iaptic_public_key }}` with your **Iaptic Public Key**. You can find this [here](https://www.iaptic.com/settings).
+3. In your [Insert Affiliate dashboard settings](https://app.insertaffiliate.com/settings):
+   - Navigate to the verification settings
+   - Set the in-app purchase verification method to `RevenueCat`
+
+4. Back in your Insert Affiliate dashboard:
+   - Locate the `RevenueCat Webhook Authentication Header` value
+   - Copy this value
+   - Paste it as the Authorization header value in your RevenueCat webhook configuration
+
+### Option 2: Iaptic Integration
+First, complete the [Iaptic account setup](https://www.iaptic.com/documentation/setup/ios) and [SDK installation.](https://github.com/iridescent-dev/iap-swift-lib) Then modify your ```AppDelegate.swift```:
 
 ```swift
 import SwiftUI
@@ -122,7 +130,7 @@ import InAppPurchaseLib
 import InsertAffiliateSwift
 
 class AppDelegate: UIResponder, UIApplicationDelegate {
-    InsertAffiliateSwift.initialise(companyCode: "{{ your_company_code }}")
+  InsertAffiliateSwift.initialise(companyCode: "{{ your_company_code }}")
 
   func application(_ application: UIApplication, didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]? = nil) -> Bool {
 
@@ -152,7 +160,9 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
   }
 }
 ```
-
+Replace the following:
+- `{{ your_iaptic_app_name }}` with your [Iaptic App Name](https://www.iaptic.com/account)
+- `{{ your_iaptic_public_key }}` with your [Iaptic Public Key](https://www.iaptic.com/settings)
 ## Deep Link Setup [Required]
 
 ### Step 1: Add the Deep Linking Platform Dependency
@@ -165,7 +175,7 @@ Any alternative deep linking platform can be used by passing the referring link 
 
 After setting up your Branch integration, add the following code to initialise the Insert Affiliate SDK in your iOS app.
 
-#### Step 2a: Example with RevenueCat
+#### Example with RevenueCat
 ```swift
 import SwiftUI
 import BranchSDK
@@ -191,10 +201,7 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
 }
 ```
 
-#### Step 2b: Example with Iaptic
-- Replace `{{ your_iaptic_app_name }}` with your **Iaptic App Name**. You can find this [here](https://www.iaptic.com/account).
-- Replace `{{ your_iaptic_public_key }}` with your **Iaptic Public Key**. You can find this [here](https://www.iaptic.com/settings).
-
+#### Example with Iaptic
 ```swift
 import SwiftUI
 import BranchSDK
@@ -236,6 +243,10 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
   }
 }
 ```
+Replace the following:
+- `{{ your_iaptic_app_name }}` with your [Iaptic App Name](https://www.iaptic.com/account)
+- `{{ your_iaptic_public_key }}` with your [Iaptic Public Key](https://www.iaptic.com/settings)
+
 
 ## Additional Features
 ### 1. Event Tracking (Beta)
