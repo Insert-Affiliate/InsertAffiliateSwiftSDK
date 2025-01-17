@@ -123,7 +123,7 @@ public struct InsertAffiliateSwift {
                     return
                 }
 
-                let urlString = "http://192.168.1.154:3001/V1/convert-deep-link-to-short-link?companyId=\(companyCode)&deepLinkUrl=\(encodedAffiliateLink)"
+                let urlString = "https://api.insertaffiliate.com/V1/convert-deep-link-to-short-link?companyId=\(companyCode)&deepLinkUrl=\(encodedAffiliateLink)"
 
                 guard let url = URL(string: urlString) else {
                     print("[Insert Affiliate] Invalid URL")
@@ -184,7 +184,6 @@ public struct InsertAffiliateSwift {
     }
 
     public static func storeInsertAffiliateIdentifier(referringLink: String) {
-        // TODO: if its not a short code, call out to our backend & check if its a long referrring link that can be converted to a short code...
         let insertAffiliateIdentifier = "\(referringLink)-\(returnShortUniqueDeviceID())"
         UserDefaults.standard.set(insertAffiliateIdentifier, forKey: "insertAffiliateIdentifier")
     }
