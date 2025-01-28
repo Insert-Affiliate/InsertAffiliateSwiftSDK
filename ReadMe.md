@@ -69,7 +69,7 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
         _ application: UIApplication,
         didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]?
     ) -> Bool {
-        InsertAffiliateSwift.initialise(companyCode: "{{ your_company_code }}")
+        InsertAffiliateSwift.initialize(companyCode: "{{ your_company_code }}")
         return true
     }
 }
@@ -130,7 +130,7 @@ import InAppPurchaseLib
 import InsertAffiliateSwift
 
 class AppDelegate: UIResponder, UIApplicationDelegate {
-  InsertAffiliateSwift.initialise(companyCode: "{{ your_company_code }}")
+  InsertAffiliateSwift.initialize(companyCode: "{{ your_company_code }}")
 
   func application(_ application: UIApplication, didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]? = nil) -> Bool {
 
@@ -145,13 +145,13 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
     // Step 2: Reinitialise In-App Purchases
     InAppPurchase.stop()
     if let applicationUsername = InsertAffiliateSwift.returnInsertAffiliateIdentifier() {
-      InAppPurchase.initialise(
+      InAppPurchase.initialize(
         iapProducts: iapProductsArray,
         validatorUrlString: "https://validator.iaptic.com/v3/validate?appName={{ your_iaptic_app_name }}&apiKey={{ your_iaptic_app_key_goes_here }}",
         applicationUsername: applicationUsername
       )
     } else {
-      InAppPurchase.initialise(
+      InAppPurchase.initialize(
         iapProducts: iapProductsArray,
         validatorUrlString: "https://validator.iaptic.com/v3/validate?appName={{ your_iaptic_app_name }}&apiKey={{ your_iaptic_app_key_goes_here }}"
       )
@@ -226,13 +226,13 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
 
           InAppPurchase.stop()
           if let applicationUsername = InsertAffiliateSwift.returnInsertAffiliateIdentifier() {
-            InAppPurchase.initialise(
+            InAppPurchase.initialize(
               iapProducts: iapProductsArray,
               validatorUrlString: "https://validator.iaptic.com/v3/validate?appName={{ your_iaptic_app_name }}&apiKey={{ your_iaptic_app_key_goes_here }}",
               applicationUsername: applicationUsername
             )
           } else {
-            InAppPurchase.initialise(
+            InAppPurchase.initialize(
               iapProducts: iapProductsArray,
               validatorUrlString: "https://validator.iaptic.com/v3/validate?appName={{ your_iaptic_app_name }}&apiKey={{ your_iaptic_app_key_goes_here }}"
             )
