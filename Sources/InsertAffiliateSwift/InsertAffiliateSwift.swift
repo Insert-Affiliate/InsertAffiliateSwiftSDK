@@ -46,10 +46,41 @@ public struct InsertAffiliateSwift {
         Task {
             do {
                 try await state.initialize(companyCode: companyCode)
+                getOrCreateUserAccountToken()
             } catch {
                 print("[Insert Affiliate] Error initializing SDK: \(error.localizedDescription)")
             }
         }
+    }
+
+    // For users using App Store Receipts directly without a Receipt Validator
+    private static func getOrCreateUserAccountToken() -> UUID {
+        if let storedUUIDString = UserDefaults.standard.string(forKey: "appAccountToken"),
+           let storedUUID = UUID(uuidString: storedUUIDString) {
+            return storedUUID
+        } else {
+            let newUUID = UUID()
+            UserDefaults.standard.set(newUUID.uuidString, forKey: "appAccountToken")
+            return newUUID
+        }
+    }
+
+    // Function to return the stored UUID for users using App Store Receipts directly without a Receipt Validator
+    public static func returnUserAccountTokenAndStoreExpectedTransaction() async -> UUID? {
+        // 1: Check if they have an affiliate assigned before storing the transaction
+        guard let insertAffiliateIdentifier = returnInsertAffiliateIdentifier() else {
+            print("[Insert Affiliate] No affiliate stored - not saving expected transaction")
+            return nil
+        }
+            
+        if let storedUUIDString = UserDefaults.standard.string(forKey: "appAccountToken"),
+           let storedUUID = UUID(uuidString: storedUUIDString) {
+                await storeExpectedAppStoreTransaction(userAccountToken: storedUUID)
+                return storedUUID;
+        } else {
+            print("[Insert Affiliate] No valid user account token found, skipping expected transaction storage.")
+        }
+        return nil
     }
 
     public static func setShortCode(shortCode: String) {
@@ -198,6 +229,50 @@ public struct InsertAffiliateSwift {
         return string.unicodeScalars.filter { allowedCharacters.contains($0) }.map { Character($0) }.reduce("") { $0 + String($1) }
     }
 
+    // public static func sendAppleTransactionToServer(signedTransaction: String, productID: String, appAccountToken: UUID?) async {
+    //     guard let url = URL(string: "https://api.insertaffiliate.com/v1/api/app-sent-app-store-transaction") else {
+    //         print("❌ Invalid server URL")
+    //         return
+    //     }
+
+    //     var request = URLRequest(url: url)
+    //     request.httpMethod = "POST"
+    //     request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+
+    //     // Determine environment dynamically (change as needed)
+    //     let isSandbox = true // Set to false for production
+    //     let environment = isSandbox ? "Sandbox" : "Production"
+
+    //     // Simulate webhook format
+    //     let payload: [String: Any] = [
+    //         "signedPayload": signedTransaction, // Matches webhook expected format
+    //         "payload": [
+    //             "notificationType": "ONE_TIME_CHARGE", // Mimic webhook structure
+    //             "subtype": "N/A", // Webhook expects this field
+    //             "data": [
+    //                 "signedTransactionInfo": signedTransaction
+    //             ]
+    //         ],
+    //         "appAccountToken": appAccountToken?.uuidString ?? "",
+    //         "productID": productID,
+    //         "environment": environment
+    //     ]
+
+    //     do {
+    //         let jsonData = try JSONSerialization.data(withJSONObject: payload, options: [])
+    //         request.httpBody = jsonData
+
+    //         let (data, response) = try await URLSession.shared.data(for: request)
+    //         if let httpResponse = response as? HTTPURLResponse, httpResponse.statusCode == 200 {
+    //             print("✅ One-time purchase transaction successfully sent to server")
+    //         } else {
+    //             print("❌ Server rejected transaction")
+    //         }
+    //     } catch {
+    //         print("❌ Error sending transaction: \(error.localizedDescription)")
+    //     }
+    // }
+    
     internal static func fetchOfferCode(affiliateLink: String, completion: @Sendable @escaping (String?) -> Void) {
         guard let encodedAffiliateLink = affiliateLink.addingPercentEncoding(withAllowedCharacters: .urlPathAllowed) else {
             print("[Insert Affiliate] Failed to encode affiliate link")
@@ -205,7 +280,7 @@ public struct InsertAffiliateSwift {
             return
         }
 
-        let offerCodeUrlString = "https://192.168.1.154:3001/v1/affiliateReturnOfferCode/" + encodedAffiliateLink
+        let offerCodeUrlString = "https://api.insertaffiliate.com/v1/affiliateReturnOfferCode/" + encodedAffiliateLink
         
         guard let offerCodeUrl = URL(string: offerCodeUrlString) else {
             print("[Insert Affiliate] Invalid offer code URL")
@@ -291,7 +366,7 @@ public struct InsertAffiliateSwift {
             return
         }
 
-        let apiUrlString = "http://192.168.1.154:3001/v1/trackEvent"
+        let apiUrlString = "https://api.insertaffiliate.com/v1/trackEvent"
         guard let apiUrl = URL(string: apiUrlString) else {
             print("[Insert Affiliate] Invalid API URL")
             return
@@ -323,6 +398,71 @@ public struct InsertAffiliateSwift {
             }
         }
 
+        task.resume()
+    }
+
+    public static func storeExpectedAppStoreTransaction(userAccountToken: UUID) async {
+        guard let companyCode = await state.getCompanyCode() else {
+            print("[Insert Affiliate] Company code is not set. Please initialize the SDK with a valid company code.")
+            return
+        }
+
+        guard let shortCode = returnInsertAffiliateIdentifier() else {
+            print("[Insert Affiliate] No affiliate identifier found. Please set one before tracking events.")
+            return
+        }
+
+        // ✅ Convert Date to String
+        let dateFormatter = ISO8601DateFormatter()
+        let storedDateString = dateFormatter.string(from: Date())
+
+        // ✅ Convert UUID to String
+        let uuidString = userAccountToken.uuidString
+
+        // Set the params passed as the body of the request
+        let payload: [String: Any] = [
+            "UUID": uuidString,
+            "companyCode": companyCode,
+            "shortCode": shortCode,
+            "storedDate": storedDateString
+        ]
+
+        guard let jsonData = try? JSONSerialization.data(withJSONObject: payload, options: []) else {
+            print("[Insert Affiliate] Failed to encode expected transaction payload")
+            return
+        }
+
+        let apiUrlString = "https://api.insertaffiliate.com/v1/api/app-store-webhook/create-expected-transaction"
+        guard let apiUrl = URL(string: apiUrlString) else {
+            print("[Insert Affiliate] Invalid API URL")
+            return
+        }
+
+        // Create and configure the request
+        var request = URLRequest(url: apiUrl)
+        request.httpMethod = "POST"
+        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        request.httpBody = jsonData
+
+        // Send the request
+        let task = URLSession.shared.dataTask(with: request) { data, response, error in
+            if let error = error {
+                print("[Insert Affiliate] Error storing expected transaction: \(error.localizedDescription)")
+                return
+            }
+
+            guard let httpResponse = response as? HTTPURLResponse else {
+                print("[Insert Affiliate] No response received")
+                return
+            }
+
+            // Check for a successful response
+            if httpResponse.statusCode == 200 {
+                print("[Insert Affiliate] Expected transaction stored successfully")
+            } else {
+                print("[Insert Affiliate] Failed to store expected transaction with status code: \(httpResponse.statusCode)")
+            }
+        }
         task.resume()
     }
 }

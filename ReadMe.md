@@ -21,7 +21,7 @@ To get started with the InsertAffiliateSwift SDK:
 2. [Initialise the SDK in your AppDelegate or SwiftUI @main entry point](#basic-usage)
 3. [Set up in-app purchases (Required)](#in-app-purchase-setup-required)
 4. [Set up deep linking (Required)](#deep-link-setup-required)
-5. Use additional features like affiliate tracking based on your app's requirements.
+5. [Use additional features like event tracking based on your app's requirements.](#additional-features)
 
 
 Refer to the below Examples section for detailed implementation steps.
