@@ -460,6 +460,7 @@ public struct InsertAffiliateSwift {
             if httpResponse.statusCode == 200 {
                 print("[Insert Affiliate] Expected transaction stored successfully")
             } else {
+                // Check the message first, if its that the transaction already exists, respond with 200
                 print("[Insert Affiliate] Failed to store expected transaction with status code: \(httpResponse.statusCode)")
             }
         }

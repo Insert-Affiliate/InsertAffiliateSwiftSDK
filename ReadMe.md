@@ -79,6 +79,7 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
 Insert Affiliate requires a Receipt Verification platform to validate in-app purchases. You must choose **one** of our supported partners:
 - [RevenueCat](https://www.revenuecat.com/)
 - [Iaptic](https://www.iaptic.com/account)
+- [App Store Direct Integration](#app-store-direct-integration)
 
 ### Option 1: RevenueCat Integration
 #### 1. Code Setup
@@ -163,6 +164,33 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
 Replace the following:
 - `{{ your_iaptic_app_name }}` with your [Iaptic App Name](https://www.iaptic.com/account)
 - `{{ your_iaptic_public_key }}` with your [Iaptic Public Key](https://www.iaptic.com/settings)
+
+### Option 3: App Store Direct Integration
+
+Our direct App Store integration is currently in beta and currently supports subscriptions only. **Consumables and one-off purchases are not yet supported** due to App Store server-to-server notification limitations.
+
+We plan to release support for consumables and one-off purchases soon. In the meantime, you can use a receipt verification platform from the other integration options.
+
+#### 1. Apple App Store Notification Setup
+To proceed, visit [our docs](https://docs.insertaffiliate.com/direct-store-purchase-integration#1-apple-app-store-server-notifications) and complete the required setup steps to set up App Store Server to Server Notifications.
+
+#### 2. Implementing Purchases
+
+```swift
+// Step 1: Initialise purchases, retrieve the product
+
+// Step 2: Within the function where you are making the purchase...
+func purchase(productIdentifier: String) async {
+    do {
+        
+        // Step 3: Replace your product.purchase() with the lines below
+        let token = await InsertAffiliateSwift.returnUserAccountTokenAndStoreExpectedTransaction()
+        let result = try await product.purchase(options: token.map { [.appAccountToken($0)] } ?? [])
+    }
+}
+```
+
+
 ## Deep Link Setup [Required]
 
 ### Step 1: Add the Deep Linking Platform Dependency
@@ -246,6 +274,28 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
 Replace the following:
 - `{{ your_iaptic_app_name }}` with your [Iaptic App Name](https://www.iaptic.com/account)
 - `{{ your_iaptic_public_key }}` with your [Iaptic Public Key](https://www.iaptic.com/settings)
+
+#### Example with App Store Direct Integration
+
+
+```swift
+import SwiftUI
+import BranchSDK
+import StoreKit
+import InsertAffiliateSwift
+
+class AppDelegate: UIResponder, UIApplicationDelegate {
+    func application(_ application: UIApplication, didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]? = nil) -> Bool {
+        Branch.getInstance().initSession(launchOptions: launchOptions) { params, _ in
+            if let referringLink = params?["~referring_link"] as? String {
+                InsertAffiliateSwift.setInsertAffiliateIdentifier(referringLink: referringLink) { _ in }
+            }
+        }
+        return true
+    }
+}
+
+```
 
 
 ## Additional Features
