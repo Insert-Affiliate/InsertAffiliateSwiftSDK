@@ -192,16 +192,22 @@ func purchase(productIdentifier: String) async {
 
 
 ## Deep Link Setup [Required]
+Insert Affiliate requires a Deep Linking platform to create links for your affiliates. Our platform works with **any** deep linking provider, and you only need to follow these steps:
+1. **Create a deep link** in your chosen third-party platform and pass it to our dashboard when an affiliate signs up. 
+2. **Handle deep link clicks** in your app by passing the clicked link:
+   ```swift
+   InsertAffiliateSwift.setInsertAffiliateIdentifier(referringLink: "{{ link }}")
+   ```
+3. **Integrate with a Receipt Verification platform** by using the result from `setInsertAffiliateIdentifier` to log in or set your application’s username. Examples below include [**Iaptic**](https://github.com/Insert-Affiliate/InsertAffiliateSwiftSDK?tab=readme-ov-file#example-with-iaptic), [**RevenueCat**](https://github.com/Insert-Affiliate/InsertAffiliateSwiftSDK?tab=readme-ov-file#example-with-revenuecat) and [**Direct App Store integration**](https://github.com/Insert-Affiliate/InsertAffiliateSwiftSDK?tab=readme-ov-file#example-with-app-store-direct-integration).
 
-### Step 1: Add the Deep Linking Platform Dependency
+### Deep Linking with Branch.io
+To set up deep linking with Branch.io, follow these steps:
 
-In this example, the deep linking functionality is implemented using [Branch.io](https://dashboard.branch.io/).
+1. Create a deep link in Branch and pass it to our dashboard when an affiliate signs up.
+    - Example: [Branch Deep Link Setup](https://docs.insertaffiliate.com/branch-create-affiliate).
+2. Modify Your Deep Link Handling in AppDelegate.swift
+    - After setting up your Branch integration, add the following code to initialise the Insert Affiliate SDK in your iOS app:
 
-Any alternative deep linking platform can be used by passing the referring link to ```InsertAffiliateSwift.setInsertAffiliateIdentifier(referringLink: "{{ link }}")``` as in the below Branch.io example
-
-### Step 2: Modify Your Deep Link initSession function in `AppDelegate.swift`
-
-After setting up your Branch integration, add the following code to initialise the Insert Affiliate SDK in your iOS app.
 
 #### Example with RevenueCat
 ```swift
@@ -277,7 +283,6 @@ Replace the following:
 
 #### Example with App Store Direct Integration
 
-
 ```swift
 import SwiftUI
 import BranchSDK
@@ -285,18 +290,25 @@ import StoreKit
 import InsertAffiliateSwift
 
 class AppDelegate: UIResponder, UIApplicationDelegate {
-    func application(_ application: UIApplication, didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]? = nil) -> Bool {
-        Branch.getInstance().initSession(launchOptions: launchOptions) { params, _ in
-            if let referringLink = params?["~referring_link"] as? String {
-                InsertAffiliateSwift.setInsertAffiliateIdentifier(referringLink: referringLink) { _ in }
-            }
-        }
-        return true
+  func application(_ application: UIApplication, didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]? = nil) -> Bool {
+    Branch.getInstance().initSession(launchOptions: launchOptions) { params, _ in
+      if let referringLink = params?["~referring_link"] as? String {
+        InsertAffiliateSwift.setInsertAffiliateIdentifier(referringLink: referringLink) { _ in }
+      }
     }
+    return true
+  }
 }
 
 ```
 
+### Deep Linking with Other Platforms
+Insert Affiliate supports all other deep linking providers. The general steps remain the same:
+
+1. Generate a **deep link** using your provider and pass it to our dashboard.
+2. **Extract and pass the deep link** to Insert Affiliate inside your app’s deep link handling logic.
+
+Refer to your deep linking provider’s documentation for specific instructions on how to retrieve the deep link URL as demonstrated above for Branch.io.
 
 ## Additional Features
 ### 1. Event Tracking (Beta)
