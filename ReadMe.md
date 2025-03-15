@@ -95,8 +95,7 @@ final class AppDelegate: UIResponder, UIApplicationDelegate, UNUserNotificationC
     Purchases.configure(withAPIKey: "{{ your_revenue_cat_api_key }}")
 
     if let applicationUsername = InsertAffiliateSwift.returnInsertAffiliateIdentifier() {
-      Purchases.shared.logIn(applicationUsername) { (customerInfo, created, error) in
-      }
+      Purchases.shared.attribution.setAttributes(["insert_affiliate": applicationUsername])
     }
 
     return true
@@ -217,21 +216,19 @@ import InAppPurchaseLib
 import InsertAffiliateSwift
 
 class AppDelegate: UIResponder, UIApplicationDelegate {
-  func application(_ application: UIApplication, didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]? = nil) -> Bool {
-    Branch.getInstance().initSession(launchOptions: launchOptions) { (params, error) in
-      if let referringLink = params?["~referring_link"] as? String {
-        InsertAffiliateSwift.setInsertAffiliateIdentifier(referringLink: referringLink) { result in
-          guard let shortCode = result else {
-            return
-          }
+    func application(_ application: UIApplication, didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]? = nil) -> Bool {
+        Branch.getInstance().initSession(launchOptions: launchOptions) { (params, error) in
+          if let referringLink = params?["~referring_link"] as? String {
+            InsertAffiliateSwift.setInsertAffiliateIdentifier(referringLink: referringLink) { result in
+                guard let shortCode = result else {
+                    return
+                }
 
-          Purchases.shared.logIn(shortCode) { (customerInfo, created, error) in
-            // customerInfo updated for my_app_user_id. If you are having issues, you can investigate here.
+                Purchases.shared.attribution.setAttributes(["insert_affiliate": shortCode])
           }
-      }
+        }
+        return true
     }
-    return true
-  }
 }
 ```
 
