@@ -416,13 +416,6 @@ struct ShortCodeView_Previews: PreviewProvider {
 }
 ```
 
-#### Example Usage
-Set the Affiliate Identifier (required for tracking):
-
-```swift
-InsertAffiliateSwift.setInsertAffiliateIdentifier(referringLink: "your_affiliate_link")
-```
-
 ### 3. Offer Codes
 
 Offer Codes enable you to automatically present an applied discount to users when they access an affiliate's link. This provides a compelling marketing incentive that affiliates can leverage in their outreach efforts. Detailed setup instructions and additional information are available [here.](https://docs.insertaffiliate.com/offer-codes)
