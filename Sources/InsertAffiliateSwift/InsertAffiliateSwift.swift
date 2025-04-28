@@ -350,15 +350,21 @@ public struct InsertAffiliateSwift {
         }
     }
 
-    public static func trackEvent(eventName: String) {
+    public static func trackEvent(eventName: String) async {
         guard let deepLinkParam = returnInsertAffiliateIdentifier() else {
             print("[Insert Affiliate] No affiliate identifier found. Please set one before tracking events.")
             return
         }
 
+        guard let companyCode = await state.getCompanyCode(), !companyCode.isEmpty else {
+            print("[Insert Affiliate] Company code is not set. Please initialize the SDK with a valid company code.")
+            return
+        }
+
         let payload: [String: Any] = [
             "eventName": eventName,
-            "deepLinkParam": deepLinkParam
+            "deepLinkParam": deepLinkParam,
+            "companyId": companyCode
         ]
 
         guard let jsonData = try? JSONSerialization.data(withJSONObject: payload, options: []) else {
@@ -367,6 +373,7 @@ public struct InsertAffiliateSwift {
         }
 
         let apiUrlString = "https://api.insertaffiliate.com/v1/trackEvent"
+
         guard let apiUrl = URL(string: apiUrlString) else {
             print("[Insert Affiliate] Invalid API URL")
             return
