@@ -80,7 +80,6 @@ Insert Affiliate requires a Receipt Verification platform to validate in-app pur
 - [RevenueCat](https://www.revenuecat.com/)
 - [Iaptic](https://www.iaptic.com/account)
 - [App Store Direct Integration](#app-store-direct-integration)
-- [Apphud](https://apphud.com/)
 
 ### Option 1: RevenueCat Integration
 #### 1. Code Setup
@@ -191,41 +190,6 @@ func purchase(productIdentifier: String) async {
 }
 ```
 
-### Option 4: Apphud Integration
-#### 1. Code Setup
-First, complete the [Apphud Quickstart and Setup](https://docs.apphud.com/docs/quickstart). Then modify your ```AppDelegate.swift```:
-
-```swift
-import SwiftUI
-import ApphudSDK
-import InsertAffiliateSwift
-
-final class AppDelegate: UIResponder, UIApplicationDelegate, UNUserNotificationCenterDelegate {
-  func application(_ application: UIApplication, didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]? = nil) -> Bool {
-    Apphud.start(apiKey: "{{ your_apphud_key }}")
-
-
-    if let applicationUsername = InsertAffiliateSwift.returnInsertAffiliateIdentifier() {
-        Apphud.setUserProperty(key: .init("insert_affiliate"), value: applicationUsername, setOnce: false)
-    }
-
-    return true
-  }
-}
-```
-- Replace {{ your_apphud_key }} with your **Apphud API Key**.
-
-#### 2. Webhook Setup
-1. Open the [Insert Affiliate settings](https://app.insertaffiliate.com/settings):
-   - Navigate to the Verification Settings section
-   - Set the In-App Purchase Verification method to `Apphud`
-   - Copy the `Apphud Webhook URL`- you'll need it in the next step.
-2. Go to the [Apphud Dashboard](https://app.apphud.com/)
-3. Navigate to **Settings** -> **iOS App Settings:**
-- Paste the copied `Apphud Webhook URL` into the `Proxy App Store server notifications to this URL` field
-- Click **Save**.
-
-
 ## Deep Link Setup [Required]
 Insert Affiliate requires a Deep Linking platform to create links for your affiliates. Our platform works with **any** deep linking provider, and you only need to follow these steps:
 1. **Create a deep link** in your chosen third-party platform and pass it to our dashboard when an affiliate signs up. 
@@ -261,30 +225,6 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
                 }
 
                 Purchases.shared.attribution.setAttributes(["insert_affiliate": shortCode])
-          }
-        }
-        return true
-    }
-}
-```
-
-#### Example with Apphud
-```swift
-import SwiftUI
-import BranchSDK
-import ApphudSDK
-import InsertAffiliateSwift
-
-class AppDelegate: UIResponder, UIApplicationDelegate {
-    func application(_ application: UIApplication, didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]? = nil) -> Bool {
-        Branch.getInstance().initSession(launchOptions: launchOptions) { (params, error) in
-          if let referringLink = params?["~referring_link"] as? String {
-            InsertAffiliateSwift.setInsertAffiliateIdentifier(referringLink: referringLink) { result in
-                guard let shortCode = result else {
-                    return
-                }
-
-                Apphud.setUserProperty(key: .init("insert_affiliate"), value: shortCode, setOnce: false)
           }
         }
         return true
