@@ -80,6 +80,7 @@ Insert Affiliate requires a Receipt Verification platform to validate in-app pur
 - [RevenueCat](https://www.revenuecat.com/)
 - [Iaptic](https://www.iaptic.com/account)
 - [App Store Direct Integration](#app-store-direct-integration)
+- [Apphud](https://apphud.com/)
 
 ### Option 1: RevenueCat Integration
 #### 1. Code Setup
@@ -190,6 +191,40 @@ func purchase(productIdentifier: String) async {
 }
 ```
 
+### Option 4: Apphud Integration
+#### 1. Code Setup
+First, complete the [Apphud Quickstart and Setup](https://docs.apphud.com/docs/quickstart). Then modify your ```AppDelegate.swift```:
+
+```swift
+import SwiftUI
+import ApphudSDK
+import InsertAffiliateSwift
+
+final class AppDelegate: UIResponder, UIApplicationDelegate, UNUserNotificationCenterDelegate {
+  func application(_ application: UIApplication, didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]? = nil) -> Bool {
+    Apphud.start(apiKey: "{{ your_apphud_key }}")
+
+
+    if let applicationUsername = InsertAffiliateSwift.returnInsertAffiliateIdentifier() {
+        Apphud.setUserProperty(key: .init("insert_affiliate"), value: applicationUsername, setOnce: false)
+    }
+
+    return true
+  }
+}
+```
+- Replace {{ your_apphud_key }} with your **Apphud API Key**.
+
+#### 2. Webhook Setup
+1. Open the [Insert Affiliate settings](https://app.insertaffiliate.com/settings):
+   - Navigate to the Verification Settings section
+   - Set the In-App Purchase Verification method to `Apphud`
+   - Copy the `Apphud Webhook URL`- you'll need it in the next step.
+2. Go to the [Apphud Dashboard](https://app.apphud.com/)
+3. Navigate to **Settings** -> **iOS App Settings:**
+- Paste the copied `Apphud Webhook URL` into the `Proxy App Store server notifications to this URL` field
+- Click **Save**.
+
 
 ## Deep Link Setup [Required]
 Insert Affiliate requires a Deep Linking platform to create links for your affiliates. Our platform works with **any** deep linking provider, and you only need to follow these steps:
@@ -213,7 +248,7 @@ To set up deep linking with Branch.io, follow these steps:
 ```swift
 import SwiftUI
 import BranchSDK
-import InAppPurchaseLib
+import RevenueCat
 import InsertAffiliateSwift
 
 class AppDelegate: UIResponder, UIApplicationDelegate {
@@ -226,6 +261,30 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
                 }
 
                 Purchases.shared.attribution.setAttributes(["insert_affiliate": shortCode])
+          }
+        }
+        return true
+    }
+}
+```
+
+#### Example with Apphud
+```swift
+import SwiftUI
+import BranchSDK
+import ApphudSDK
+import InsertAffiliateSwift
+
+class AppDelegate: UIResponder, UIApplicationDelegate {
+    func application(_ application: UIApplication, didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]? = nil) -> Bool {
+        Branch.getInstance().initSession(launchOptions: launchOptions) { (params, error) in
+          if let referringLink = params?["~referring_link"] as? String {
+            InsertAffiliateSwift.setInsertAffiliateIdentifier(referringLink: referringLink) { result in
+                guard let shortCode = result else {
+                    return
+                }
+
+                Apphud.setUserProperty(key: .init("insert_affiliate"), value: shortCode, setOnce: false)
           }
         }
         return true
@@ -330,7 +389,7 @@ InsertAffiliateSwift.trackEvent(eventName: "your_event_name")
 
 ### What are Short Codes?
 
-Short codes are unique, 10-character alphanumeric identifiers that affiliates can use to promote products or subscriptions. These codes are ideal for influencers or partners, making them easier to share than long URLs.
+Short codes are unique, 3 to 25 character alphanumeric identifiers that affiliates can use to promote products or subscriptions. These codes are ideal for influencers or partners, making them easier to share than long URLs.
 
 **Example Use Case**: An influencer promotes a subscription with the short code "JOIN123456" within their TikTok video's description. When users enter this code within your app during sign-up or before purchase, the app tracks the subscription back to the influencer for commission payouts.
 
@@ -341,7 +400,7 @@ For more information, visit the [Insert Affiliate Short Codes Documentation](htt
 Use the `setShortCode` method to associate a short code with an affiliate. This is ideal for scenarios where users enter the code via an input field, pop-up, or similar UI element.
 
 Short codes must meet the following criteria:
-- Exactly **10 characters long**.
+- Between **3 and 25 characters long**.
 - Contain only **letters and numbers** (alphanumeric characters).
 - Replace {{ user_entered_short_code }} with the short code the user enters through your chosen input method, i.e. an input field / pop up element
 
