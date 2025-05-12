@@ -124,6 +124,8 @@ Replace `{{ your_revenue_cat_api_key }}` with your **RevenueCat API Key**. You c
    - Paste it as the Authorization header value in your RevenueCat webhook configuration
 
 ### Option 2: Iaptic Integration
+#### 1. Code Setup
+
 First, complete the [Iaptic account setup](https://www.iaptic.com/documentation/setup/ios) and [SDK installation.](https://github.com/iridescent-dev/iap-swift-lib) Then modify your ```AppDelegate.swift```:
 
 ```swift
@@ -165,6 +167,18 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
 Replace the following:
 - `{{ your_iaptic_app_name }}` with your [Iaptic App Name](https://www.iaptic.com/account)
 - `{{ your_iaptic_public_key }}` with your [Iaptic Public Key](https://www.iaptic.com/settings)
+
+#### 2. Webhook Setup
+
+1. Open the [Insert Affiliate settings](https://app.insertaffiliate.com/settings):
+  - Navigate to the Verification Settings section
+  - Set the In-App Purchase Verification method to `Iaptic`
+  - Copy the `Iaptic Webhook URL` and the `Iaptic Webhook Sandbox URL`- you'll need it in the next step.
+2. Go to the [Iaptic Settings](https://www.iaptic.com/settings)
+- Paste the copied `Iaptic Webhook URL` into the `Webhook URL` field
+- Paste the copied `Iaptic Webhook Sandbox URL` into the `Sandbox Webhook URL` field
+- Click **Save Settings**.
+3. Check that you have completed the [Iaptic setup for the App Store Server Notifications](https://www.iaptic.com/documentation/setup/ios-subscription-status-url)
 
 ### Option 3: App Store Direct Integration
 
