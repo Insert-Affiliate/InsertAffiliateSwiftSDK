@@ -209,7 +209,7 @@ public struct InsertAffiliateSwift {
 
     private static func isShortCode(_ link: String) -> Bool {
         // Check if the link is 10 characters long and contains only letters and numbers
-        let regex = "^[a-zA-Z0-9]{10}$"
+        let regex = "^[a-zA-Z0-9]{3,25}$"
         let predicate = NSPredicate(format: "SELF MATCHES %@", regex)
         return predicate.evaluate(with: link)
     }
