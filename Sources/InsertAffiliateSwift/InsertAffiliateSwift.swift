@@ -5,30 +5,38 @@ import UIKit
 actor InsertAffiliateState {
     private var companyCode: String?
     private var isInitialized = false
+    private var verboseLogging = false
 
-    func initialize(companyCode: String?) throws {
+    func initialize(companyCode: String?, verboseLogging: Bool = false) throws {
         guard !isInitialized else {
             throw NSError(domain: "InsertAffiliateSwift", code: 1, userInfo: [NSLocalizedDescriptionKey: "SDK is already initialized."])
         }
 
         if let code = companyCode, !code.isEmpty {
             self.companyCode = code
+            self.verboseLogging = verboseLogging
             isInitialized = true
-            print("[Insert Affiliate] SDK initialized with company code: \(code)")
+            print("[Insert Affiliate] SDK initialized with company code: \(code), verbose logging: \(verboseLogging)")
         } else {
             self.companyCode = nil
+            self.verboseLogging = verboseLogging
             isInitialized = true
-            print("[Insert Affiliate] SDK initialized without a company code.")
+            print("[Insert Affiliate] SDK initialized without a company code, verbose logging: \(verboseLogging)")
         }
     }
 
     func getCompanyCode() -> String? {
         return companyCode
     }
+    
+    func getVerboseLogging() -> Bool {
+        return verboseLogging
+    }
 
     func reset() {
         companyCode = nil
         isInitialized = false
+        verboseLogging = false
         print("[Insert Affiliate] SDK has been reset.")
     }
 }
@@ -37,7 +45,7 @@ public struct InsertAffiliateSwift {
     @available(iOS 13.0.0, *)
     private static let state = InsertAffiliateState()
 
-    public static func initialize(companyCode: String?) {
+    public static func initialize(companyCode: String?, verboseLogging: Bool = false) {
         guard #available(iOS 13.0, *) else {
             print("[Insert Affiliate] This SDK requires iOS 13.0 or newer.")
             return
@@ -45,7 +53,7 @@ public struct InsertAffiliateSwift {
 
         Task {
             do {
-                try await state.initialize(companyCode: companyCode)
+                try await state.initialize(companyCode: companyCode, verboseLogging: verboseLogging)
                 getOrCreateUserAccountToken()
             } catch {
                 print("[Insert Affiliate] Error initializing SDK: \(error.localizedDescription)")
@@ -367,12 +375,15 @@ public struct InsertAffiliateSwift {
             "companyId": companyCode
         ]
 
+        print("[Insert Affiliate] Tracking event '\(eventName)' with payload: \(payload)")
+
         guard let jsonData = try? JSONSerialization.data(withJSONObject: payload, options: []) else {
             print("[Insert Affiliate] Failed to encode event payload")
             return
         }
 
         let apiUrlString = "https://api.insertaffiliate.com/v1/trackEvent"
+        print("[Insert Affiliate] Sending track event to: \(apiUrlString)")
 
         guard let apiUrl = URL(string: apiUrlString) else {
             print("[Insert Affiliate] Invalid API URL")
@@ -393,8 +404,17 @@ public struct InsertAffiliateSwift {
             }
 
             guard let httpResponse = response as? HTTPURLResponse else {
-                print("[Insert Affiliate] No response received")
+                print("[Insert Affiliate] No response received for track event")
                 return
+            }
+
+            // Log response details
+            print("[Insert Affiliate] Track event response status: \(httpResponse.statusCode)")
+            print("[Insert Affiliate] Track event response headers: \(httpResponse.allHeaderFields)")
+            
+            // Log response data for debugging
+            if let data = data, let responseString = String(data: data, encoding: .utf8) {
+                print("[Insert Affiliate] Track event response body: \(responseString)")
             }
 
             // Check for a successful response
@@ -473,4 +493,357 @@ public struct InsertAffiliateSwift {
         }
         task.resume()
     }
+
+    // MARK: - Deep Link Monitoring
+    
+    /// Handle all InsertAffiliate URLs (deep links, universal links, etc.)
+    /// Call this method from your AppDelegate's URL handling methods
+    /// Returns true if the URL was handled by InsertAffiliate, false otherwise
+    public static func handleURL(_ url: URL) -> Bool {
+        print("[Insert Affiliate] Attempting to handle URL: \(url.absoluteString)")
+        
+        // Handle custom URL schemes (ia-companycode://shortcode)
+        if let scheme = url.scheme, scheme.starts(with: "ia-") {
+            return handleCustomURLScheme(url)
+        }
+        
+        // Handle universal links (https://api.insertaffiliate.com/V1/companycode/shortcode)
+        if url.scheme == "https" && url.host?.contains("insertaffiliate.com") == true {
+            return handleUniversalLink(url)
+        }
+        
+        // Handle other InsertAffiliate URLs
+        if url.absoluteString.contains("insertaffiliate") {
+            return handleGenericInsertAffiliateURL(url)
+        }
+        
+        return false
+    }
+    
+    /// Handle custom URL schemes like ia-companycode://shortcode
+    private static func handleCustomURLScheme(_ url: URL) -> Bool {
+        guard let scheme = url.scheme, scheme.starts(with: "ia-") else {
+            return false
+        }
+        
+        // Extract company code from scheme (remove "ia-" prefix)
+        let companyCode = String(scheme.dropFirst(3))
+        
+        guard let shortCode = parseShortCodeFromURL(url) else {
+            print("[Insert Affiliate] Failed to parse short code from deep link: \(url.absoluteString)")
+            return false
+        }
+        
+        print("[Insert Affiliate] Custom URL scheme detected - Company: \(companyCode), Short code: \(shortCode)")
+        
+        // Validate company code matches initialized one
+        Task {
+            if let initializedCompanyCode = await state.getCompanyCode() {
+                if companyCode.lowercased() != initializedCompanyCode.lowercased() {
+                    print("[Insert Affiliate] Warning: URL company code (\(companyCode)) doesn't match initialized company code (\(initializedCompanyCode))")
+                }
+            }
+        }
+        
+        // Process the affiliate attribution
+        processAffiliateAttribution(shortCode: shortCode, companyCode: companyCode)
+        
+        return true
+    }
+    
+    /// Handle universal links like https://api.insertaffiliate.com/V1/companycode/shortcode
+    private static func handleUniversalLink(_ url: URL) -> Bool {
+        let pathComponents = url.pathComponents
+        
+        // Expected format: /V1/companycode/shortcode
+        guard pathComponents.count >= 4,
+              pathComponents[1] == "V1" else {
+            print("[Insert Affiliate] Invalid universal link format: \(url.absoluteString)")
+            return false
+        }
+        
+        let companyCode = pathComponents[2]
+        let shortCode = pathComponents[3]
+        
+        print("[Insert Affiliate] Universal link detected - Company: \(companyCode), Short code: \(shortCode)")
+        
+        // Validate company code matches initialized one
+        Task {
+            if let initializedCompanyCode = await state.getCompanyCode() {
+                if companyCode.lowercased() != initializedCompanyCode.lowercased() {
+                    print("[Insert Affiliate] Warning: URL company code (\(companyCode)) doesn't match initialized company code (\(initializedCompanyCode))")
+                }
+            }
+        }
+        
+        // Process the affiliate attribution
+        processAffiliateAttribution(shortCode: shortCode, companyCode: companyCode)
+        
+        return true
+    }
+    
+    /// Handle other InsertAffiliate URLs
+    private static func handleGenericInsertAffiliateURL(_ url: URL) -> Bool {
+        print("[Insert Affiliate] Generic InsertAffiliate URL detected: \(url.absoluteString)")
+        
+        // Try to extract affiliate information from the URL
+        // This is a fallback for any other InsertAffiliate URL formats
+        
+        // You can add more parsing logic here as needed
+        
+        return false
+    }
+    
+    /// Process affiliate attribution with the extracted data
+    private static func processAffiliateAttribution(shortCode: String, companyCode: String) {
+        print("[Insert Affiliate] Processing attribution for short code: '\(shortCode)' (length: \(shortCode.count))")
+        
+        // Ensure the short code is uppercase
+        let uppercasedShortCode = shortCode.uppercased()
+        print("[Insert Affiliate] Ensuring uppercase short code: '\(uppercasedShortCode)'")
+        
+        // Store the affiliate identifier
+        // storeInsertAffiliateIdentifier(referringLink: uppercasedShortCode)
+        
+        // Fetch additional affiliate data
+        fetchDeepLinkData(shortCode: uppercasedShortCode, companyCode: companyCode)
+        
+        // Log the attribution event
+        // Task {
+        //     await trackEvent(eventName: "affiliate_attribution_processed")
+        // }
+    }
+    
+    /// Handle deep links with the format `ia-companycode://shortcode`
+    /// Call this method from your AppDelegate's URL handling methods
+    /// @deprecated Use handleURL(_:) instead
+    public static func handleDeepLink(_ url: URL) -> Bool {
+        print("[Insert Affiliate] handleDeepLink is deprecated. Use handleURL(_:) instead.")
+        return handleURL(url)
+    }
+    
+    /// Parse short code from deep link URL
+    private static func parseShortCodeFromURL(_ url: URL) -> String? {
+        // Handle format: ia-companycode://shortcode
+        let rawShortCode = url.host ?? url.path.replacingOccurrences(of: "/", with: "")
+        print("[Insert Affiliate] Raw short code from URL: '\(rawShortCode)'")
+        
+        guard !rawShortCode.isEmpty else {
+            return nil
+        }
+        
+        let uppercasedShortCode = rawShortCode.uppercased()
+        print("[Insert Affiliate] Converted to uppercase: '\(uppercasedShortCode)'")
+        
+        if isShortCode(rawShortCode) {
+            print("[Insert Affiliate] Short code validation passed, returning: '\(uppercasedShortCode)'")
+            return uppercasedShortCode
+        }
+        
+        // If not in standard format, still return it for processing
+        print("[Insert Affiliate] Short code validation failed, still returning uppercase: '\(uppercasedShortCode)'")
+        return uppercasedShortCode
+    }
+
+    
+    /// Fetch deep link data from the API to get affiliate information
+    private static func fetchDeepLinkData(shortCode: String, companyCode: String) {
+        Task {
+            let urlString = "https://api.insertaffiliate.com/V1/getDeepLinkData/\(companyCode)/\(shortCode)"
+            print("[Insert Affiliate] Fetching deep link data from: \(urlString)")
+            
+            guard let url = URL(string: urlString) else {
+                print("[Insert Affiliate] Invalid deep link data URL")
+                return
+            }
+            
+            var request = URLRequest(url: url)
+            request.httpMethod = "GET"
+            request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+            
+            let task = URLSession.shared.dataTask(with: request) { data, response, error in
+                if let error = error {
+                    print("[Insert Affiliate] Error fetching deep link data: \(error.localizedDescription)")
+                    return
+                }
+                
+                // Log HTTP response details
+                if let httpResponse = response as? HTTPURLResponse {
+                    print("[Insert Affiliate] Deep link API response status: \(httpResponse.statusCode)")
+                    print("[Insert Affiliate] Deep link API response headers: \(httpResponse.allHeaderFields)")
+                    
+                    // Handle non-success status codes
+                    if httpResponse.statusCode != 200 {
+                        if let data = data, let errorResponse = String(data: data, encoding: .utf8) {
+                            print("[Insert Affiliate] API Error (\(httpResponse.statusCode)): \(errorResponse)")
+                        }
+                        
+                        switch httpResponse.statusCode {
+                        case 404:
+                            print("[Insert Affiliate] Deep link not found. The short code '\(shortCode)' may not exist for company '\(companyCode)'. Please check your Insert Affiliate dashboard.")
+                        case 401, 403:
+                            print("[Insert Affiliate] Authentication error. Please verify your company code.")
+                        default:
+                            print("[Insert Affiliate] Server error. Please try again later.")
+                        }
+                        return
+                    }
+                }
+                
+                guard let data = data else {
+                    print("[Insert Affiliate] No data received from deep link API")
+                    return
+                }
+                
+                // Log raw response data for debugging
+                if let rawResponse = String(data: data, encoding: .utf8) {
+                    print("[Insert Affiliate] Raw deep link API response: \(rawResponse)")
+                }
+                
+                do {
+                    if let json = try JSONSerialization.jsonObject(with: data, options: []) as? [String: Any] {
+                        // Check for error response
+                        if let errorMessage = json["error"] as? String {
+                            print("[Insert Affiliate] API returned error: \(errorMessage)")
+                            print("[Insert Affiliate] The short code '\(shortCode)' was not found. Please ensure it exists in your Insert Affiliate dashboard.")
+                            return
+                        }
+                        
+                        print("[Insert Affiliate] Deep link data retrieved successfully: \(json)")
+                        
+                        // Extract from nested structure: data.deepLink.userCode
+                        if let data = json["data"] as? [String: Any],
+                           let deepLink = data["deepLink"] as? [String: Any],
+                           let userCode = deepLink["userCode"] as? String {
+                            print("[Insert Affiliate] User code extracted: \(userCode)")
+                            storeInsertAffiliateIdentifier(referringLink: userCode)
+                            
+                            // Store the complete response for reference
+                            if let jsonData = try? JSONSerialization.data(withJSONObject: data, options: []) {
+                                UserDefaults.standard.set(jsonData, forKey: "deepLinkData")
+                            }
+                            
+                            // Extract values before dispatching to main queue to avoid data races
+                            let affiliateEmail = deepLink["affiliateEmail"] as? String
+                            let companyName = (data["company"] as? [String: Any])?["companyName"] as? String
+                            
+                            // Show alert for TestFlight visibility only when verbose logging is enabled
+                            Task { @MainActor in
+                                if await InsertAffiliateSwift.state.getVerboseLogging() {
+                                    InsertAffiliateSwift.showDeepLinkAlert(userCode: userCode, 
+                                                                         affiliateEmail: affiliateEmail,
+                                                                         companyName: companyName)
+                                }
+                            }
+                            
+                        } else {
+                            print("[Insert Affiliate] Could not extract userCode from response")
+                            print("[Insert Affiliate] Available keys in response: \(json.keys)")
+                            if let data = json["data"] as? [String: Any] {
+                                print("[Insert Affiliate] Available keys in data: \(data.keys)")
+                                if let deepLink = data["deepLink"] as? [String: Any] {
+                                    print("[Insert Affiliate] DeepLink data: \(deepLink)")
+                                }
+                            }
+                        }
+                    } else {
+                        print("[Insert Affiliate] Response is not a valid JSON object")
+                    }
+                } catch {
+                    print("[Insert Affiliate] Failed to parse deep link data: \(error.localizedDescription)")
+                    print("[Insert Affiliate] Data length: \(data.count) bytes")
+                }
+            }
+            
+            task.resume()
+        }
+    }
+    
+    /// Fetch deep link data using the initialized company code (fallback method)
+    private static func fetchDeepLinkData(shortCode: String) {
+        Task {
+            guard let companyCode = await state.getCompanyCode(), !companyCode.isEmpty else {
+                print("[Insert Affiliate] Company code is not set. Cannot fetch deep link data.")
+                return
+            }
+            
+            fetchDeepLinkData(shortCode: shortCode, companyCode: companyCode)
+        }
+    }
+    
+    // MARK: - Getter Methods
+    
+    /// Get stored affiliate email from deep link data
+    public static func getAffiliateEmail() -> String? {
+        return UserDefaults.standard.string(forKey: "affiliateEmail")
+    }
+    
+    /// Get stored affiliate ID from deep link data
+    public static func getAffiliateId() -> String? {
+        return UserDefaults.standard.string(forKey: "affiliateId")
+    }
+    
+    /// Get stored company name from deep link data
+    public static func getCompanyName() -> String? {
+        return UserDefaults.standard.string(forKey: "companyName")
+    }
+    
+    /// Get the complete deep link data as a dictionary
+    public static func getDeepLinkData() -> [String: Any]? {
+        guard let data = UserDefaults.standard.data(forKey: "deepLinkData") else {
+            return nil
+        }
+        
+        do {
+            return try JSONSerialization.jsonObject(with: data, options: []) as? [String: Any]
+        } catch {
+            print("[Insert Affiliate] Failed to parse stored deep link data: \(error.localizedDescription)")
+            return nil
+        }
+    }
+    
+    // MARK: - UI Feedback
+    
+    /// Shows an alert with deep link information for TestFlight visibility
+    @MainActor private static func showDeepLinkAlert(userCode: String, affiliateEmail: String?, companyName: String?) {
+        guard let windowScene = UIApplication.shared.connectedScenes.first as? UIWindowScene,
+              let window = windowScene.windows.first else {
+            print("[Insert Affiliate] Could not find window to show alert")
+            return
+        }
+        
+        let alert = UIAlertController(
+            title: "🎉 Deep Link Success",
+            message: buildAlertMessage(userCode: userCode, affiliateEmail: affiliateEmail, companyName: companyName),
+            preferredStyle: .alert
+        )
+        
+        alert.addAction(UIAlertAction(title: "OK", style: .default))
+        
+        // Find the top-most view controller to present the alert
+        var topViewController = window.rootViewController
+        while let presentedViewController = topViewController?.presentedViewController {
+            topViewController = presentedViewController
+        }
+        
+        topViewController?.present(alert, animated: true)
+    }
+    
+    /// Builds the alert message with available information
+    private static func buildAlertMessage(userCode: String, affiliateEmail: String?, companyName: String?) -> String {
+        var message = "InsertAffiliate deep link processed successfully!\n\n"
+        message += "User Code: \(userCode)\n"
+        
+        if let email = affiliateEmail {
+            message += "Affiliate: \(email)\n"
+        }
+        
+        if let company = companyName {
+            message += "Company: \(company)\n"
+        }
+        
+        message += "\nAttribution has been recorded."
+        return message
+    }
 }
+
