@@ -492,10 +492,31 @@ struct ShortCodeView_Previews: PreviewProvider {
 
 ### 3. Offer Codes
 
-Offer Codes enable you to automatically present an applied discount to users when they access an affiliate's link. This provides a compelling marketing incentive that affiliates can leverage in their outreach efforts. Detailed setup instructions and additional information are available [here.](https://docs.insertaffiliate.com/offer-codes)
+Offer Codes enable you to automatically present an applied discount to users when they access an affiliate's link. This provides a compelling marketing incentive that affiliates can leverage in their outreach efforts. 
 
-To fetch an offer code and conditionally open the redeem URL:
+Detailed setup instructions and additional information are available [here.](https://docs.insertaffiliate.com/offer-codes)
+
+To fetch an offer code and conditionally open the redeem URL, pass the link from your deep link provider to ```fetchAndConditionallyOpenUrl```:
 
 ```swift
 InsertAffiliateSwift.fetchAndConditionallyOpenUrl(affiliateLink: "your_affiliate_link", offerCodeUrlId: "your_offer_code_url_id")
 ```
+
+#### Branch.io Example
+```swift
+import InsertAffiliateSwift
+
+class AppDelegate: UIResponder, UIApplicationDelegate {
+  func application(_ application: UIApplication, didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]? = nil) -> Bool {
+    Branch.getInstance().initSession(launchOptions: launchOptions) { (params, error) in
+      if let referringLink = params?["~referring_link"] as? String {
+        InsertAffiliateSwift.fetchAndConditionallyOpenUrl(affiliateLink: referringLink, offerCodeUrlId: "{{ your_offer_code_url_id }}")
+
+        // Other code required for Insert Affiliate in the other listed steps...
+      }
+      return true
+    }
+  }
+}
+```
+
