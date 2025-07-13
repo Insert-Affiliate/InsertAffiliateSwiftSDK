@@ -492,11 +492,11 @@ struct ShortCodeView_Previews: PreviewProvider {
 
 ### 3. Offer Codes
 
-Offer Codes enable you to automatically present an applied discount to users when they access an affiliate's link. This provides a compelling marketing incentive that affiliates can leverage in their outreach efforts. 
+Offer Codes allow you to automatically present a discount to users who access an affiliate’s link. This provides affiliates with a compelling incentive to promote your app, as discounts are automatically applied during the redemption flow [(learn more).](https://docs.insertaffiliate.com/offer-codes). 
 
-Detailed setup instructions and additional information are available [here.](https://docs.insertaffiliate.com/offer-codes)
+You’ll need your Offer Code URL ID, which can be created and retrieved from App Store Connect. Instructions to retrieve your Offer Code URL ID are available [here](https://docs.insertaffiliate.com/offer-codes#create-the-codes-within-app-store-connect).
 
-To fetch an offer code and conditionally open the redeem URL, pass the link from your deep link provider to ```fetchAndConditionallyOpenUrl```:
+To fetch an Offer Code and conditionally redirect the user to redeem it, pass the deep link (from your Branch or other deep link provider) to:
 
 ```swift
 InsertAffiliateSwift.fetchAndConditionallyOpenUrl(affiliateLink: "your_affiliate_link", offerCodeUrlId: "your_offer_code_url_id")
