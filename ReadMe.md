@@ -492,15 +492,18 @@ struct ShortCodeView_Previews: PreviewProvider {
 
 ### 3. Offer Codes
 
-Offer Codes allow you to automatically present a discount to users who access an affiliate’s link. This provides affiliates with a compelling incentive to promote your app, as discounts are automatically applied during the redemption flow [(learn more).](https://docs.insertaffiliate.com/offer-codes). 
+Offer Codes allow you to automatically present a discount to users who access an affiliate's link or enter a short code. This provides affiliates with a compelling incentive to promote your app, as discounts are automatically applied during the redemption flow [(learn more)](https://docs.insertaffiliate.com/offer-codes). 
 
-You’ll need your Offer Code URL ID, which can be created and retrieved from App Store Connect. Instructions to retrieve your Offer Code URL ID are available [here](https://docs.insertaffiliate.com/offer-codes#create-the-codes-within-app-store-connect).
+You'll need your Offer Code URL ID, which can be created and retrieved from App Store Connect. Instructions to retrieve your Offer Code URL ID are available [here](https://docs.insertaffiliate.com/offer-codes#create-the-codes-within-app-store-connect).
+
+#### Using Offer Codes with Deep Links
 
 To fetch an Offer Code and conditionally redirect the user to redeem it, pass the deep link (from your Branch or other deep link provider) to:
 
 ```swift
 InsertAffiliateSwift.fetchAndConditionallyOpenUrl(affiliateLink: "your_affiliate_link", offerCodeUrlId: "your_offer_code_url_id")
 ```
+
 
 #### Branch.io Example
 ```swift
@@ -519,4 +522,18 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
   }
 }
 ```
+
+
+#### Using Offer Codes with Short Codes
+
+Offer codes also work with short codes. After a user enters a short code, you can fetch and apply the associated offer code:
+
+```swift
+// First, set the short code (this is typically done when user enters it in your UI)
+InsertAffiliateSwift.setShortCode(shortCode: "USER123456")
+
+// Then fetch and conditionally open the offer code
+InsertAffiliateSwift.fetchAndConditionallyOpenUrl(affiliateLink: "USER123456", offerCodeUrlId: "your_offer_code_url_id")
+```
+
 
