@@ -222,56 +222,16 @@ public struct InsertAffiliateSwift {
     public static func returnInsertAffiliateIdentifier() -> String? {
         return UserDefaults.standard.string(forKey: "insertAffiliateIdentifier")
     }
+    
+    public static var iOSOfferCode: String? {
+        return UserDefaults.standard.string(forKey: "iOSOfferCode")
+    }
 
     // MARK: Offer Code
     internal static func removeSpecialCharacters(from string: String) -> String {
         let allowedCharacters = CharacterSet.alphanumerics
         return string.unicodeScalars.filter { allowedCharacters.contains($0) }.map { Character($0) }.reduce("") { $0 + String($1) }
     }
-
-    // public static func sendAppleTransactionToServer(signedTransaction: String, productID: String, appAccountToken: UUID?) async {
-    //     guard let url = URL(string: "https://api.insertaffiliate.com/v1/api/app-sent-app-store-transaction") else {
-    //         print("❌ Invalid server URL")
-    //         return
-    //     }
-
-    //     var request = URLRequest(url: url)
-    //     request.httpMethod = "POST"
-    //     request.setValue("application/json", forHTTPHeaderField: "Content-Type")
-
-    //     // Determine environment dynamically (change as needed)
-    //     let isSandbox = true // Set to false for production
-    //     let environment = isSandbox ? "Sandbox" : "Production"
-
-    //     // Simulate webhook format
-    //     let payload: [String: Any] = [
-    //         "signedPayload": signedTransaction, // Matches webhook expected format
-    //         "payload": [
-    //             "notificationType": "ONE_TIME_CHARGE", // Mimic webhook structure
-    //             "subtype": "N/A", // Webhook expects this field
-    //             "data": [
-    //                 "signedTransactionInfo": signedTransaction
-    //             ]
-    //         ],
-    //         "appAccountToken": appAccountToken?.uuidString ?? "",
-    //         "productID": productID,
-    //         "environment": environment
-    //     ]
-
-    //     do {
-    //         let jsonData = try JSONSerialization.data(withJSONObject: payload, options: [])
-    //         request.httpBody = jsonData
-
-    //         let (data, response) = try await URLSession.shared.data(for: request)
-    //         if let httpResponse = response as? HTTPURLResponse, httpResponse.statusCode == 200 {
-    //             print("✅ One-time purchase transaction successfully sent to server")
-    //         } else {
-    //             print("❌ Server rejected transaction")
-    //         }
-    //     } catch {
-    //         print("❌ Error sending transaction: \(error.localizedDescription)")
-    //     }
-    // }
     
     internal static func fetchOfferCode(affiliateLink: String, completion: @Sendable @escaping (String?) -> Void) {
         guard let encodedAffiliateLink = affiliateLink.addingPercentEncoding(withAllowedCharacters: .urlPathAllowed) else {
@@ -339,13 +299,16 @@ public struct InsertAffiliateSwift {
            print("[Insert Affiliate] Invalid redeem URL")
        }
     }
-    
-    public static func fetchAndConditionallyOpenUrl(affiliateLink: String, offerCodeUrlId: String) {
+
+    public static func retrieveAndStoreOfferCode(affiliateLink: String, completion: @escaping @Sendable (String?) -> Void = { _ in }) {
         fetchOfferCode(affiliateLink: affiliateLink) { offerCode in
             if let offerCode = offerCode {
-                openRedeemURL(with: offerCode, offerCodeUrlId: offerCodeUrlId)
+                UserDefaults.standard.set(offerCode, forKey: "iOSOfferCode")
+                print("[Insert Affiliate] Offer code stored: \(offerCode)")
+                completion(offerCode)
             } else {
                 print("[Insert Affiliate] No valid offer code found.")
+                completion(nil)
             }
         }
     }
