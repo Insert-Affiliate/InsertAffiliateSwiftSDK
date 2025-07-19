@@ -280,7 +280,7 @@ public struct InsertAffiliateSwift {
             return
         }
 
-        let offerCodeUrlString = "https://api.insertaffiliate.com/v1/affiliateReturnOfferCode/" + encodedAffiliateLink
+        let offerCodeUrlString = "https://f8bf790a5bd6.ngrok-free.app/v1/affiliateReturnOfferCode/" + encodedAffiliateLink
         
         guard let offerCodeUrl = URL(string: offerCodeUrlString) else {
             print("[Insert Affiliate] Invalid offer code URL")
