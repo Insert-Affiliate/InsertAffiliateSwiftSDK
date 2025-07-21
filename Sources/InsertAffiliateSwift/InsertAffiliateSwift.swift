@@ -217,6 +217,15 @@ public struct InsertAffiliateSwift {
     public static func storeInsertAffiliateIdentifier(referringLink: String) {
         let insertAffiliateIdentifier = "\(referringLink)-\(returnShortUniqueDeviceID())"
         UserDefaults.standard.set(insertAffiliateIdentifier, forKey: "insertAffiliateIdentifier")
+        
+        // Automatically fetch and store offer code ONLY if it's a short code
+        if isShortCode(referringLink) {
+            retrieveAndStoreOfferCode(affiliateLink: referringLink) { offerCode in
+                if let offerCode = offerCode {
+                    print("[Insert Affiliate] Automatically retrieved and stored offer code: \(offerCode)")
+                }
+            }
+        }
     }
     
     public static func returnInsertAffiliateIdentifier() -> String? {
@@ -284,7 +293,7 @@ public struct InsertAffiliateSwift {
         task.resume()
     }
 
-    public static func retrieveAndStoreOfferCode(affiliateLink: String, completion: @escaping @Sendable (String?) -> Void = { _ in }) {
+    private static func retrieveAndStoreOfferCode(affiliateLink: String, completion: @escaping @Sendable (String?) -> Void = { _ in }) {
         fetchOfferCode(affiliateLink: affiliateLink) { offerCode in
             if let offerCode = offerCode {
                 UserDefaults.standard.set(offerCode, forKey: "iOSOfferCode")
