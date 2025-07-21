@@ -240,7 +240,7 @@ public struct InsertAffiliateSwift {
             return
         }
 
-        let offerCodeUrlString = "https://f8bf790a5bd6.ngrok-free.app/v1/affiliateReturnOfferCode/" + encodedAffiliateLink
+        let offerCodeUrlString = "https://2484a25178a5.ngrok-free.app/v1/affiliateReturnOfferCode/" + encodedAffiliateLink
         
         guard let offerCodeUrl = URL(string: offerCodeUrlString) else {
             print("[Insert Affiliate] Invalid offer code URL")
@@ -281,23 +281,6 @@ public struct InsertAffiliateSwift {
         }
         
         task.resume()
-    }
-
-    internal static func openRedeemURL(with offerCode: String, offerCodeUrlId: String) {
-       let redeemUrlString = "https://apps.apple.com/redeem?ctx=offercodes&id=\(offerCodeUrlId)&code=\(offerCode)"
-       if let redeemUrl = URL(string: redeemUrlString) {
-           DispatchQueue.main.async {
-               UIApplication.shared.open(redeemUrl, options: [:]) { success in
-                   if success {
-                       print("[Insert Affiliate] Successfully opened redeem URL")
-                   } else {
-                       print("[Insert Affiliate] Failed to open redeem URL")
-                   }
-               }
-           }
-       } else {
-           print("[Insert Affiliate] Invalid redeem URL")
-       }
     }
 
     public static func retrieveAndStoreOfferCode(affiliateLink: String, completion: @escaping @Sendable (String?) -> Void = { _ in }) {
