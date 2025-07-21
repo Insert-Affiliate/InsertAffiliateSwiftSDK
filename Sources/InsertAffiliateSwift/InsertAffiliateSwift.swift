@@ -229,7 +229,8 @@ public struct InsertAffiliateSwift {
 
     // MARK: Offer Code
     internal static func removeSpecialCharacters(from string: String) -> String {
-        let allowedCharacters = CharacterSet.alphanumerics
+        var allowedCharacters = CharacterSet.alphanumerics
+        allowedCharacters.insert(charactersIn: "_")
         return string.unicodeScalars.filter { allowedCharacters.contains($0) }.map { Character($0) }.reduce("") { $0 + String($1) }
     }
     
@@ -271,8 +272,8 @@ public struct InsertAffiliateSwift {
                         print("[Insert Affiliate] Offer Code Not Found")
                         completion(nil)
                 } else {
-                    print("[Insert Affiliate] Offer Code received: \(rawOfferCode)")
-                    completion(rawOfferCode)
+                    print("[Insert Affiliate] Offer Code received: \(offerCode)")
+                    completion(offerCode)
                 }
             } else {
                 print("[Insert Affiliate] Failed to decode Offer Code")
