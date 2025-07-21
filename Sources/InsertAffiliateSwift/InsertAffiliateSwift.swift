@@ -271,8 +271,8 @@ public struct InsertAffiliateSwift {
                         print("[Insert Affiliate] Offer Code Not Found")
                         completion(nil)
                 } else {
-                    print("[Insert Affiliate] Offer Code received: \(offerCode)")
-                    completion(offerCode)
+                    print("[Insert Affiliate] Offer Code received: \(rawOfferCode)")
+                    completion(rawOfferCode)
                 }
             } else {
                 print("[Insert Affiliate] Failed to decode Offer Code")
