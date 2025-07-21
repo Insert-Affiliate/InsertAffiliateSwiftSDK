@@ -86,8 +86,8 @@ public struct InsertAffiliateSwift {
     public static func setShortCode(shortCode: String) {
         let capitalisedShortCode = shortCode.uppercased()
 
-        guard capitalisedShortCode.count == 10 else {
-            print("[Insert Affiliate] Error: Short code must be exactly 10 characters long.")
+        guard (!capitalisedShortCode.count > 3 && capitalisedShortCode.count < 25) else {
+            print("[Insert Affiliate] Error: Short code must be between 3 and 25 characters long.")
             return
         }
 
