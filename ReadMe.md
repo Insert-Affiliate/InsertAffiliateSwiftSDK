@@ -494,15 +494,20 @@ struct ShortCodeView_Previews: PreviewProvider {
 
 Offer Codes allow you to retrieve and store discount codes for users who access an affiliate's link or enter a short code. This provides affiliates with a compelling incentive to promote your app, as you can present these discounts to users at the appropriate time in your app flow [(learn more)](https://docs.insertaffiliate.com/offer-codes). 
 
-The SDK will automatically fetch and store any available offer codes, making them accessible through the `iOSOfferCode` property for use in your app's redemption flow.
+The SDK automatically fetches and stores offer codes when:
+- A short code is set using `setShortCode()`
+- An affiliate identifier is set with a short code using `setInsertAffiliateIdentifier()`
 
-#### Using Offer Codes with Deep Links
+Once stored, offer codes are accessible through the `iOSOfferCode` property for use in your app's redemption flow.
 
-To retrieve and store an Offer Code from an affiliate link, pass the deep link (from your Branch or other deep link provider) to:
+#### Automatic Offer Code Handling
+
+When you set a short code, the SDK automatically handles offer code retrieval:
 
 ```swift
-// Store the offer code when the deep link is clicked
-InsertAffiliateSwift.retrieveAndStoreOfferCode(affiliateLink: "your_affiliate_link")
+// Setting a short code automatically fetches and stores the offer code
+InsertAffiliateSwift.setShortCode(shortCode: "B2SC6VRSKQ")
+// SDK automatically calls the offer code API and stores the result
 
 // Later in your app, access the stored offer code when needed
 if let storedOfferCode = InsertAffiliateSwift.iOSOfferCode {
@@ -513,16 +518,20 @@ if let storedOfferCode = InsertAffiliateSwift.iOSOfferCode {
 
 #### Accessing the Stored Offer Code
 
-Once an offer code has been retrieved and stored, you can access it using the public property:
+Access offer codes using the public property:
 
 ```swift
 if let storedOfferCode = InsertAffiliateSwift.iOSOfferCode {
-    print("Current stored offer code: \(storedOfferCode)")
-    // Use the offer code as needed in your app
+  print("Current stored offer code: \(storedOfferCode)")
+  // Use the offer code as needed in your app
 }
+```
 
 
-#### Branch.io Example
+#### Branch.io Integration with Automatic Offer Codes
+
+When using deep links, the SDK will automatically fetch offer codes for short codes:
+
 ```swift
 import InsertAffiliateSwift
 
@@ -530,10 +539,10 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
   func application(_ application: UIApplication, didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]? = nil) -> Bool {
     Branch.getInstance().initSession(launchOptions: launchOptions) { (params, error) in
       if let referringLink = params?["~referring_link"] as? String {
-        // Store the offer code when deep link is opened
-        InsertAffiliateSwift.retrieveAndStoreOfferCode(affiliateLink: referringLink)
-
-        // Other code required for Insert Affiliate in the other listed steps...
+        // If the referring link is a short code, this automatically fetches the offer code
+        InsertAffiliateSwift.setInsertAffiliateIdentifier(referringLink: referringLink) { result in
+            // Offer code now available
+        }
       }
       return true
     }
@@ -546,25 +555,6 @@ func presentOfferCodeIfAvailable() {
         print("Found stored offer code: \(storedOfferCode)")
         // Present the offer code to the user or redirect to App Store redemption
     }
-}
-```
-
-
-#### Using Offer Codes with Short Codes
-
-Offer codes also work with short codes. After a user enters a short code, you can retrieve and store the associated offer code:
-
-```swift
-// First, set the short code (this is typically done when user enters it in your UI)
-InsertAffiliateSwift.setShortCode(shortCode: "USER123456")
-
-// Then retrieve and store the offer code
-InsertAffiliateSwift.retrieveAndStoreOfferCode(affiliateLink: "USER123456")
-
-// Later in your app, check for and use the stored offer code
-if let storedOfferCode = InsertAffiliateSwift.iOSOfferCode {
-    print("Found offer code for user: \(storedOfferCode)")
-    // Use the offer code in your app's flow - perhaps during checkout or subscription
 }
 ```
 
