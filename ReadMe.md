@@ -12,7 +12,7 @@ The InsertAffiliateSwift SDK simplifies affiliate marketing for iOS apps with in
 - **Unique Device ID**: Creates a unique ID to anonymously associate purchases with users for tracking purposes.
 - **Affiliate Identifier Management**: Set and retrieve the affiliate identifier based on user-specific links.
 - **In-App Purchase (IAP) Initialisation**: Easily reinitialise in-app purchases with the option to validate using an affiliate identifier.
-- **Offer Code Handling**: Fetch offer codes from the Insert Affiliate API and open redeem URLs directly in the App Store.
+- **Discounts for End Users**: Fetch discount modifiers from the Insert Affiliate API.
 
 ## Getting Started
 To get started with the InsertAffiliateSwift SDK:
@@ -490,51 +490,13 @@ struct ShortCodeView_Previews: PreviewProvider {
 }
 ```
 
-### 3. Offer Codes
+### 3. Discounts for Users → Offer Codes / Dynamic Product IDs
 
-Offer Codes allow you to retrieve and store discount codes for users who access an affiliate's link or enter a short code. This provides affiliates with a compelling incentive to promote your app, as you can present these discounts to users at the appropriate time in your app flow [(learn more)](https://docs.insertaffiliate.com/offer-codes). 
-
-The SDK automatically fetches and stores offer codes when:
-- A short code is set using `setShortCode()`
-- An affiliate identifier is set with a short code using `setInsertAffiliateIdentifier()`
-
-Once stored, offer codes are accessible through the `iOSOfferCode` property for use in your app's redemption flow.
-
-#### Automatic Offer Code Handling
-
-When you set a short code, the SDK automatically handles offer code retrieval:
-
-```swift
-// Setting a short code automatically fetches and stores the offer code
-InsertAffiliateSwift.setShortCode(shortCode: "B2SC6VRSKQ")
-// SDK automatically calls the offer code API and stores the result
-
-// Later in your app, access the stored offer code when needed
-if let storedOfferCode = InsertAffiliateSwift.iOSOfferCode {
-    print("Retrieved stored offer code: \(storedOfferCode)")
-    // Present the offer code to the user or use it in your redemption flow
-}
-```
-
-#### Accessing the Stored Offer Code
-
-Access offer codes using the public property:
-
-```swift
-if let storedOfferCode = InsertAffiliateSwift.iOSOfferCode {
-  print("Current stored offer code: \(storedOfferCode)")
-  // Use the offer code as needed in your app
-}
-```
-
-
-#### Discounts for End Users -> Dynamic Product Identifiers 
-
-The InsertAffiliateSwift SDK provides `iOSOfferCode` values that can be used to dynamically construct product identifiers for different subscription offers. This allows affiliate links to automatically trigger specific promotional offers without requiring separate app builds or configurations.
+The InsertAffiliateSwift SDK lets you create special product IDs based on offer codes. This means affiliate links can automatically swap your in app purchase being offered to the end user out for one with a discount or trial offer.
 
 **How It Works**
 
-When a user clicks an affiliate link or enters a short code of an affiliate that has an offer code associated through the Insert Affiliate Dashboard, the SDK automatically populates `InsertAffiliateSwift.iOSOfferCode` with the `iOS IAP Modifiers` that you set (e.g., "_oneWeekFree"). Your app can then append this modifier to your base product identifier to request the appropriate subscription variant.
+When someone clicks an affiliate link or enters a short code linked to an offer (set up in the Insert Affiliate Dashboard), the SDK fills in InsertAffiliateSwift.iOSOfferCode with the right modifier (like _oneWeekFree). You can then add this to your regular product ID to load the correct version of the subscription in your app.
 
 **Implementation Examples**
 
@@ -670,7 +632,7 @@ struct PurchaseView: View {
 **Example Product Identifiers**
 
 - Base product: `oneMonthSubscriptionTwo`
-- With offer code: `oneMonthSubscriptionTwo_oneWeekFree`
+- With introductory discount: `oneMonthSubscriptionTwo_oneWeekFree`
 - With different offer: `oneMonthSubscriptionTwo_threeMonthsFree`
 
 **Best Practices**
