@@ -528,34 +528,159 @@ if let storedOfferCode = InsertAffiliateSwift.iOSOfferCode {
 ```
 
 
-#### Branch.io Integration with Automatic Offer Codes
+#### Discounts for End Users -> Dynamic Product Identifiers 
 
-When using deep links, the SDK will automatically fetch offer codes for short codes:
+The InsertAffiliateSwift SDK provides `iOSOfferCode` values that can be used to dynamically construct product identifiers for different subscription offers. This allows affiliate links to automatically trigger specific promotional offers without requiring separate app builds or configurations.
+
+**How It Works**
+
+When a user clicks an affiliate link or enters a short code of an affiliate that has an offer code associated through the Insert Affiliate Dashboard, the SDK automatically populates `InsertAffiliateSwift.iOSOfferCode` with the `iOS IAP Modifiers` that you set (e.g., "_oneWeekFree"). Your app can then append this modifier to your base product identifier to request the appropriate subscription variant.
+
+**Implementation Examples**
+
+#### RevenueCat Example
 
 ```swift
-import InsertAffiliateSwift
-
-class AppDelegate: UIResponder, UIApplicationDelegate {
-  func application(_ application: UIApplication, didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]? = nil) -> Bool {
-    Branch.getInstance().initSession(launchOptions: launchOptions) { (params, error) in
-      if let referringLink = params?["~referring_link"] as? String {
-        // If the referring link is a short code, this automatically fetches the offer code
-        InsertAffiliateSwift.setInsertAffiliateIdentifier(referringLink: referringLink) { result in
-            // Offer code now available
+class InAppPurchaseViewModel: ObservableObject {
+    @Published var products: [StoreProduct] = []
+    
+    var dynamicProductIdentifier: String {
+        let baseProductId = "oneMonthSubscriptionTwo"
+        
+        if let offerCode = InsertAffiliateSwift.iOSOfferCode {
+            let cleanOfferCode = offerCode.trimmingCharacters(in: CharacterSet(charactersIn: "\"'"))
+            return "\(baseProductId)\(cleanOfferCode)"
         }
-      }
-      return true
+        
+        return baseProductId
     }
-  }
-}
-
-// Later in your app (e.g., during checkout or subscription flow)
-func presentOfferCodeIfAvailable() {
-    if let storedOfferCode = InsertAffiliateSwift.iOSOfferCode {
-        print("Found stored offer code: \(storedOfferCode)")
-        // Present the offer code to the user or redirect to App Store redemption
+    
+    func loadProducts() {
+        Purchases.shared.getProducts([dynamicProductIdentifier]) { products in
+            DispatchQueue.main.async {
+                self.products = products
+                print("Loaded product: \(self.dynamicProductIdentifier)")
+            }
+        }
     }
 }
 ```
 
+#### Native StoreKit 2 Example
 
+```swift
+@MainActor
+class InAppPurchaseViewModel: ObservableObject {
+    @Published var products: [String: Product] = [:]
+    private let baseProductIdentifier = "oneMonthSubscriptionTwo"
+    
+    var dynamicProductIdentifier: String {
+        if let offerCode = InsertAffiliateSwift.iOSOfferCode, !offerCode.isEmpty {
+            let cleanOfferCode = offerCode.trimmingCharacters(in: CharacterSet(charactersIn: "\""))
+            return "\(baseProductIdentifier)\(cleanOfferCode)"
+        }
+        return baseProductIdentifier
+    }
+    
+    func fetchProducts() async {
+        do {
+            let fetchedProducts = try await Product.products(for: [dynamicProductIdentifier])
+            products = Dictionary(uniqueKeysWithValues: fetchedProducts.map { ($0.id, $0) })
+            print("Loaded product: \(dynamicProductIdentifier)")
+        } catch {
+            print("Failed to fetch products: \(error.localizedDescription)")
+        }
+    }
+    
+    func purchase(productIdentifier: String) async {
+        guard let product = products[productIdentifier] else { return }
+        
+        do {
+            let userAccountToken = await InsertAffiliateSwift.returnUserAccountTokenAndStoreExpectedTransaction()
+            let result = try await product.purchase(options: userAccountToken.map { [.appAccountToken($0)] } ?? [])
+            
+            switch result {
+            case .success(let verification):
+                if case .verified(let transaction) = verification {
+                    print("Purchase successful: \(transaction.id)")
+                    await transaction.finish()
+                }
+            case .userCancelled:
+                print("Purchase cancelled")
+            case .pending:
+                print("Purchase pending")
+            default:
+                break
+            }
+        } catch {
+            print("Purchase error: \(error.localizedDescription)")
+        }
+    }
+}
+```
+
+#### Purchase View Integration
+
+This view uses the `dynamicProductIdentifier` which automatically includes any offer code modifiers from the Insert Affiliate SDK, ensuring users see the correct promotional product:
+
+```swift
+struct PurchaseView: View {
+    @StateObject private var viewModel = InAppPurchaseViewModel()
+    
+    var body: some View {
+        VStack(spacing: 15) {
+            if let product = viewModel.products[viewModel.dynamicProductIdentifier] {
+                Text(product.displayName)
+                    .font(.title2)
+                    .fontWeight(.semibold)
+                
+                Text("Price: \(product.price)")
+                    .font(.headline)
+                
+                Text("Product ID: \(product.id)")
+                    .font(.caption)
+                    .foregroundColor(.secondary)
+                
+                Button("Purchase") {
+                    Task {
+                        await viewModel.purchase(productIdentifier: product.id)
+                    }
+                }
+                .buttonStyle(.bordered)
+            } else {
+                Text("Product not found: \(viewModel.dynamicProductIdentifier)")
+                
+                Button("Refresh Products") {
+                    Task {
+                        await viewModel.fetchProducts()
+                    }
+                }
+                .buttonStyle(.bordered)
+            }
+        }
+        .onAppear {
+            Task {
+                await viewModel.fetchProducts() // Load dynamic products with offer codes
+            }
+        }
+    }
+}
+```
+
+**Example Product Identifiers**
+
+- Base product: `oneMonthSubscriptionTwo`
+- With offer code: `oneMonthSubscriptionTwo_oneWeekFree`
+- With different offer: `oneMonthSubscriptionTwo_threeMonthsFree`
+
+**Best Practices**
+
+- **Call in Purchase Views**: Always implement this logic in views where users can make purchases
+- **Handle Both Cases**: Ensure your app works whether an offer code is present or not
+- **Fallback**: Have a fallback to your base product if the dynamic product isn't found
+
+**App Store Connect Configuration**
+
+Make sure you have created the corresponding subscription products in App Store Connect:
+- Your base subscription (e.g., `oneMonthSubscriptionTwo`)
+- Promotional offer variants (e.g., `oneMonthSubscriptionTwo_oneWeekFree`)
