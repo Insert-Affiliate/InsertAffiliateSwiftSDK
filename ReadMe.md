@@ -492,7 +492,7 @@ struct ShortCodeView_Previews: PreviewProvider {
 
 ### 3. Discounts for Users → Offer Codes / Dynamic Product IDs
 
-The InsertAffiliateSwift SDK lets you create special product IDs based on offer codes. This means affiliate links can automatically swap your in app purchase being offered to the end user out for one with a discount or trial offer.
+The InsertAffiliateSwift SDK lets you pass modifiers based on if the app was installed due to the work of an affiliate for your in app purchases. These modifiers can be used swap your in app purchase being offered to the end user out for one with a discount or trial offer, similar to giving the end user an offer code.
 
 **How It Works**
 
