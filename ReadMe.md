@@ -498,6 +498,16 @@ The InsertAffiliateSwift SDK lets you pass modifiers based on if the app was ins
 
 When someone clicks an affiliate link or enters a short code linked to an offer (set up in the Insert Affiliate Dashboard), the SDK fills in InsertAffiliateSwift.iOSOfferCode with the right modifier (like _oneWeekFree). You can then add this to your regular product ID to load the correct version of the subscription in your app.
 
+**Setup Instructions**
+
+1. Go to your Insert Affiliate dashboard at [app.insertaffiliate.com/affiliates](https://app.insertaffiliate.com/affiliates)
+2. Select the affiliate you want to configure
+3. Click "View" to access the affiliate's settings
+4. Assign an **iOS IAP Modifier** to the affiliate (e.g., `_oneWeekFree`, `_threeMonthsFree`)
+5. Save the settings
+
+Once configured, when users click that affiliate's links or enter their short codes, your app will automatically receive the modifier and can load the appropriate discounted product.
+
 **Implementation Examples**
 
 #### RevenueCat Example
