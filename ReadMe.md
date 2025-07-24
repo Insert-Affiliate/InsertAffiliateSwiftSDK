@@ -496,9 +496,9 @@ The InsertAffiliateSwift SDK lets you pass modifiers based on if the app was ins
 
 **How It Works**
 
-When someone clicks an affiliate link or enters a short code linked to an offer (set up in the Insert Affiliate Dashboard), the SDK fills in InsertAffiliateSwift.iOSOfferCode with the right modifier (like _oneWeekFree). You can then add this to your regular product ID to load the correct version of the subscription in your app.
+When someone clicks an affiliate link or enters a short code linked to an offer (set up in the Insert Affiliate Dashboard), the SDK fills in InsertAffiliateSwift.OfferCode with the right modifier (like _oneWeekFree). You can then add this to your regular product ID to load the correct version of the subscription in your app.
 
-**Setup Instructions**
+**Insert Affiliate Setup Instructions**
 
 1. Go to your Insert Affiliate dashboard at [app.insertaffiliate.com/affiliates](https://app.insertaffiliate.com/affiliates)
 2. Select the affiliate you want to configure
@@ -519,7 +519,7 @@ class InAppPurchaseViewModel: ObservableObject {
     var dynamicProductIdentifier: String {
         let baseProductId = "oneMonthSubscriptionTwo"
         
-        if let offerCode = InsertAffiliateSwift.iOSOfferCode {
+        if let offerCode = InsertAffiliateSwift.OfferCode {
             let cleanOfferCode = offerCode.trimmingCharacters(in: CharacterSet(charactersIn: "\"'"))
             return "\(baseProductId)\(cleanOfferCode)"
         }
@@ -547,7 +547,7 @@ class InAppPurchaseViewModel: ObservableObject {
     private let baseProductIdentifier = "oneMonthSubscriptionTwo"
     
     var dynamicProductIdentifier: String {
-        if let offerCode = InsertAffiliateSwift.iOSOfferCode, !offerCode.isEmpty {
+        if let offerCode = InsertAffiliateSwift.OfferCode, !offerCode.isEmpty {
             let cleanOfferCode = offerCode.trimmingCharacters(in: CharacterSet(charactersIn: "\""))
             return "\(baseProductIdentifier)\(cleanOfferCode)"
         }

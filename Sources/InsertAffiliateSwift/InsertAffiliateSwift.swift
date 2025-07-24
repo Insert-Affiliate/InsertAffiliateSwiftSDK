@@ -232,8 +232,8 @@ public struct InsertAffiliateSwift {
         return UserDefaults.standard.string(forKey: "insertAffiliateIdentifier")
     }
     
-    public static var iOSOfferCode: String? {
-        return UserDefaults.standard.string(forKey: "iOSOfferCode")
+    public static var OfferCode: String? {
+        return UserDefaults.standard.string(forKey: "OfferCode")
     }
 
     // MARK: Offer Code
@@ -297,7 +297,7 @@ public struct InsertAffiliateSwift {
     private static func retrieveAndStoreOfferCode(affiliateLink: String, completion: @escaping @Sendable (String?) -> Void = { _ in }) {
         fetchOfferCode(affiliateLink: affiliateLink) { offerCode in
             if let offerCode = offerCode {
-                UserDefaults.standard.set(offerCode, forKey: "iOSOfferCode")
+                UserDefaults.standard.set(offerCode, forKey: "OfferCode")
                 print("[Insert Affiliate] Offer code stored: \(offerCode)")
                 completion(offerCode)
             } else {
