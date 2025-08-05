@@ -512,11 +512,6 @@ public struct InsertAffiliateSwift {
             return handleUniversalLink(url)
         }
         
-        // Handle other InsertAffiliate URLs
-        if url.absoluteString.contains("insertaffiliate") {
-            return handleGenericInsertAffiliateURL(url)
-        }
-        
         return false
     }
     
@@ -580,18 +575,6 @@ public struct InsertAffiliateSwift {
         processAffiliateAttribution(shortCode: shortCode, companyCode: companyCode)
         
         return true
-    }
-    
-    /// Handle other InsertAffiliate URLs
-    private static func handleGenericInsertAffiliateURL(_ url: URL) -> Bool {
-        print("[Insert Affiliate] Generic InsertAffiliate URL detected: \(url.absoluteString)")
-        
-        // Try to extract affiliate information from the URL
-        // This is a fallback for any other InsertAffiliate URL formats
-        
-        // You can add more parsing logic here as needed
-        
-        return false
     }
     
     /// Process affiliate attribution with the extracted data
