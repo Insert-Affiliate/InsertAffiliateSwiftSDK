@@ -55,6 +55,9 @@ public struct InsertAffiliateSwift {
             do {
                 try await state.initialize(companyCode: companyCode, verboseLogging: verboseLogging)
                 getOrCreateUserAccountToken()
+                
+                // Collect system info on initialization
+                let _ = await getEnhancedSystemInfo()
             } catch {
                 print("[Insert Affiliate] Error initializing SDK: \(error.localizedDescription)")
             }
@@ -783,6 +786,105 @@ public struct InsertAffiliateSwift {
             print("[Insert Affiliate] Failed to parse stored deep link data: \(error.localizedDescription)")
             return nil
         }
+    }
+    
+    // MARK: - System Info Collection
+    
+    /// Collects basic system information for analytics (non-identifying data only)
+    internal static func getSystemInfo() async -> [String: Any] {
+        var systemInfo = [String: Any]()
+        
+        let device = await UIDevice.current
+        
+        // Basic device information (non-identifying)
+        var deviceInfo = [String: Any]()
+        deviceInfo["systemName"] = await device.systemName
+        deviceInfo["systemVersion"] = await device.systemVersion
+        deviceInfo["model"] = await device.model
+        deviceInfo["localizedModel"] = await device.localizedModel
+        deviceInfo["isPhysicalDevice"] = !_isSimulator()
+        
+        systemInfo["device_info"] = deviceInfo
+        
+        // Platform information
+        systemInfo["platform"] = "iOS"
+        systemInfo["os"] = await device.systemName
+        systemInfo["osVersion"] = await device.systemVersion
+        
+        // Locale and language information
+        systemInfo["language_code"] = Locale.current.languageCode ?? "en"
+        systemInfo["time_zone"] = TimeZone.current.identifier
+        
+        // App information (if available)
+        if let appVersion = Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String {
+            systemInfo["app_version"] = appVersion
+        }
+        
+        // Device type classification
+        let idiom = await UIDevice.current.userInterfaceIdiom
+        switch idiom {
+        case .phone:
+            systemInfo["deviceType"] = "mobile"
+        case .pad:
+            systemInfo["deviceType"] = "tablet"
+        case .tv:
+            systemInfo["deviceType"] = "tv"
+        case .mac:
+            systemInfo["deviceType"] = "desktop"
+        default:
+            systemInfo["deviceType"] = "unknown"
+        }
+        
+        return systemInfo
+    }
+    
+    /// Helper function to detect if running on simulator
+    private static func _isSimulator() -> Bool {
+        #if targetEnvironment(simulator)
+        return true
+        #else
+        return false
+        #endif
+    }
+    
+    /// Public method to get system information for analytics
+    public static func getSystemInformation() async -> [String: Any] {
+        return await getSystemInfo()
+    }
+    
+    /// Enhanced system info that includes fingerprint-like data for API requests
+    internal static func getEnhancedSystemInfo() async -> [String: Any] {
+        let verboseLogging = await state.getVerboseLogging()
+        
+        if verboseLogging {
+            print("[Insert Affiliate] Collecting enhanced system information...")
+        }
+        
+        var systemInfo = await getSystemInfo()
+        
+        // Add timestamp
+        let dateFormatter = ISO8601DateFormatter()
+        systemInfo["requestTime"] = dateFormatter.string(from: Date())
+        systemInfo["requestTimestamp"] = Int(Date().timeIntervalSince1970 * 1000)
+        
+        // Add user agent style information
+        let device = await UIDevice.current
+        let systemName = await device.systemName
+        let systemVersion = await device.systemVersion
+        let model = await device.model
+        
+        systemInfo["userAgent"] = "InsertAffiliateSwift/1.0 (\(model); \(systemName) \(systemVersion))"
+        
+        // Add protocol and method info (for API compatibility)
+        systemInfo["protocol"] = "https"
+        systemInfo["method"] = "POST"
+        systemInfo["secure"] = true
+        
+        if verboseLogging {
+            print("[Insert Affiliate] Enhanced system info collected: \(systemInfo)")
+        }
+        
+        return systemInfo
     }
     
     // MARK: - UI Feedback
