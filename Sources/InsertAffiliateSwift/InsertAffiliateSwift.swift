@@ -837,6 +837,75 @@ public struct InsertAffiliateSwift {
         systemInfo["method"] = "POST"
         systemInfo["secure"] = true
         
+        // Add screen dimensions and device pixel ratio (matching exact field names)
+        let screen = await UIScreen.main
+        systemInfo["screenWidth"] = Int(await screen.bounds.width)
+        systemInfo["screenHeight"] = Int(await screen.bounds.height)
+        systemInfo["screenAvailWidth"] = Int(await screen.bounds.width)
+        systemInfo["screenAvailHeight"] = Int(await screen.bounds.height)
+        systemInfo["devicePixelRatio"] = await screen.scale
+        systemInfo["screenColorDepth"] = 24
+        systemInfo["screenPixelDepth"] = 24
+        
+        // Add hardware information (matching exact field names)
+        systemInfo["hardwareConcurrency"] = ProcessInfo.processInfo.processorCount
+        systemInfo["maxTouchPoints"] = await device.userInterfaceIdiom == .phone ? 10 : 0
+        
+        // Add window dimensions (matching exact field names)
+        systemInfo["windowWidth"] = Int(await screen.bounds.width)
+        systemInfo["windowHeight"] = Int(await screen.bounds.height)
+        systemInfo["windowOuterWidth"] = Int(await screen.bounds.width)
+        systemInfo["windowOuterHeight"] = Int(await screen.bounds.height)
+        
+        // Add storage and feature availability (matching exact field names)
+        systemInfo["localStorage"] = true
+        systemInfo["sessionStorage"] = true
+        systemInfo["cookieEnabled"] = true
+        systemInfo["indexedDB"] = true
+        systemInfo["webgl"] = true
+        
+        // Add network and browser-style info (matching exact field names)
+        systemInfo["onLine"] = true
+        systemInfo["doNotTrack"] = nil
+        
+        // Add language information (matching exact field names)
+        let locale = Locale.current
+        systemInfo["language"] = locale.languageCode ?? "en"
+        if let regionCode = locale.regionCode {
+            systemInfo["country"] = regionCode
+        }
+        
+        // Add languages array (matching exact field names)
+        var languages = [String]()
+        if let languageCode = locale.languageCode {
+            if let regionCode = locale.regionCode {
+                languages.append("\(languageCode)-\(regionCode)")
+            }
+            languages.append("\(languageCode)-US")
+            languages.append(languageCode)
+        }
+        systemInfo["languages"] = languages
+        
+        // Add timezone info (matching exact field names)
+        let timeZone = TimeZone.current
+        systemInfo["timezoneOffset"] = -(timeZone.secondsFromGMT() / 60)
+        systemInfo["timezone"] = timeZone.identifier
+        
+        // Add browser and platform info (matching exact field names)
+        systemInfo["browser"] = "Safari"
+        systemInfo["browserVersion"] = systemVersion
+        systemInfo["platform"] = systemName
+        systemInfo["os"] = systemName
+        systemInfo["osVersion"] = systemVersion
+        
+        // Add connection info placeholder (would need actual network monitoring)
+        var connection = [String: Any]()
+        connection["downlink"] = 10
+        connection["effectiveType"] = "4g"
+        connection["rtt"] = 50
+        connection["saveData"] = false
+        systemInfo["connection"] = connection
+        
         if verboseLogging {
             print("[Insert Affiliate] Enhanced system info collected: \(systemInfo)")
         }
