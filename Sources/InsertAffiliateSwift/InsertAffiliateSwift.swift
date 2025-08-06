@@ -97,8 +97,8 @@ public struct InsertAffiliateSwift {
     public static func setShortCode(shortCode: String) {
         let capitalisedShortCode = shortCode.uppercased()
 
-        guard capitalisedShortCode.count == 10 else {
-            print("[Insert Affiliate] Error: Short code must be exactly 10 characters long.")
+        guard capitalisedShortCode.count >= 3 && capitalisedShortCode.count <= 25 else {
+            print("[Insert Affiliate] Error: Short code must be between 3 and 25 characters long.")
             return
         }
 
@@ -228,61 +228,31 @@ public struct InsertAffiliateSwift {
     public static func storeInsertAffiliateIdentifier(referringLink: String) {
         let insertAffiliateIdentifier = "\(referringLink)-\(returnShortUniqueDeviceID())"
         UserDefaults.standard.set(insertAffiliateIdentifier, forKey: "insertAffiliateIdentifier")
+        
+        // Automatically fetch and store offer code ONLY if it's a short code
+        if isShortCode(referringLink) {
+            retrieveAndStoreOfferCode(affiliateLink: referringLink) { offerCode in
+                if let offerCode = offerCode {
+                    print("[Insert Affiliate] Automatically retrieved and stored offer code: \(offerCode)")
+                }
+            }
+        }
     }
     
     public static func returnInsertAffiliateIdentifier() -> String? {
         return UserDefaults.standard.string(forKey: "insertAffiliateIdentifier")
     }
+    
+    public static var OfferCode: String? {
+        return UserDefaults.standard.string(forKey: "OfferCode")
+    }
 
     // MARK: Offer Code
     internal static func removeSpecialCharacters(from string: String) -> String {
-        let allowedCharacters = CharacterSet.alphanumerics
+        var allowedCharacters = CharacterSet.alphanumerics
+        allowedCharacters.insert(charactersIn: "_")
         return string.unicodeScalars.filter { allowedCharacters.contains($0) }.map { Character($0) }.reduce("") { $0 + String($1) }
     }
-
-    // public static func sendAppleTransactionToServer(signedTransaction: String, productID: String, appAccountToken: UUID?) async {
-    //     guard let url = URL(string: "https://api.insertaffiliate.com/v1/api/app-sent-app-store-transaction") else {
-    //         print("❌ Invalid server URL")
-    //         return
-    //     }
-
-    //     var request = URLRequest(url: url)
-    //     request.httpMethod = "POST"
-    //     request.setValue("application/json", forHTTPHeaderField: "Content-Type")
-
-    //     // Determine environment dynamically (change as needed)
-    //     let isSandbox = true // Set to false for production
-    //     let environment = isSandbox ? "Sandbox" : "Production"
-
-    //     // Simulate webhook format
-    //     let payload: [String: Any] = [
-    //         "signedPayload": signedTransaction, // Matches webhook expected format
-    //         "payload": [
-    //             "notificationType": "ONE_TIME_CHARGE", // Mimic webhook structure
-    //             "subtype": "N/A", // Webhook expects this field
-    //             "data": [
-    //                 "signedTransactionInfo": signedTransaction
-    //             ]
-    //         ],
-    //         "appAccountToken": appAccountToken?.uuidString ?? "",
-    //         "productID": productID,
-    //         "environment": environment
-    //     ]
-
-    //     do {
-    //         let jsonData = try JSONSerialization.data(withJSONObject: payload, options: [])
-    //         request.httpBody = jsonData
-
-    //         let (data, response) = try await URLSession.shared.data(for: request)
-    //         if let httpResponse = response as? HTTPURLResponse, httpResponse.statusCode == 200 {
-    //             print("✅ One-time purchase transaction successfully sent to server")
-    //         } else {
-    //             print("❌ Server rejected transaction")
-    //         }
-    //     } catch {
-    //         print("❌ Error sending transaction: \(error.localizedDescription)")
-    //     }
-    // }
     
     internal static func fetchOfferCode(affiliateLink: String, completion: @Sendable @escaping (String?) -> Void) {
         guard let encodedAffiliateLink = affiliateLink.addingPercentEncoding(withAllowedCharacters: .urlPathAllowed) else {
@@ -316,6 +286,7 @@ public struct InsertAffiliateSwift {
                 let offerCode = removeSpecialCharacters(from: rawOfferCode)
                 
                 if offerCode == "errorofferCodeNotFound" ||
+                    offerCode == "errorOffercodenotfound" ||
                     offerCode == "errorAffiliateoffercodenotfoundinanycompany" ||
                     offerCode == "errorAffiliateoffercodenotfoundinanycompanyAffiliatelinkwas" ||
                     offerCode == "Routenotfound" {
@@ -334,29 +305,15 @@ public struct InsertAffiliateSwift {
         task.resume()
     }
 
-    internal static func openRedeemURL(with offerCode: String, offerCodeUrlId: String) {
-       let redeemUrlString = "https://apps.apple.com/redeem?ctx=offercodes&id=\(offerCodeUrlId)&code=\(offerCode)"
-       if let redeemUrl = URL(string: redeemUrlString) {
-           DispatchQueue.main.async {
-               UIApplication.shared.open(redeemUrl, options: [:]) { success in
-                   if success {
-                       print("[Insert Affiliate] Successfully opened redeem URL")
-                   } else {
-                       print("[Insert Affiliate] Failed to open redeem URL")
-                   }
-               }
-           }
-       } else {
-           print("[Insert Affiliate] Invalid redeem URL")
-       }
-    }
-    
-    public static func fetchAndConditionallyOpenUrl(affiliateLink: String, offerCodeUrlId: String) {
+    private static func retrieveAndStoreOfferCode(affiliateLink: String, completion: @escaping @Sendable (String?) -> Void = { _ in }) {
         fetchOfferCode(affiliateLink: affiliateLink) { offerCode in
             if let offerCode = offerCode {
-                openRedeemURL(with: offerCode, offerCodeUrlId: offerCodeUrlId)
+                UserDefaults.standard.set(offerCode, forKey: "OfferCode")
+                print("[Insert Affiliate] Offer code stored: \(offerCode)")
+                completion(offerCode)
             } else {
                 print("[Insert Affiliate] No valid offer code found.")
+                completion(nil)
             }
         }
     }

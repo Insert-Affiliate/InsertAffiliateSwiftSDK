@@ -12,7 +12,7 @@ The InsertAffiliateSwift SDK simplifies affiliate marketing for iOS apps with in
 - **Unique Device ID**: Creates a unique ID to anonymously associate purchases with users for tracking purposes.
 - **Affiliate Identifier Management**: Set and retrieve the affiliate identifier based on user-specific links.
 - **In-App Purchase (IAP) Initialisation**: Easily reinitialise in-app purchases with the option to validate using an affiliate identifier.
-- **Offer Code Handling**: Fetch offer codes from the Insert Affiliate API and open redeem URLs directly in the App Store.
+- **Discounts for End Users**: Fetch discount modifiers from the Insert Affiliate API.
 
 ## Getting Started
 To get started with the InsertAffiliateSwift SDK:
@@ -760,12 +760,169 @@ struct ShortCodeView_Previews: PreviewProvider {
 }
 ```
 
-### 3. Offer Codes
+### 3. Discounts for Users → Offer Codes / Dynamic Product IDs
 
-Offer Codes enable you to automatically present an applied discount to users when they access an affiliate's link. This provides a compelling marketing incentive that affiliates can leverage in their outreach efforts. Detailed setup instructions and additional information are available [here.](https://docs.insertaffiliate.com/offer-codes)
+The InsertAffiliateSwift SDK lets you pass modifiers based on if the app was installed due to the work of an affiliate for your in app purchases. These modifiers can be used swap your in app purchase being offered to the end user out for one with a discount or trial offer, similar to giving the end user an offer code.
 
-To fetch an offer code and conditionally open the redeem URL:
+**How It Works**
+
+When someone clicks an affiliate link or enters a short code linked to an offer (set up in the Insert Affiliate Dashboard), the SDK fills in InsertAffiliateSwift.OfferCode with the right modifier (like _oneWeekFree). You can then add this to your regular product ID to load the correct version of the subscription in your app.
+
+**Insert Affiliate Setup Instructions**
+
+1. Go to your Insert Affiliate dashboard at [app.insertaffiliate.com/affiliates](https://app.insertaffiliate.com/affiliates)
+2. Select the affiliate you want to configure
+3. Click "View" to access the affiliate's settings
+4. Assign an **iOS IAP Modifier** to the affiliate (e.g., `_oneWeekFree`, `_threeMonthsFree`)
+5. Save the settings
+
+Once configured, when users click that affiliate's links or enter their short codes, your app will automatically receive the modifier and can load the appropriate discounted product.
+
+**Implementation Examples**
+
+#### RevenueCat Example
 
 ```swift
-InsertAffiliateSwift.fetchAndConditionallyOpenUrl(affiliateLink: "your_affiliate_link", offerCodeUrlId: "your_offer_code_url_id")
+class InAppPurchaseViewModel: ObservableObject {
+    @Published var products: [StoreProduct] = []
+    
+    var dynamicProductIdentifier: String {
+        let baseProductId = "oneMonthSubscriptionTwo"
+        
+        if let offerCode = InsertAffiliateSwift.OfferCode {
+            let cleanOfferCode = offerCode.trimmingCharacters(in: CharacterSet(charactersIn: "\"'"))
+            return "\(baseProductId)\(cleanOfferCode)"
+        }
+        
+        return baseProductId
+    }
+    
+    func loadProducts() {
+        Purchases.shared.getProducts([dynamicProductIdentifier]) { products in
+            DispatchQueue.main.async {
+                self.products = products
+                print("Loaded product: \(self.dynamicProductIdentifier)")
+            }
+        }
+    }
+}
 ```
+
+#### Native StoreKit 2 Example
+
+```swift
+@MainActor
+class InAppPurchaseViewModel: ObservableObject {
+    @Published var products: [String: Product] = [:]
+    private let baseProductIdentifier = "oneMonthSubscriptionTwo"
+    
+    var dynamicProductIdentifier: String {
+        if let offerCode = InsertAffiliateSwift.OfferCode, !offerCode.isEmpty {
+            let cleanOfferCode = offerCode.trimmingCharacters(in: CharacterSet(charactersIn: "\""))
+            return "\(baseProductIdentifier)\(cleanOfferCode)"
+        }
+        return baseProductIdentifier
+    }
+    
+    func fetchProducts() async {
+        do {
+            let fetchedProducts = try await Product.products(for: [dynamicProductIdentifier])
+            products = Dictionary(uniqueKeysWithValues: fetchedProducts.map { ($0.id, $0) })
+            print("Loaded product: \(dynamicProductIdentifier)")
+        } catch {
+            print("Failed to fetch products: \(error.localizedDescription)")
+        }
+    }
+    
+    func purchase(productIdentifier: String) async {
+        guard let product = products[productIdentifier] else { return }
+        
+        do {
+            let userAccountToken = await InsertAffiliateSwift.returnUserAccountTokenAndStoreExpectedTransaction()
+            let result = try await product.purchase(options: userAccountToken.map { [.appAccountToken($0)] } ?? [])
+            
+            switch result {
+            case .success(let verification):
+                if case .verified(let transaction) = verification {
+                    print("Purchase successful: \(transaction.id)")
+                    await transaction.finish()
+                }
+            case .userCancelled:
+                print("Purchase cancelled")
+            case .pending:
+                print("Purchase pending")
+            default:
+                break
+            }
+        } catch {
+            print("Purchase error: \(error.localizedDescription)")
+        }
+    }
+}
+```
+
+#### Purchase View Integration
+
+This view uses the `dynamicProductIdentifier` which automatically includes any offer code modifiers from the Insert Affiliate SDK, ensuring users see the correct promotional product:
+
+```swift
+struct PurchaseView: View {
+    @StateObject private var viewModel = InAppPurchaseViewModel()
+    
+    var body: some View {
+        VStack(spacing: 15) {
+            if let product = viewModel.products[viewModel.dynamicProductIdentifier] {
+                Text(product.displayName)
+                    .font(.title2)
+                    .fontWeight(.semibold)
+                
+                Text("Price: \(product.price)")
+                    .font(.headline)
+                
+                Text("Product ID: \(product.id)")
+                    .font(.caption)
+                    .foregroundColor(.secondary)
+                
+                Button("Purchase") {
+                    Task {
+                        await viewModel.purchase(productIdentifier: product.id)
+                    }
+                }
+                .buttonStyle(.bordered)
+            } else {
+                Text("Product not found: \(viewModel.dynamicProductIdentifier)")
+                
+                Button("Refresh Products") {
+                    Task {
+                        await viewModel.fetchProducts()
+                    }
+                }
+                .buttonStyle(.bordered)
+            }
+        }
+        .onAppear {
+            Task {
+                await viewModel.fetchProducts() // Load dynamic products with offer codes
+            }
+        }
+    }
+}
+```
+
+**Example Product Identifiers**
+
+- Base product: `oneMonthSubscriptionTwo`
+- With introductory discount: `oneMonthSubscriptionTwo_oneWeekFree`
+- With different offer: `oneMonthSubscriptionTwo_threeMonthsFree`
+
+**Best Practices**
+
+- **Call in Purchase Views**: Always implement this logic in views where users can make purchases
+- **Handle Both Cases**: Ensure your app works whether an offer code is present or not
+- **Fallback**: Have a fallback to your base product if the dynamic product isn't found
+
+**App Store Connect Configuration**
+
+Make sure you have created the corresponding subscription products in App Store Connect:
+- Your base subscription (e.g., `oneMonthSubscriptionTwo`)
+- Promotional offer variants (e.g., `oneMonthSubscriptionTwo_oneWeekFree`)
