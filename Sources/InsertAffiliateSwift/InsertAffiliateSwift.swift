@@ -55,7 +55,7 @@ public struct InsertAffiliateSwift {
         Task {
             do {
                 try await state.initialize(companyCode: companyCode, verboseLogging: verboseLogging)
-                getOrCreateUserAccountToken()
+                let _ = getOrCreateUserAccountToken()
                 
                 // Collect system info on initialization
                 let _ = await getEnhancedSystemInfo()
@@ -81,7 +81,7 @@ public struct InsertAffiliateSwift {
     // Function to return the stored UUID for users using App Store Receipts directly without a Receipt Validator
     public static func returnUserAccountTokenAndStoreExpectedTransaction() async -> UUID? {
         // 1: Check if they have an affiliate assigned before storing the transaction
-        guard let insertAffiliateIdentifier = returnInsertAffiliateIdentifier() else {
+        guard returnInsertAffiliateIdentifier() != nil else {
             print("[Insert Affiliate] No affiliate stored - not saving expected transaction")
             return nil
         }
@@ -752,171 +752,125 @@ public struct InsertAffiliateSwift {
     /// Gets network connection type and interface information
     @available(iOS 12.0, *)
     internal static func getNetworkInfo() async -> [String: Any] {
+        // Simple synchronous network detection
         let monitor = NWPathMonitor()
-        let queue = DispatchQueue(label: "NetworkMonitor")
-        var hasResumed = false
+        let currentPath = monitor.currentPath
         
-        return await withCheckedContinuation { continuation in
-            monitor.pathUpdateHandler = { path in
-                guard !hasResumed else { return }
-                hasResumed = true
-                
-                var networkInfo = [String: Any]()
-                var connectionType = "unknown"
-                var interfaceTypes = [String]()
-                
-                // Determine primary connection type
-                if path.usesInterfaceType(.wifi) {
-                    connectionType = "wifi"
-                    interfaceTypes.append("wifi")
-                }
-                if path.usesInterfaceType(.cellular) {
-                    connectionType = "cellular"
-                    interfaceTypes.append("cellular")
-                }
-                if path.usesInterfaceType(.wiredEthernet) {
-                    connectionType = "ethernet"
-                    interfaceTypes.append("ethernet")
-                }
-                if path.usesInterfaceType(.loopback) {
-                    interfaceTypes.append("loopback")
-                }
-                if path.usesInterfaceType(.other) {
-                    interfaceTypes.append("other")
-                }
-                
-                networkInfo["connectionType"] = connectionType
-                networkInfo["interfaceTypes"] = interfaceTypes
-                networkInfo["isExpensive"] = path.isExpensive
-                networkInfo["isConstrained"] = path.isConstrained
-                networkInfo["status"] = path.status == .satisfied ? "connected" : "disconnected"
-                
-                // Get available interfaces
-                var availableInterfaces = [String]()
-                for interface in path.availableInterfaces {
-                    switch interface.type {
-                    case .wifi:
-                        availableInterfaces.append("wifi")
-                    case .cellular:
-                        availableInterfaces.append("cellular")
-                    case .wiredEthernet:
-                        availableInterfaces.append("ethernet")
-                    case .loopback:
-                        availableInterfaces.append("loopback")
-                    case .other:
-                        availableInterfaces.append("other")
-                    @unknown default:
-                        availableInterfaces.append("unknown")
-                    }
-                }
-                networkInfo["availableInterfaces"] = availableInterfaces
-                
-                monitor.cancel()
-                continuation.resume(returning: networkInfo)
-            }
-            
-            monitor.start(queue: queue)
-            
-            // Timeout after 2 seconds to prevent hanging
-            DispatchQueue.global().asyncAfter(deadline: .now() + 2.0) {
-                guard !hasResumed else { return }
-                hasResumed = true
-                monitor.cancel()
-                
-                let timeoutInfo: [String: Any] = [
-                    "connectionType": "timeout",
-                    "status": "timeout"
-                ]
-                continuation.resume(returning: timeoutInfo)
+        var connectionType = "unknown"
+        var interfaceTypes = [String]()
+        
+        // Determine primary connection type from current path
+        if currentPath.usesInterfaceType(.wifi) {
+            connectionType = "wifi"
+            interfaceTypes.append("wifi")
+        }
+        if currentPath.usesInterfaceType(.cellular) {
+            connectionType = "cellular" 
+            interfaceTypes.append("cellular")
+        }
+        if currentPath.usesInterfaceType(.wiredEthernet) {
+            connectionType = "ethernet"
+            interfaceTypes.append("ethernet")
+        }
+        if currentPath.usesInterfaceType(.loopback) {
+            interfaceTypes.append("loopback")
+        }
+        if currentPath.usesInterfaceType(.other) {
+            interfaceTypes.append("other")
+        }
+        
+        // Get available interfaces
+        var availableInterfaces = [String]()
+        for interface in currentPath.availableInterfaces {
+            switch interface.type {
+            case .wifi:
+                availableInterfaces.append("wifi")
+            case .cellular:
+                availableInterfaces.append("cellular")
+            case .wiredEthernet:
+                availableInterfaces.append("ethernet")
+            case .loopback:
+                availableInterfaces.append("loopback")
+            case .other:
+                availableInterfaces.append("other")
+            @unknown default:
+                availableInterfaces.append("unknown")
             }
         }
+        
+        return [
+            "connectionType": connectionType,
+            "interfaceTypes": interfaceTypes,
+            "isExpensive": currentPath.isExpensive,
+            "isConstrained": currentPath.isConstrained,
+            "status": currentPath.status == .satisfied ? "connected" : "disconnected",
+            "availableInterfaces": availableInterfaces
+        ]
     }
     
     /// Gets detailed network path information
     @available(iOS 12.0, *)
     internal static func getNetworkPathInfo() async -> [String: Any] {
+        // Simple synchronous path detection
         let monitor = NWPathMonitor()
-        let queue = DispatchQueue(label: "NetworkPathMonitor")
-        var hasResumed = false
+        let currentPath = monitor.currentPath
         
-        return await withCheckedContinuation { continuation in
-            monitor.pathUpdateHandler = { path in
-                guard !hasResumed else { return }
-                hasResumed = true
-                
-                var pathInfo = [String: Any]()
-                
-                // Check for IPv4/IPv6 support by examining available interfaces
-                var supportsIPv4 = false
-                var supportsIPv6 = false
-                
-                for interface in path.availableInterfaces {
-                    if interface.type == .wifi || interface.type == .cellular || interface.type == .wiredEthernet {
-                        supportsIPv4 = true
-                        supportsIPv6 = true
-                    }
-                }
-                
-                pathInfo["supportsIPv4"] = supportsIPv4
-                pathInfo["supportsIPv6"] = supportsIPv6
-                pathInfo["supportsDNS"] = path.supportsDNS
-                pathInfo["hasUnsatisfiedGateway"] = path.gateways.isEmpty
-                pathInfo["gatewayCount"] = path.gateways.count
-                
-                // Get local endpoint information if available
-                var localEndpoints = [String]()
-                for gateway in path.gateways {
-                    if let endpoint = gateway.debugDescription.components(separatedBy: " ").first {
-                        localEndpoints.append(endpoint)
-                    }
-                }
-                pathInfo["gateways"] = localEndpoints
-                
-                // Network interface details
-                var interfaceDetails = [[String: Any]]()
-                for interface in path.availableInterfaces {
-                    var interfaceInfo = [String: Any]()
-                    interfaceInfo["name"] = interface.name
-                    interfaceInfo["index"] = interface.index
-                    
-                    // Convert interface type to string manually
-                    let typeString: String
-                    switch interface.type {
-                    case .wifi:
-                        typeString = "wifi"
-                    case .cellular:
-                        typeString = "cellular"
-                    case .wiredEthernet:
-                        typeString = "wiredEthernet"
-                    case .loopback:
-                        typeString = "loopback"
-                    case .other:
-                        typeString = "other"
-                    @unknown default:
-                        typeString = "unknown"
-                    }
-                    interfaceInfo["type"] = typeString
-                    
-                    interfaceDetails.append(interfaceInfo)
-                }
-                pathInfo["interfaceDetails"] = interfaceDetails
-                
-                monitor.cancel()
-                continuation.resume(returning: pathInfo)
-            }
-            
-            monitor.start(queue: queue)
-            
-            // Timeout after 2 seconds
-            DispatchQueue.global().asyncAfter(deadline: .now() + 2.0) {
-                guard !hasResumed else { return }
-                hasResumed = true
-                monitor.cancel()
-                
-                let timeoutInfo: [String: Any] = ["status": "timeout"]
-                continuation.resume(returning: timeoutInfo)
+        // Check for IPv4/IPv6 support by examining available interfaces
+        var supportsIPv4 = false
+        var supportsIPv6 = false
+        
+        for interface in currentPath.availableInterfaces {
+            if interface.type == .wifi || interface.type == .cellular || interface.type == .wiredEthernet {
+                supportsIPv4 = true
+                supportsIPv6 = true
             }
         }
+        
+        // Get local endpoint information if available
+        var localEndpoints = [String]()
+        for gateway in currentPath.gateways {
+            if let endpoint = gateway.debugDescription.components(separatedBy: " ").first {
+                localEndpoints.append(endpoint)
+            }
+        }
+        
+        // Network interface details
+        var interfaceDetails = [[String: Any]]()
+        for interface in currentPath.availableInterfaces {
+            var interfaceInfo = [String: Any]()
+            interfaceInfo["name"] = interface.name
+            interfaceInfo["index"] = interface.index
+            
+            // Convert interface type to string manually
+            let typeString: String
+            switch interface.type {
+            case .wifi:
+                typeString = "wifi"
+            case .cellular:
+                typeString = "cellular"
+            case .wiredEthernet:
+                typeString = "wiredEthernet"
+            case .loopback:
+                typeString = "loopback"
+            case .other:
+                typeString = "other"
+            @unknown default:
+                typeString = "unknown"
+            }
+            interfaceInfo["type"] = typeString
+            
+            interfaceDetails.append(interfaceInfo)
+        }
+        
+        return [
+            "supportsIPv4": supportsIPv4,
+            "supportsIPv6": supportsIPv6,
+            "supportsDNS": currentPath.supportsDNS,
+            "hasUnsatisfiedGateway": currentPath.gateways.isEmpty,
+            "gatewayCount": currentPath.gateways.count,
+            "gateways": localEndpoints,
+            "interfaceDetails": interfaceDetails
+        ]
     }
     
     /// Collects basic system information for analytics (non-identifying data only)
