@@ -58,8 +58,8 @@ public struct InsertAffiliateSwift {
                 let _ = getOrCreateUserAccountToken()
                 
                 // Collect system info on initialization
-                let _ = await getEnhancedSystemInfo()
-                // await sendSystemInfoToBackend(systemInfo)
+                let systemInfo = await getEnhancedSystemInfo()
+                await sendSystemInfoToBackend(systemInfo)
             } catch {
                 print("[Insert Affiliate] Error initializing SDK: \(error.localizedDescription)")
             }
@@ -1041,6 +1041,10 @@ public struct InsertAffiliateSwift {
             systemInfo["connection"] = connection
         }
         
+        // Add user account token for backend identification
+        let userAccountToken = getOrCreateUserAccountToken()
+        systemInfo["userAccountToken"] = userAccountToken.uuidString
+        
         if verboseLogging {
             print("[Insert Affiliate] Enhanced system info collected: \(systemInfo)")
         }
@@ -1078,12 +1082,9 @@ public struct InsertAffiliateSwift {
             print("[Insert Affiliate] Sending request to: \(apiUrlString)")
         }
         
-        // Send the request
-        let task = URLSession.shared.dataTask(with: request) { data, response, error in
-            if let error = error {
-                print("[Insert Affiliate] Error sending system info: \(error.localizedDescription)")
-                return
-            }
+        // Send the request using modern async/await
+        do {
+            let (data, response) = try await URLSession.shared.data(for: request)
             
             guard let httpResponse = response as? HTTPURLResponse else {
                 print("[Insert Affiliate] No response received for system info")
@@ -1092,7 +1093,7 @@ public struct InsertAffiliateSwift {
             
             if verboseLogging {
                 print("[Insert Affiliate] System info response status: \(httpResponse.statusCode)")
-                if let data = data, let responseString = String(data: data, encoding: .utf8) {
+                if let responseString = String(data: data, encoding: .utf8) {
                     print("[Insert Affiliate] System info response: \(responseString)")
                 }
             }
@@ -1104,13 +1105,13 @@ public struct InsertAffiliateSwift {
                 }
             } else {
                 print("[Insert Affiliate] Failed to send system info with status code: \(httpResponse.statusCode)")
-                if let data = data, let responseString = String(data: data, encoding: .utf8) {
+                if let responseString = String(data: data, encoding: .utf8) {
                     print("[Insert Affiliate] Error response: \(responseString)")
                 }
             }
+        } catch {
+            print("[Insert Affiliate] Error sending system info: \(error.localizedDescription)")
         }
-        
-        task.resume()
     }
     
     // MARK: - UI Feedback
