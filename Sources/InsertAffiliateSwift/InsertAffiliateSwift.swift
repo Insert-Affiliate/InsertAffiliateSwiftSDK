@@ -1,5 +1,6 @@
 import Foundation
 import UIKit
+import Network
 
 @available(iOS 13.0.0, *)
 actor InsertAffiliateState {
@@ -747,6 +748,132 @@ public struct InsertAffiliateSwift {
     
     // MARK: - System Info Collection
     
+    /// Gets network connection type and interface information
+    @available(iOS 12.0, *)
+    internal static func getNetworkInfo() async -> [String: Any] {
+        var networkInfo = [String: Any]()
+        
+        let monitor = NWPathMonitor()
+        let queue = DispatchQueue(label: "NetworkMonitor")
+        
+        return await withCheckedContinuation { continuation in
+            monitor.pathUpdateHandler = { path in
+                var connectionType = "unknown"
+                var interfaceTypes = [String]()
+                
+                // Determine primary connection type
+                if path.usesInterfaceType(.wifi) {
+                    connectionType = "wifi"
+                    interfaceTypes.append("wifi")
+                }
+                if path.usesInterfaceType(.cellular) {
+                    connectionType = "cellular"
+                    interfaceTypes.append("cellular")
+                }
+                if path.usesInterfaceType(.wiredEthernet) {
+                    connectionType = "ethernet"
+                    interfaceTypes.append("ethernet")
+                }
+                if path.usesInterfaceType(.loopback) {
+                    interfaceTypes.append("loopback")
+                }
+                if path.usesInterfaceType(.other) {
+                    interfaceTypes.append("other")
+                }
+                
+                networkInfo["connectionType"] = connectionType
+                networkInfo["interfaceTypes"] = interfaceTypes
+                networkInfo["isExpensive"] = path.isExpensive
+                networkInfo["isConstrained"] = path.isConstrained
+                networkInfo["status"] = path.status == .satisfied ? "connected" : "disconnected"
+                
+                // Get available interfaces
+                var availableInterfaces = [String]()
+                for interface in path.availableInterfaces {
+                    switch interface.type {
+                    case .wifi:
+                        availableInterfaces.append("wifi")
+                    case .cellular:
+                        availableInterfaces.append("cellular")
+                    case .wiredEthernet:
+                        availableInterfaces.append("ethernet")
+                    case .loopback:
+                        availableInterfaces.append("loopback")
+                    case .other:
+                        availableInterfaces.append("other")
+                    @unknown default:
+                        availableInterfaces.append("unknown")
+                    }
+                }
+                networkInfo["availableInterfaces"] = availableInterfaces
+                
+                monitor.cancel()
+                continuation.resume(returning: networkInfo)
+            }
+            
+            monitor.start(queue: queue)
+            
+            // Timeout after 2 seconds to prevent hanging
+            DispatchQueue.global().asyncAfter(deadline: .now() + 2.0) {
+                monitor.cancel()
+                networkInfo["connectionType"] = "timeout"
+                networkInfo["status"] = "timeout"
+                continuation.resume(returning: networkInfo)
+            }
+        }
+    }
+    
+    /// Gets detailed network path information
+    @available(iOS 12.0, *)
+    internal static func getNetworkPathInfo() async -> [String: Any] {
+        var pathInfo = [String: Any]()
+        
+        let monitor = NWPathMonitor()
+        let queue = DispatchQueue(label: "NetworkPathMonitor")
+        
+        return await withCheckedContinuation { continuation in
+            monitor.pathUpdateHandler = { path in
+                pathInfo["supportsIPv4"] = path.supportedAddressFamilies.contains(.ipv4)
+                pathInfo["supportsIPv6"] = path.supportedAddressFamilies.contains(.ipv6)
+                pathInfo["supportsDNS"] = path.supportsDNS
+                pathInfo["hasUnsatisfiedGateway"] = path.gateways.isEmpty
+                pathInfo["gatewayCount"] = path.gateways.count
+                
+                // Get local endpoint information if available
+                var localEndpoints = [String]()
+                for gateway in path.gateways {
+                    if let endpoint = gateway.debugDescription.components(separatedBy: " ").first {
+                        localEndpoints.append(endpoint)
+                    }
+                }
+                pathInfo["gateways"] = localEndpoints
+                
+                // Network interface details
+                var interfaceDetails = [[String: Any]]()
+                for interface in path.availableInterfaces {
+                    var interfaceInfo = [String: Any]()
+                    interfaceInfo["name"] = interface.name
+                    interfaceInfo["index"] = interface.index
+                    interfaceInfo["type"] = interface.type.rawValue
+                    interfaceDetails.append(interfaceInfo)
+                }
+                pathInfo["interfaceDetails"] = interfaceDetails
+                
+                monitor.cancel()
+                continuation.resume(returning: pathInfo)
+            }
+            
+            monitor.start(queue: queue)
+            
+            // Timeout after 2 seconds
+            DispatchQueue.global().asyncAfter(deadline: .now() + 2.0) {
+                monitor.cancel()
+                pathInfo["status"] = "timeout"
+                continuation.resume(returning: pathInfo)
+            }
+        }
+    }
+    
     /// Collects basic system information for analytics (non-identifying data only)
     internal static func getSystemInfo() async -> [String: Any] {
         var systemInfo = [String: Any]()
@@ -763,19 +890,8 @@ public struct InsertAffiliateSwift {
         
         systemInfo["device_info"] = deviceInfo
         
-        // Platform information
-        systemInfo["platform"] = "iOS"
-        systemInfo["os"] = await device.systemName
-        systemInfo["osVersion"] = await device.systemVersion
         
-        // Locale and language information
-        systemInfo["language_code"] = Locale.current.languageCode ?? "en"
-        systemInfo["time_zone"] = TimeZone.current.identifier
         
-        // App information (if available)
-        if let appVersion = Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String {
-            systemInfo["app_version"] = appVersion
-        }
         
         // Device type classification
         let idiom = await UIDevice.current.userInterfaceIdiom
@@ -851,22 +967,13 @@ public struct InsertAffiliateSwift {
         systemInfo["hardwareConcurrency"] = ProcessInfo.processInfo.processorCount
         systemInfo["maxTouchPoints"] = await device.userInterfaceIdiom == .phone ? 10 : 0
         
-        // Add window dimensions (matching exact field names)
-        systemInfo["windowWidth"] = Int(await screen.bounds.width)
-        systemInfo["windowHeight"] = Int(await screen.bounds.height)
-        systemInfo["windowOuterWidth"] = Int(await screen.bounds.width)
-        systemInfo["windowOuterHeight"] = Int(await screen.bounds.height)
+        // Add screen dimensions (native iOS naming)
+        systemInfo["screenInnerWidth"] = Int(await screen.bounds.width)
+        systemInfo["screenInnerHeight"] = Int(await screen.bounds.height)
+        systemInfo["screenOuterWidth"] = Int(await screen.bounds.width)
+        systemInfo["screenOuterHeight"] = Int(await screen.bounds.height)
         
-        // Add storage and feature availability (matching exact field names)
-        systemInfo["localStorage"] = true
-        systemInfo["sessionStorage"] = true
-        systemInfo["cookieEnabled"] = true
-        systemInfo["indexedDB"] = true
-        systemInfo["webgl"] = true
         
-        // Add network and browser-style info (matching exact field names)
-        systemInfo["onLine"] = true
-        systemInfo["doNotTrack"] = nil
         
         // Add language information (matching exact field names)
         let locale = Locale.current
@@ -898,13 +1005,42 @@ public struct InsertAffiliateSwift {
         systemInfo["os"] = systemName
         systemInfo["osVersion"] = systemVersion
         
-        // Add connection info placeholder (would need actual network monitoring)
-        var connection = [String: Any]()
-        connection["downlink"] = 10
-        connection["effectiveType"] = "4g"
-        connection["rtt"] = 50
-        connection["saveData"] = false
-        systemInfo["connection"] = connection
+        // Add real network connection info
+        if #available(iOS 12.0, *) {
+            let networkInfo = await getNetworkInfo()
+            let pathInfo = await getNetworkPathInfo()
+            
+            systemInfo["networkInfo"] = networkInfo
+            systemInfo["networkPath"] = pathInfo
+            
+            // Update connection info with real data
+            var connection = [String: Any]()
+            connection["type"] = networkInfo["connectionType"] as? String ?? "unknown"
+            connection["isExpensive"] = networkInfo["isExpensive"] as? Bool ?? false
+            connection["isConstrained"] = networkInfo["isConstrained"] as? Bool ?? false
+            connection["status"] = networkInfo["status"] as? String ?? "unknown"
+            connection["interfaces"] = networkInfo["availableInterfaces"] as? [String] ?? []
+            connection["supportsIPv4"] = pathInfo["supportsIPv4"] as? Bool ?? true
+            connection["supportsIPv6"] = pathInfo["supportsIPv6"] as? Bool ?? false
+            connection["supportsDNS"] = pathInfo["supportsDNS"] as? Bool ?? true
+            
+            // Keep legacy fields for compatibility
+            connection["downlink"] = networkInfo["connectionType"] as? String == "wifi" ? 100 : 10
+            connection["effectiveType"] = networkInfo["connectionType"] as? String == "wifi" ? "4g" : "3g"
+            connection["rtt"] = networkInfo["connectionType"] as? String == "wifi" ? 20 : 100
+            connection["saveData"] = networkInfo["isConstrained"] as? Bool ?? false
+            
+            systemInfo["connection"] = connection
+        } else {
+            // Fallback for iOS < 12.0
+            var connection = [String: Any]()
+            connection["downlink"] = 10
+            connection["effectiveType"] = "4g"
+            connection["rtt"] = 50
+            connection["saveData"] = false
+            connection["type"] = "unknown"
+            systemInfo["connection"] = connection
+        }
         
         if verboseLogging {
             print("[Insert Affiliate] Enhanced system info collected: \(systemInfo)")
