@@ -752,13 +752,16 @@ public struct InsertAffiliateSwift {
     /// Gets network connection type and interface information
     @available(iOS 12.0, *)
     internal static func getNetworkInfo() async -> [String: Any] {
-        var networkInfo = [String: Any]()
-        
         let monitor = NWPathMonitor()
         let queue = DispatchQueue(label: "NetworkMonitor")
+        var hasResumed = false
         
         return await withCheckedContinuation { continuation in
             monitor.pathUpdateHandler = { path in
+                guard !hasResumed else { return }
+                hasResumed = true
+                
+                var networkInfo = [String: Any]()
                 var connectionType = "unknown"
                 var interfaceTypes = [String]()
                 
@@ -816,10 +819,15 @@ public struct InsertAffiliateSwift {
             
             // Timeout after 2 seconds to prevent hanging
             DispatchQueue.global().asyncAfter(deadline: .now() + 2.0) {
+                guard !hasResumed else { return }
+                hasResumed = true
                 monitor.cancel()
-                networkInfo["connectionType"] = "timeout"
-                networkInfo["status"] = "timeout"
-                continuation.resume(returning: networkInfo)
+                
+                let timeoutInfo: [String: Any] = [
+                    "connectionType": "timeout",
+                    "status": "timeout"
+                ]
+                continuation.resume(returning: timeoutInfo)
             }
         }
     }
@@ -827,15 +835,30 @@ public struct InsertAffiliateSwift {
     /// Gets detailed network path information
     @available(iOS 12.0, *)
     internal static func getNetworkPathInfo() async -> [String: Any] {
-        var pathInfo = [String: Any]()
-        
         let monitor = NWPathMonitor()
         let queue = DispatchQueue(label: "NetworkPathMonitor")
+        var hasResumed = false
         
         return await withCheckedContinuation { continuation in
             monitor.pathUpdateHandler = { path in
-                pathInfo["supportsIPv4"] = path.supportedAddressFamilies.contains(.ipv4)
-                pathInfo["supportsIPv6"] = path.supportedAddressFamilies.contains(.ipv6)
+                guard !hasResumed else { return }
+                hasResumed = true
+                
+                var pathInfo = [String: Any]()
+                
+                // Check for IPv4/IPv6 support by examining available interfaces
+                var supportsIPv4 = false
+                var supportsIPv6 = false
+                
+                for interface in path.availableInterfaces {
+                    if interface.type == .wifi || interface.type == .cellular || interface.type == .wiredEthernet {
+                        supportsIPv4 = true
+                        supportsIPv6 = true
+                    }
+                }
+                
+                pathInfo["supportsIPv4"] = supportsIPv4
+                pathInfo["supportsIPv6"] = supportsIPv6
                 pathInfo["supportsDNS"] = path.supportsDNS
                 pathInfo["hasUnsatisfiedGateway"] = path.gateways.isEmpty
                 pathInfo["gatewayCount"] = path.gateways.count
@@ -855,7 +878,25 @@ public struct InsertAffiliateSwift {
                     var interfaceInfo = [String: Any]()
                     interfaceInfo["name"] = interface.name
                     interfaceInfo["index"] = interface.index
-                    interfaceInfo["type"] = interface.type.rawValue
+                    
+                    // Convert interface type to string manually
+                    let typeString: String
+                    switch interface.type {
+                    case .wifi:
+                        typeString = "wifi"
+                    case .cellular:
+                        typeString = "cellular"
+                    case .wiredEthernet:
+                        typeString = "wiredEthernet"
+                    case .loopback:
+                        typeString = "loopback"
+                    case .other:
+                        typeString = "other"
+                    @unknown default:
+                        typeString = "unknown"
+                    }
+                    interfaceInfo["type"] = typeString
+                    
                     interfaceDetails.append(interfaceInfo)
                 }
                 pathInfo["interfaceDetails"] = interfaceDetails
@@ -868,9 +909,12 @@ public struct InsertAffiliateSwift {
             
             // Timeout after 2 seconds
             DispatchQueue.global().asyncAfter(deadline: .now() + 2.0) {
+                guard !hasResumed else { return }
+                hasResumed = true
                 monitor.cancel()
-                pathInfo["status"] = "timeout"
-                continuation.resume(returning: pathInfo)
+                
+                let timeoutInfo: [String: Any] = ["status": "timeout"]
+                continuation.resume(returning: timeoutInfo)
             }
         }
     }
