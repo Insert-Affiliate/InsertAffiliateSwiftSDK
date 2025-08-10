@@ -58,7 +58,8 @@ public struct InsertAffiliateSwift {
                 getOrCreateUserAccountToken()
                 
                 // Collect system info on initialization
-                let _ = await getEnhancedSystemInfo()
+                let systemInfo = await getEnhancedSystemInfo()
+                await sendSystemInfoToBackend(systemInfo)
             } catch {
                 print("[Insert Affiliate] Error initializing SDK: \(error.localizedDescription)")
             }
@@ -1047,6 +1048,71 @@ public struct InsertAffiliateSwift {
         }
         
         return systemInfo
+    }
+    
+    /// Sends enhanced system info to the backend API for deep link event tracking
+    internal static func sendSystemInfoToBackend(_ systemInfo: [String: Any]) async {
+        let verboseLogging = await state.getVerboseLogging()
+        
+        if verboseLogging {
+            print("[Insert Affiliate] Sending system info to backend...")
+        }
+        
+        guard let jsonData = try? JSONSerialization.data(withJSONObject: systemInfo, options: []) else {
+            print("[Insert Affiliate] Failed to encode system info payload")
+            return
+        }
+        
+        let apiUrlString = "https://insertaffiliate.link/V1/appDeepLinkEvents"
+        
+        guard let apiUrl = URL(string: apiUrlString) else {
+            print("[Insert Affiliate] Invalid backend API URL")
+            return
+        }
+        
+        // Create and configure the request
+        var request = URLRequest(url: apiUrl)
+        request.httpMethod = "POST"
+        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        request.httpBody = jsonData
+        
+        if verboseLogging {
+            print("[Insert Affiliate] Sending request to: \(apiUrlString)")
+        }
+        
+        // Send the request
+        let task = URLSession.shared.dataTask(with: request) { data, response, error in
+            if let error = error {
+                print("[Insert Affiliate] Error sending system info: \(error.localizedDescription)")
+                return
+            }
+            
+            guard let httpResponse = response as? HTTPURLResponse else {
+                print("[Insert Affiliate] No response received for system info")
+                return
+            }
+            
+            if verboseLogging {
+                print("[Insert Affiliate] System info response status: \(httpResponse.statusCode)")
+                if let data = data, let responseString = String(data: data, encoding: .utf8) {
+                    print("[Insert Affiliate] System info response: \(responseString)")
+                }
+            }
+            
+            // Check for a successful response
+            if httpResponse.statusCode == 201 {
+                if verboseLogging {
+                    print("[Insert Affiliate] System info sent successfully")
+                }
+            } else {
+                print("[Insert Affiliate] Failed to send system info with status code: \(httpResponse.statusCode)")
+                if let data = data, let responseString = String(data: data, encoding: .utf8) {
+                    print("[Insert Affiliate] Error response: \(responseString)")
+                }
+            }
+        }
+        
+        task.resume()
     }
     
     // MARK: - UI Feedback
