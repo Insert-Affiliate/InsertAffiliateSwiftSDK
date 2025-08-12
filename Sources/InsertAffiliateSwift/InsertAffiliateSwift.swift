@@ -1066,7 +1066,7 @@ public struct InsertAffiliateSwift {
         }
         
         // let apiUrlString = "https://insertaffiliate.link/V1/appDeepLinkEvents"
-        let apiUrlString = "https://74be7d9c1e91.ngrok-free.app/V1/appDeepLinkEvents"
+        let apiUrlString = "https://f7912e765f41.ngrok-free.app/V1/appDeepLinkEvents"
         
         guard let apiUrl = URL(string: apiUrlString) else {
             print("[Insert Affiliate] Invalid backend API URL")
