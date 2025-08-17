@@ -2,6 +2,20 @@ import Foundation
 import UIKit
 import Network
 
+extension UIDevice {
+    static func getDeviceInfo() async -> [String: Any] {
+        let current = UIDevice.current
+        return [
+            "identifierForVendor": await current.identifierForVendor?.uuidString ?? "unknown",
+            "systemName": await current.systemName,
+            "systemVersion": await current.systemVersion,
+            "model": await current.model,
+            "localizedModel": await current.localizedModel,
+            "isPhysicalDevice": !InsertAffiliateSwift._isSimulator()
+        ]
+    }
+}
+
 @available(iOS 13.0.0, *)
 actor InsertAffiliateState {
     private var companyCode: String?
@@ -879,15 +893,8 @@ public struct InsertAffiliateSwift {
         
         let device = await UIDevice.current
         
-        // Basic device information (non-identifying)
-        var deviceInfo = [String: Any]()
-        deviceInfo["systemName"] = await device.systemName
-        deviceInfo["systemVersion"] = await device.systemVersion
-        deviceInfo["model"] = await device.model
-        deviceInfo["localizedModel"] = await device.localizedModel
-        deviceInfo["isPhysicalDevice"] = !_isSimulator()
-        
-        systemInfo["device_info"] = deviceInfo
+        // Use the new extension helper to collect device info
+        systemInfo["device_info"] = await UIDevice.getDeviceInfo()
         
         
         
