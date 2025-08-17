@@ -875,6 +875,7 @@ public struct InsertAffiliateSwift {
     
     /// Collects basic system information for analytics (non-identifying data only)
     internal static func getSystemInfo() async -> [String: Any] {
+        let verboseLogging = await state.getVerboseLogging()
         var systemInfo = [String: Any]()
         
         let device = await UIDevice.current
