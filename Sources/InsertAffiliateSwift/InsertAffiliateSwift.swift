@@ -886,9 +886,8 @@ public struct InsertAffiliateSwift {
         deviceInfo["systemVersion"] = await device.systemVersion
         deviceInfo["model"] = await device.model
         deviceInfo["localizedModel"] = await device.localizedModel
-        deviceInfo["isPhysicalDevice"] = !_isSimulator()
-        deviceInfo["identifierForVendor"] = await device.identifierForVendor?.uuidString 
-        
+        deviceInfo["isPhysicalDevice"] = !_isSimulator()     
+        deviceInfo["bundleId"] = Bundle.main.bundleIdentifier ?? "null"
         
         if verboseLogging {
             print("[Insert Affiliate] Device info: \(deviceInfo)")
