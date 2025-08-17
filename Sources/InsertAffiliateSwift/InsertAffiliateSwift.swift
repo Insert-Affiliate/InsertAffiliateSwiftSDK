@@ -889,7 +889,9 @@ public struct InsertAffiliateSwift {
         deviceInfo["identifierForVendor"] = await device.identifierForVendor?.uuidString 
         
         
-        
+        if verboseLogging {
+            print("[Insert Affiliate] Device info: \(deviceInfo)")
+        }
         
         // Device type classification
         let idiom = await UIDevice.current.userInterfaceIdiom
@@ -917,12 +919,7 @@ public struct InsertAffiliateSwift {
         return false
         #endif
     }
-    
-    /// Public method to get system information for analytics
-    public static func getSystemInformation() async -> [String: Any] {
-        return await getSystemInfo()
-    }
-    
+
     /// Enhanced system info that includes fingerprint-like data for API requests
     internal static func getEnhancedSystemInfo() async -> [String: Any] {
         let verboseLogging = await state.getVerboseLogging()
@@ -932,6 +929,10 @@ public struct InsertAffiliateSwift {
         }
         
         var systemInfo = await getSystemInfo()
+
+        if verboseLogging {
+            print("[Insert Affiliate] System info: \(systemInfo)")
+        }
         
         // Add timestamp
         let dateFormatter = ISO8601DateFormatter()
@@ -944,12 +945,7 @@ public struct InsertAffiliateSwift {
         let systemVersion = await device.systemVersion
         let model = await device.model
         
-        systemInfo["userAgent"] = "InsertAffiliateSwift/1.0 (\(model); \(systemName) \(systemVersion))"
-        
-        // Add protocol and method info (for API compatibility)
-        systemInfo["protocol"] = "https"
-        systemInfo["method"] = "POST"
-        systemInfo["secure"] = true
+        systemInfo["userAgent"] = "\(model); \(systemName) \(systemVersion)"
         
         // Add screen dimensions and device pixel ratio (matching exact field names)
         let screen = await UIScreen.main
@@ -975,7 +971,7 @@ public struct InsertAffiliateSwift {
         
         // Add language information (matching exact field names)
         let locale = Locale.current
-        systemInfo["language"] = locale.languageCode ?? "en"
+        systemInfo["language"] = locale.languageCode ?? "null"
         if let regionCode = locale.regionCode {
             systemInfo["country"] = regionCode
         }
@@ -986,7 +982,6 @@ public struct InsertAffiliateSwift {
             if let regionCode = locale.regionCode {
                 languages.append("\(languageCode)-\(regionCode)")
             }
-            languages.append("\(languageCode)-US")
             languages.append(languageCode)
         }
         systemInfo["languages"] = languages
@@ -997,7 +992,7 @@ public struct InsertAffiliateSwift {
         systemInfo["timezone"] = timeZone.identifier
         
         // Add browser and platform info (matching exact field names)
-        systemInfo["browser"] = "Safari"
+        // systemInfo["browser"] = "Safari"
         systemInfo["browserVersion"] = systemVersion
         systemInfo["platform"] = systemName
         systemInfo["os"] = systemName
@@ -1005,8 +1000,17 @@ public struct InsertAffiliateSwift {
         
         // Add real network connection info
         if #available(iOS 12.0, *) {
+            if verboseLogging {
+                print("[Insert Affiliate] Getting network info")
+            }
+
             let networkInfo = await getNetworkInfo()
             let pathInfo = await getNetworkPathInfo()
+
+              if verboseLogging {
+                print("[Insert Affiliate] Network info: \(networkInfo)")
+                print("[Insert Affiliate] Network path info: \(pathInfo)")
+            }
             
             systemInfo["networkInfo"] = networkInfo
             systemInfo["networkPath"] = pathInfo
@@ -1029,20 +1033,8 @@ public struct InsertAffiliateSwift {
             connection["saveData"] = networkInfo["isConstrained"] as? Bool ?? false
             
             systemInfo["connection"] = connection
-        } else {
-            // Fallback for iOS < 12.0
-            var connection = [String: Any]()
-            connection["downlink"] = 10
-            connection["effectiveType"] = "4g"
-            connection["rtt"] = 50
-            connection["saveData"] = false
-            connection["type"] = "unknown"
-            systemInfo["connection"] = connection
+
         }
-        
-        // Add user account token for backend identification
-        let userAccountToken = getOrCreateUserAccountToken()
-        systemInfo["userAccountToken"] = userAccountToken.uuidString
         
         if verboseLogging {
             print("[Insert Affiliate] Enhanced system info collected: \(systemInfo)")
