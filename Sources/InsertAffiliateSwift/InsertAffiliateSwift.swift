@@ -880,17 +880,15 @@ public struct InsertAffiliateSwift {
         
         let device = await UIDevice.current
         
-        // Use the new extension helper to collect device info
-        var deviceInfo = [String: Any]()
-        deviceInfo["systemName"] = await device.systemName
-        deviceInfo["systemVersion"] = await device.systemVersion
-        deviceInfo["model"] = await device.model
-        deviceInfo["localizedModel"] = await device.localizedModel
-        deviceInfo["isPhysicalDevice"] = !_isSimulator()     
-        deviceInfo["bundleId"] = Bundle.main.bundleIdentifier ?? "null"
+        systemInfo["systemName"] = await device.systemName
+        systemInfo["systemVersion"] = await device.systemVersion
+        systemInfo["model"] = await device.model
+        systemInfo["localizedModel"] = await device.localizedModel
+        systemInfo["isPhysicalDevice"] = !_isSimulator()     
+        systemInfo["bundleId"] = Bundle.main.bundleIdentifier ?? "null"
         
         if verboseLogging {
-            print("[Insert Affiliate] Device info: \(deviceInfo)")
+            print("[Insert Affiliate] system info: \(systemInfo)")
         }
         
         // Device type classification
