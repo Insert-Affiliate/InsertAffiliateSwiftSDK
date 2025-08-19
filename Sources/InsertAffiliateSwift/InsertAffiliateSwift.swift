@@ -890,7 +890,7 @@ public struct InsertAffiliateSwift {
         if verboseLogging {
             print("[Insert Affiliate] system info: \(systemInfo)")
         }
-        
+
         // Device type classification
         let idiom = await UIDevice.current.userInterfaceIdiom
         switch idiom {
@@ -1054,9 +1054,9 @@ public struct InsertAffiliateSwift {
             return
         }
         
-        // let apiUrlString = "https://insertaffiliate.link/V1/appDeepLinkEvents"
-        let apiUrlString = "https://f7912e765f41.ngrok-free.app/V1/appDeepLinkEvents"
-        
+        let apiUrlString = "https://insertaffiliate.link/V1/appDeepLinkEvents"
+        // let apiUrlString = "https://f7912e765f41.ngrok-free.app/V1/appDeepLinkEvents"
+
         guard let apiUrl = URL(string: apiUrlString) else {
             print("[Insert Affiliate] Invalid backend API URL")
             return
