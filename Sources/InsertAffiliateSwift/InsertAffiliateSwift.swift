@@ -918,7 +918,7 @@ public struct InsertAffiliateSwift {
         #endif
     }
 
-    /// Enhanced system info that includes fingerprint-like data for API requests
+    /// Enhanced system info that includes data for API requests
     internal static func getEnhancedSystemInfo() async -> [String: Any] {
         let verboseLogging = await state.getVerboseLogging()
         
