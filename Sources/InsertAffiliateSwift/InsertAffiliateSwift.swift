@@ -53,6 +53,11 @@ public struct InsertAffiliateSwift {
         }
     }
 
+    // Function to allow user to override the user account token (appAccountToken) with their own, passed UUID
+    public static func overrideUserAccountToken(uuid: UUID) {
+        UserDefaults.standard.set(uuid.uuidString, forKey: "appAccountToken")
+    }
+
     // For users using App Store Receipts directly without a Receipt Validator
     private static func getOrCreateUserAccountToken() -> UUID {
         if let storedUUIDString = UserDefaults.standard.string(forKey: "appAccountToken"),
