@@ -53,11 +53,6 @@ public struct InsertAffiliateSwift {
         }
     }
 
-    // Function to allow user to override the user account token (appAccountToken) with their own, passed UUID
-    public static func overrideUserAccountToken(uuid: UUID) {
-        UserDefaults.standard.set(uuid.uuidString, forKey: "appAccountToken")
-    }
-
     // For users using App Store Receipts directly without a Receipt Validator
     private static func getOrCreateUserAccountToken() -> UUID {
         if let storedUUIDString = UserDefaults.standard.string(forKey: "appAccountToken"),
@@ -71,11 +66,17 @@ public struct InsertAffiliateSwift {
     }
 
     // Function to return the stored UUID for users using App Store Receipts directly without a Receipt Validator
-    public static func returnUserAccountTokenAndStoreExpectedTransaction() async -> UUID? {
+    public static func returnUserAccountTokenAndStoreExpectedTransaction(overrideUUID: UUID? = nil) async -> UUID? {
         // 1: Check if they have an affiliate assigned before storing the transaction
         guard let insertAffiliateIdentifier = returnInsertAffiliateIdentifier() else {
             print("[Insert Affiliate] No affiliate stored - not saving expected transaction")
             return nil
+        }
+
+        if let overrideUUID = overrideUUID {
+            await storeExpectedAppStoreTransaction(userAccountToken: overrideUUID)
+            UserDefaults.standard.set(overrideUUID.uuidString, forKey: "appAccountToken")
+            return overrideUUID;
         }
             
         if let storedUUIDString = UserDefaults.standard.string(forKey: "appAccountToken"),
