@@ -260,11 +260,13 @@ To proceed, visit [our docs](https://docs.insertaffiliate.com/direct-store-purch
 // Step 2: Within the function where you are making the purchase...
 func purchase(productIdentifier: String) async {
     do {
-        
-        // Step 3: Replace your product.purchase() with the lines below
-        // await InsertAffiliateSwift.overrideUserAccountToken(uuid: {{your_UUID}}) // Optional, if you wish to pass your companies own UUID instead of using ours
-        let token = await InsertAffiliateSwift.returnUserAccountTokenAndStoreExpectedTransaction()
-        let result = try await product.purchase(options: token.map { [.appAccountToken($0)] } ?? [])
+      // Step 3: Replace your product.purchase() with the lines below
+      let token = await InsertAffiliateSwift.returnUserAccountTokenAndStoreExpectedTransaction() 
+      // Optional override: Use your own UUID for the purchase token
+      // let token = await InsertAffiliateSwift.returnUserAccountTokenAndStoreExpectedTransaction(
+      //     overrideUUIDString: "{{your_own_uuid}}"
+      // )
+      let result = try await product.purchase(options: token.map { [.appAccountToken($0)] } ?? [])
     }
 }
 ```
@@ -644,6 +646,215 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
 
 ```
 
+### Deep Linking with AppsFlyer
+To set up deep linking with AppsFlyer, follow these steps:
+
+1. Create a [OneLink](https://support.appsflyer.com/hc/en-us/articles/208874366-Create-a-OneLink-link-for-your-campaigns) in AppsFlyer and pass it to our dashboard when an affiliate signs up.
+   - Example: [Create Affiliate](https://docs.insertaffiliate.com/create-affiliate).
+2. Initialize AppsFlyer SDK and set up deep link handling in your app.
+
+#### Platform Setup
+Complete the deep linking setup for AppsFlyer by following their official documentation:
+- [AppsFlyer Deferred Deep Link Integration Guide](https://dev.appsflyer.com/hc/docs/deeplinkintegrate)
+
+This covers all platform-specific configurations including:
+- iOS: Info.plist configuration, AppDelegate setup, and universal links
+- Testing and troubleshooting
+
+#### Example with RevenueCat
+
+```swift
+import SwiftUI
+import AppsFlyerLib
+import RevenueCat
+import InsertAffiliateSwift
+
+class AppDelegate: UIResponder, UIApplicationDelegate, AppsFlyerLibDelegate {
+    func application(_ application: UIApplication, didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]? = nil) -> Bool {
+        
+        // Initialize Insert Affiliate SDK
+        InsertAffiliateSwift.initialize(companyCode: "{{ your_company_code }}")
+        
+        // Configure AppsFlyer
+        AppsFlyerLib.shared().appsFlyerDevKey = "{{ your_appsflyer_dev_key }}"
+        AppsFlyerLib.shared().appleAppID = "{{ your_ios_app_id }}"
+        AppsFlyerLib.shared().delegate = self
+        AppsFlyerLib.shared().start()
+        
+        return true
+    }
+    
+    // Handle URL schemes and universal links
+    func application(_ app: UIApplication, open url: URL, options: [UIApplication.OpenURLOptionsKey : Any] = [:]) -> Bool {
+        AppsFlyerLib.shared().handleOpen(url, options: options)
+        return true
+    }
+    
+    func application(_ application: UIApplication, continue userActivity: NSUserActivity, restorationHandler: @escaping ([UIUserActivityRestoring]?) -> Void) -> Bool {
+        AppsFlyerLib.shared().continue(userActivity)
+        return true
+    }
+    
+    // MARK: - AppsFlyer Delegate Methods
+    
+    func onAppOpenAttribution(_ attributionData: [AnyHashable: Any]) {
+        handleAppsFlyerDeepLink(attributionData)
+    }
+    
+    func onDeepLink(_ deepLink: AppsFlyerDeepLink) {
+        let attributionData = deepLink.clickEvent ?? [:]
+        handleAppsFlyerDeepLink(attributionData)
+    }
+    
+    private func handleAppsFlyerDeepLink(_ attributionData: [AnyHashable: Any]) {
+        let dict = attributionData as? [String: Any] ?? [:]
+        let referringLink = (dict["link"] as? String) ?? (dict["deep_link_value"] as? String) ?? (dict["af_dp"] as? String)
+        
+        guard let link = referringLink else { return }
+        
+        InsertAffiliateSwift.setInsertAffiliateIdentifier(referringLink: link) { shortCode in
+            guard let shortCode = shortCode else { return }
+            
+            Purchases.shared.attribution.setAttributes(["insert_affiliate": shortCode])
+        }
+    }
+}
+```
+
+#### Example with Iaptic
+
+```swift
+import SwiftUI
+import AppsFlyerLib
+import InAppPurchaseLib
+import InsertAffiliateSwift
+
+class AppDelegate: UIResponder, UIApplicationDelegate, AppsFlyerLibDelegate {
+    func application(_ application: UIApplication, didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]? = nil) -> Bool {
+        
+        // Initialize Insert Affiliate SDK
+        InsertAffiliateSwift.initialize(companyCode: "{{ your_company_code }}")
+        
+        // Configure AppsFlyer
+        AppsFlyerLib.shared().appsFlyerDevKey = "{{ your_appsflyer_dev_key }}"
+        AppsFlyerLib.shared().appleAppID = "{{ your_ios_app_id }}"
+        AppsFlyerLib.shared().delegate = self
+        AppsFlyerLib.shared().start()
+        
+        return true
+    }
+    
+    // Handle URL schemes and universal links
+    func application(_ app: UIApplication, open url: URL, options: [UIApplication.OpenURLOptionsKey : Any] = [:]) -> Bool {
+        AppsFlyerLib.shared().handleOpen(url, options: options)
+        return true
+    }
+    
+    func application(_ application: UIApplication, continue userActivity: NSUserActivity, restorationHandler: @escaping ([UIUserActivityRestoring]?) -> Void) -> Bool {
+        AppsFlyerLib.shared().continue(userActivity)
+        return true
+    }
+    
+    // MARK: - AppsFlyer Delegate Methods
+    
+    func onAppOpenAttribution(_ attributionData: [AnyHashable: Any]) {
+        handleAppsFlyerDeepLink(attributionData)
+    }
+    
+    func onDeepLink(_ deepLink: AppsFlyerDeepLink) {
+        let attributionData = deepLink.clickEvent ?? [:]
+        handleAppsFlyerDeepLink(attributionData)
+    }
+    
+    private func handleAppsFlyerDeepLink(_ attributionData: [AnyHashable: Any]) {
+        let dict = attributionData as? [String: Any] ?? [:]
+        let referringLink = (dict["link"] as? String) ?? (dict["deep_link_value"] as? String) ?? (dict["af_dp"] as? String)
+        
+        guard let link = referringLink else { return }
+        
+        InsertAffiliateSwift.setInsertAffiliateIdentifier(referringLink: link) { shortCode in
+            guard let shortCode = shortCode else { return }
+            
+            // Reinitialize Iaptic with affiliate identifier
+            let iapProducts = [
+                IAPProduct(
+                    productIdentifier: "{{ apple_in_app_purchase_subscription_id }}",
+                    productType: .autoRenewableSubscription
+                )
+            ]
+            
+            InAppPurchase.stop()
+            InAppPurchase.initialize(
+                iapProducts: iapProducts,
+                validatorUrlString: "https://validator.iaptic.com/v3/validate?appName={{ your_iaptic_app_name }}&apiKey={{ your_iaptic_public_key }}",
+                applicationUsername: shortCode
+            )
+        }
+    }
+}
+```
+Replace the following:
+- `{{ your_iaptic_app_name }}` with your [Iaptic App Name](https://www.iaptic.com/account)
+- `{{ your_iaptic_public_key }}` with your [Iaptic Public Key](https://www.iaptic.com/settings)
+
+#### Example with App Store Direct Integration
+
+```swift
+import SwiftUI
+import AppsFlyerLib
+import StoreKit
+import InsertAffiliateSwift
+
+class AppDelegate: UIResponder, UIApplicationDelegate, AppsFlyerLibDelegate {
+    func application(_ application: UIApplication, didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]? = nil) -> Bool {
+        
+        // Initialize Insert Affiliate SDK
+        InsertAffiliateSwift.initialize(companyCode: "{{ your_company_code }}")
+        
+        // Configure AppsFlyer
+        AppsFlyerLib.shared().appsFlyerDevKey = "{{ your_appsflyer_dev_key }}"
+        AppsFlyerLib.shared().appleAppID = "{{ your_ios_app_id }}"
+        AppsFlyerLib.shared().delegate = self
+        AppsFlyerLib.shared().start()
+        
+        return true
+    }
+    
+    // Handle URL schemes and universal links
+    func application(_ app: UIApplication, open url: URL, options: [UIApplication.OpenURLOptionsKey : Any] = [:]) -> Bool {
+        AppsFlyerLib.shared().handleOpen(url, options: options)
+        return true
+    }
+    
+    func application(_ application: UIApplication, continue userActivity: NSUserActivity, restorationHandler: @escaping ([UIUserActivityRestoring]?) -> Void) -> Bool {
+        AppsFlyerLib.shared().continue(userActivity)
+        return true
+    }
+    
+    // MARK: - AppsFlyer Delegate Methods
+    
+    func onAppOpenAttribution(_ attributionData: [AnyHashable: Any]) {
+        handleAppsFlyerDeepLink(attributionData)
+    }
+    
+    func onDeepLink(_ deepLink: AppsFlyerDeepLink) {
+        let attributionData = deepLink.clickEvent ?? [:]
+        handleAppsFlyerDeepLink(attributionData)
+    }
+    
+    private func handleAppsFlyerDeepLink(_ attributionData: [AnyHashable: Any]) {
+        let dict = attributionData as? [String: Any] ?? [:]
+        let referringLink = (dict["link"] as? String) ?? (dict["deep_link_value"] as? String) ?? (dict["af_dp"] as? String)
+        
+        guard let link = referringLink else { return }
+        
+        InsertAffiliateSwift.setInsertAffiliateIdentifier(referringLink: link) { _ in
+            // Affiliate identifier is stored automatically for App Store Direct integration
+        }
+    }
+}
+```
+
 ### Deep Linking with Other Platforms
 Insert Affiliate supports all other deep linking providers. The general steps remain the same:
 
@@ -840,6 +1051,10 @@ class InAppPurchaseViewModel: ObservableObject {
 
         do {
             let userAccountToken = await InsertAffiliateSwift.returnUserAccountTokenAndStoreExpectedTransaction()
+            // Optional override: Use your own UUID for the purchase token
+            // let token = await InsertAffiliateSwift.returnUserAccountTokenAndStoreExpectedTransaction(
+            //     overrideUUIDString: "{{your_own_uuid}}"
+            // )
             let result = try await product.purchase(options: userAccountToken.map { [.appAccountToken($0)] } ?? [])
             
             switch result {
