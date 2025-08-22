@@ -767,16 +767,20 @@ public struct InsertAffiliateSwift {
     
     /// Retrieves and validates clipboard content for UUID format
     private static func getClipboardUUID() -> String? {
+        print("[Insert Affiliate] Getting clipboard UUID")
         guard let clipboardString = UIPasteboard.general.string else {
+            print("[Insert Affiliate] No clipboard string found")
             return nil
         }
         
         let trimmedString = clipboardString.trimmingCharacters(in: .whitespacesAndNewlines)
         
         if isValidUUID(trimmedString) {
+            print("[Insert Affiliate] Valid clipboard UUID found: \(trimmedString)")
             return trimmedString
         }
         
+        print("[Insert Affiliate] Invalid clipboard UUID found: \(trimmedString)")
         return nil
     }
     
