@@ -198,7 +198,11 @@ To proceed, visit [our docs](https://docs.insertaffiliate.com/direct-store-purch
 func purchase(productIdentifier: String) async {
     do {
       // Step 3: Replace your product.purchase() with the lines below
-      let token = await InsertAffiliateSwift.returnUserAccountTokenAndStoreExpectedTransaction()
+      let token = await InsertAffiliateSwift.returnUserAccountTokenAndStoreExpectedTransaction() 
+      // Optional override: Use your own UUID for the purchase token
+      // let token = await InsertAffiliateSwift.returnUserAccountTokenAndStoreExpectedTransaction(
+      //     overrideUUIDString: "{{your_own_uuid}}"
+      // )
       let result = try await product.purchase(options: token.map { [.appAccountToken($0)] } ?? [])
     }
 }
@@ -777,6 +781,10 @@ class InAppPurchaseViewModel: ObservableObject {
         
         do {
             let userAccountToken = await InsertAffiliateSwift.returnUserAccountTokenAndStoreExpectedTransaction()
+            // Optional override: Use your own UUID for the purchase token
+            // let token = await InsertAffiliateSwift.returnUserAccountTokenAndStoreExpectedTransaction(
+            //     overrideUUIDString: "{{your_own_uuid}}"
+            // )
             let result = try await product.purchase(options: userAccountToken.map { [.appAccountToken($0)] } ?? [])
             
             switch result {
