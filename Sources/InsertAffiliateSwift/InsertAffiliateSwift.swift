@@ -66,17 +66,23 @@ public struct InsertAffiliateSwift {
     }
 
     // Function to return the stored UUID for users using App Store Receipts directly without a Receipt Validator
-    public static func returnUserAccountTokenAndStoreExpectedTransaction(overrideUUID: UUID? = nil) async -> UUID? {
+    public static func returnUserAccountTokenAndStoreExpectedTransaction(overrideUUID: String? = nil) async -> UUID? {
         // 1: Check if they have an affiliate assigned before storing the transaction
         guard let insertAffiliateIdentifier = returnInsertAffiliateIdentifier() else {
             print("[Insert Affiliate] No affiliate stored - not saving expected transaction")
             return nil
         }
 
-        if let overrideUUID = overrideUUID {
-            await storeExpectedAppStoreTransaction(userAccountToken: overrideUUID)
-            UserDefaults.standard.set(overrideUUID.uuidString, forKey: "appAccountToken")
-            return overrideUUID;
+        if let overrideUUIDString = overrideUUID {
+            if let overrideUUID = UUID(uuidString: overrideUUIDString) {
+                print("[Insert Affiliate] Overriding user account token with: \(overrideUUIDString)")
+                await storeExpectedAppStoreTransaction(userAccountToken: overrideUUID)
+                UserDefaults.standard.set(overrideUUIDString, forKey: "appAccountToken")
+                return overrideUUID;
+            } else {
+                print("[Insert Affiliate] Invalid UUID string passed to overrideUUID: \(overrideUUIDString)")
+                return nil
+            }
         }
             
         if let storedUUIDString = UserDefaults.standard.string(forKey: "appAccountToken"),
