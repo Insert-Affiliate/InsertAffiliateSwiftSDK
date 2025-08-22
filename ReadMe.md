@@ -262,6 +262,7 @@ func purchase(productIdentifier: String) async {
     do {
         
         // Step 3: Replace your product.purchase() with the lines below
+        // await InsertAffiliateSwift.overrideUserAccountToken(uuid: {{your_UUID}}) // Optional, if you wish to pass your companies own UUID instead of using ours
         let token = await InsertAffiliateSwift.returnUserAccountTokenAndStoreExpectedTransaction()
         let result = try await product.purchase(options: token.map { [.appAccountToken($0)] } ?? [])
     }
@@ -836,7 +837,7 @@ class InAppPurchaseViewModel: ObservableObject {
     
     func purchase(productIdentifier: String) async {
         guard let product = products[productIdentifier] else { return }
-        
+
         do {
             let userAccountToken = await InsertAffiliateSwift.returnUserAccountTokenAndStoreExpectedTransaction()
             let result = try await product.purchase(options: userAccountToken.map { [.appAccountToken($0)] } ?? [])

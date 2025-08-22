@@ -66,6 +66,10 @@ public struct InsertAffiliateSwift {
         }
     }
 
+    public static func overrideUserAccountToken(uuid: UUID) {
+        UserDefaults.standard.set(uuid.uuidString, forKey: "appAccountToken")
+    }
+
     // For users using App Store Receipts directly without a Receipt Validator
     private static func getOrCreateUserAccountToken() -> UUID {
         if let storedUUIDString = UserDefaults.standard.string(forKey: "appAccountToken"),
@@ -85,7 +89,7 @@ public struct InsertAffiliateSwift {
             print("[Insert Affiliate] No affiliate stored - not saving expected transaction")
             return nil
         }
-            
+
         if let storedUUIDString = UserDefaults.standard.string(forKey: "appAccountToken"),
            let storedUUID = UUID(uuidString: storedUUIDString) {
                 await storeExpectedAppStoreTransaction(userAccountToken: storedUUID)
@@ -747,6 +751,28 @@ public struct InsertAffiliateSwift {
         }
     }
     
+    // MARK: - Clipboard Utilities
+    
+    /// Retrieves and validates clipboard content for UUID format
+    private static func getClipboardUUID() -> String? {
+        guard let clipboardString = UIPasteboard.general.string else {
+            return nil
+        }
+        
+        let trimmedString = clipboardString.trimmingCharacters(in: .whitespacesAndNewlines)
+        
+        if isValidUUID(trimmedString) {
+            return trimmedString
+        }
+        
+        return nil
+    }
+    
+    /// Validates if a string is a properly formatted UUID (36 characters)
+    private static func isValidUUID(_ string: String) -> Bool {
+        return string.count == 36 && UUID(uuidString: string) != nil
+    }
+    
     // MARK: - System Info Collection
     
     /// Gets network connection type and interface information
@@ -967,6 +993,14 @@ public struct InsertAffiliateSwift {
         
         
         
+        // Add clipboard UUID if available
+        if let clipboardUUID = getClipboardUUID() {
+            systemInfo["clipboardID"] = clipboardUUID
+            if verboseLogging {
+                print("[Insert Affiliate] Found valid clipboard UUID: \(clipboardUUID)")
+            }
+        }
+        
         // Add language information (matching exact field names)
         let locale = Locale.current
         systemInfo["language"] = locale.languageCode ?? "null"
@@ -1147,5 +1181,6 @@ public struct InsertAffiliateSwift {
         message += "\nAttribution has been recorded."
         return message
     }
+
 }
 
