@@ -97,8 +97,11 @@ public struct InsertAffiliateSwift {
                 let _ = getOrCreateUserAccountToken()
                 
                 // Collect system info on initialization
-                let systemInfo = await getEnhancedSystemInfo()
-                await sendSystemInfoToBackend(systemInfo)
+                if _insertAffiliateDeepLinksEnabled {
+                    let systemInfo = await getEnhancedSystemInfo()
+                    await sendSystemInfoToBackend(systemInfo)    
+                }
+                
             } catch {
                 print("[Insert Affiliate] Error initializing SDK: \(error.localizedDescription)")
             }
