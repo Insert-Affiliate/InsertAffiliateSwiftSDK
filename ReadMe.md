@@ -138,6 +138,67 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
 
 **Recommendation**: Enable verbose logging only for development and TestFlight builds, and disable it for production App Store releases.
 
+### Deep Link and Clipboard Control (BETA)
+
+We are currently beta testing our in-house deep linking provider, which generates links for use with your affiliates.
+
+For larger projects where accuracy is critical, we recommend using established third-party deep linking platforms to generate the links you use within Insert Affiliate - such as Appsflyer or Branch.io, as described in the rest of this README.
+
+If you encounter any issues while using our in-house deep linking, please raise an issue on this GitHub repository or contact us directly at michael@insertaffiliate.com
+
+#### Deep Link Control
+
+```swift
+import InsertAffiliateSwift
+
+@UIApplicationMain
+class AppDelegate: UIResponder, UIApplicationDelegate {
+    func application(
+        _ application: UIApplication,
+        didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]?
+    ) -> Bool {
+        // Enable Insert Affiliate deep link handling
+        InsertAffiliateSwift.initialize(
+          companyCode: "{{ your_company_code }}", 
+          insertAffiliateDeepLinksEnabled: true,
+          insertAffiliateDeepLinksClipboardEnabled: true,
+        )
+        return true
+    }
+}
+```
+
+**When to use `insertAffiliateDeepLinksEnabled`:**
+- Set to `true` (default: `false`) if you are using Insert Affiliate's built-in deep link and universal link handling
+- Set to `false` if you are using an external provider for deep links
+
+**When to use `insertAffiliateDeepLinksClipboardEnabled`:**
+- Set to `true` (default: `false`) if you are using Insert Affiliate's built-in deep links **and** would like to improve the effectiveness of our deep links through the clipboard
+- **Important caveat**: This will trigger a system prompt asking the user for permission to access the clipboard when the SDK initializes
+
+
+#### Combined Configuration
+
+```swift
+import InsertAffiliateSwift
+
+@UIApplicationMain
+class AppDelegate: UIResponder, UIApplicationDelegate {
+    func application(
+        _ application: UIApplication,
+        didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]?
+    ) -> Bool {
+        InsertAffiliateSwift.initialize(
+            companyCode: "{{ your_company_code }}",
+            verboseLogging: true, // Enable for debugging
+            insertAffiliateDeepLinksEnabled: true, // Enable Insert Affiliate deep link handling
+            insertAffiliateDeepLinksClipboardEnabled: false // Disable clipboard access to avoid permission prompt
+        )
+        return true
+    }
+}
+```
+
 ## In-App Purchase Setup [Required]
 Insert Affiliate requires a Receipt Verification platform to validate in-app purchases. You must choose **one** of our supported partners:
 - [RevenueCat](https://www.revenuecat.com/)

@@ -7,8 +7,15 @@ actor InsertAffiliateState {
     private var companyCode: String?
     private var isInitialized = false
     private var verboseLogging = false
+    private var insertAffiliateDeepLinksEnabled = false
+    private var insertAffiliateDeepLinksClipboardEnabled = false
 
-    func initialize(companyCode: String?, verboseLogging: Bool = false) throws {
+    func initialize(
+        companyCode: String,
+        verboseLogging: Bool = false, // When set to true, the SDK will print verbose logs to the console to help with debugging. This should be set to false in production.
+        insertAffiliateDeepLinksEnabled: Bool = false, // When set to true, the SDK will activate deep links and universal links. If you are using an external provider for deep links, set this to false.
+        insertAffiliateDeepLinksClipboardEnabled: Bool = false // When set to true, the SDK use the clipboard to improve the effectiveness of deep links. This will trigger a prompt for the user to allow the app to paste from the clipboard upon init of our SDK.
+    ) throws {
         guard !isInitialized else {
             throw NSError(domain: "InsertAffiliateSwift", code: 1, userInfo: [NSLocalizedDescriptionKey: "SDK is already initialized."])
         }
@@ -16,13 +23,17 @@ actor InsertAffiliateState {
         if let code = companyCode, !code.isEmpty {
             self.companyCode = code
             self.verboseLogging = verboseLogging
+            self.insertAffiliateDeepLinksEnabled = insertAffiliateDeepLinksEnabled
+            self.insertAffiliateDeepLinksClipboardEnabled = insertAffiliateDeepLinksClipboardEnabled
             isInitialized = true
-            print("[Insert Affiliate] SDK initialized with company code: \(code), verbose logging: \(verboseLogging)")
+            print("[Insert Affiliate] SDK initialized with company code: \(code), verbose logging: \(verboseLogging), deep links enabled: \(insertAffiliateDeepLinksEnabled), clipboard enabled: \(insertAffiliateDeepLinksClipboardEnabled)")
         } else {
             self.companyCode = nil
             self.verboseLogging = verboseLogging
+            self.insertAffiliateDeepLinksEnabled = insertAffiliateDeepLinksEnabled
+            self.insertAffiliateDeepLinksClipboardEnabled = insertAffiliateDeepLinksClipboardEnabled
             isInitialized = true
-            print("[Insert Affiliate] SDK initialized without a company code, verbose logging: \(verboseLogging)")
+            print("[Insert Affiliate] SDK initialized without a company code, verbose logging: \(verboseLogging), deep links enabled: \(insertAffiliateDeepLinksEnabled), clipboard enabled: \(insertAffiliateDeepLinksClipboardEnabled)")
         }
     }
 
@@ -33,11 +44,21 @@ actor InsertAffiliateState {
     func getVerboseLogging() -> Bool {
         return verboseLogging
     }
+    
+    func getInsertAffiliateDeepLinksEnabled() -> Bool {
+        return insertAffiliateDeepLinksEnabled
+    }
+    
+    func getInsertAffiliateDeepLinksClipboardEnabled() -> Bool {
+        return insertAffiliateDeepLinksClipboardEnabled
+    }
 
     func reset() {
         companyCode = nil
         isInitialized = false
         verboseLogging = false
+        insertAffiliateDeepLinksEnabled = false
+        insertAffiliateDeepLinksClipboardEnabled = false
         print("[Insert Affiliate] SDK has been reset.")
     }
 }
@@ -45,16 +66,34 @@ actor InsertAffiliateState {
 public struct InsertAffiliateSwift {
     @available(iOS 13.0.0, *)
     private static let state = InsertAffiliateState()
+    
+    // Store settings synchronously for immediate access
+    private static var _insertAffiliateDeepLinksEnabled = false
+    private static var _insertAffiliateDeepLinksClipboardEnabled = false
 
-    public static func initialize(companyCode: String?, verboseLogging: Bool = false) {
+    public static func initialize(
+        companyCode: String?, 
+        verboseLogging: Bool = false,
+        insertAffiliateDeepLinksEnabled: Bool = false,
+        insertAffiliateDeepLinksClipboardEnabled: Bool = false
+    ) {
         guard #available(iOS 13.0, *) else {
             print("[Insert Affiliate] This SDK requires iOS 13.0 or newer.")
             return
         }
 
+        // Store settings for immediate synchronous access
+        _insertAffiliateDeepLinksEnabled = insertAffiliateDeepLinksEnabled
+        _insertAffiliateDeepLinksClipboardEnabled = insertAffiliateDeepLinksClipboardEnabled
+        
         Task {
             do {
-                try await state.initialize(companyCode: companyCode, verboseLogging: verboseLogging)
+                try await state.initialize(
+                    companyCode: companyCode, 
+                    verboseLogging: verboseLogging,
+                    insertAffiliateDeepLinksEnabled: insertAffiliateDeepLinksEnabled,
+                    insertAffiliateDeepLinksClipboardEnabled: insertAffiliateDeepLinksClipboardEnabled
+                )
                 let _ = getOrCreateUserAccountToken()
                 
                 // Collect system info on initialization
@@ -480,6 +519,12 @@ public struct InsertAffiliateSwift {
     public static func handleURL(_ url: URL) -> Bool {
         print("[Insert Affiliate] Attempting to handle URL: \(url.absoluteString)")
         
+        // Check if deep links are enabled synchronously
+        guard _insertAffiliateDeepLinksEnabled else {
+            print("[Insert Affiliate] Deep links are disabled, not handling URL")
+            return false
+        }
+        
         // Handle custom URL schemes (ia-companycode://shortcode)
         if let scheme = url.scheme, scheme.starts(with: "ia-") {
             return handleCustomURLScheme(url)
@@ -562,17 +607,9 @@ public struct InsertAffiliateSwift {
         // Ensure the short code is uppercase
         let uppercasedShortCode = shortCode.uppercased()
         print("[Insert Affiliate] Ensuring uppercase short code: '\(uppercasedShortCode)'")
-        
-        // Store the affiliate identifier
-        // storeInsertAffiliateIdentifier(referringLink: uppercasedShortCode)
-        
+
         // Fetch additional affiliate data
         fetchDeepLinkData(shortCode: uppercasedShortCode, companyCode: companyCode)
-        
-        // Log the attribution event
-        // Task {
-        //     await trackEvent(eventName: "affiliate_attribution_processed")
-        // }
     }
     
     /// Handle deep links with the format `ia-companycode://shortcode`
@@ -767,6 +804,11 @@ public struct InsertAffiliateSwift {
     
     /// Retrieves and validates clipboard content for UUID format
     private static func getClipboardUUID() -> String? {
+        // Check if clipboard access is enabled
+        guard _insertAffiliateDeepLinksClipboardEnabled else {
+            return nil
+        }
+        
         print("[Insert Affiliate] Getting clipboard UUID")
         
         // Check if pasteboard access is available first
@@ -1023,7 +1065,11 @@ public struct InsertAffiliateSwift {
                 print("[Insert Affiliate] Found valid clipboard UUID: \(clipboardUUID)")
             }
         } else if verboseLogging {
-            print("[Insert Affiliate] Clipboard UUID not available - may require NSPasteboardGeneralUseDescription in host app's Info.plist")
+            if _insertAffiliateDeepLinksClipboardEnabled {
+                print("[Insert Affiliate] Clipboard UUID not available - may require NSPasteboardGeneralUseDescription in host app's Info.plist")
+            } else {
+                print("[Insert Affiliate] Clipboard access is disabled")
+            }
         }
         
         // Add language information (matching exact field names)
