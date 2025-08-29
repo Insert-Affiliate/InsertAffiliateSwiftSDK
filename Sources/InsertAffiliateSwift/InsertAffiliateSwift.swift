@@ -82,7 +82,7 @@ public struct InsertAffiliateSwift {
     }
 
     public static func initialize(
-        companyCode: String?, 
+        companyCode: String, 
         verboseLogging: Bool = false,
         insertAffiliateDeepLinksEnabled: Bool = false,
         insertAffiliateDeepLinksClipboardEnabled: Bool = false
