@@ -20,13 +20,13 @@ actor InsertAffiliateState {
             throw NSError(domain: "InsertAffiliateSwift", code: 1, userInfo: [NSLocalizedDescriptionKey: "SDK is already initialized."])
         }
 
-        if let code = companyCode, !code.isEmpty {
-            self.companyCode = code
+        if !companyCode.isEmpty {
+            self.companyCode = companyCode
             self.verboseLogging = verboseLogging
             self.insertAffiliateDeepLinksEnabled = insertAffiliateDeepLinksEnabled
             self.insertAffiliateDeepLinksClipboardEnabled = insertAffiliateDeepLinksClipboardEnabled
             isInitialized = true
-            print("[Insert Affiliate] SDK initialized with company code: \(code), verbose logging: \(verboseLogging), deep links enabled: \(insertAffiliateDeepLinksEnabled), clipboard enabled: \(insertAffiliateDeepLinksClipboardEnabled)")
+            print("[Insert Affiliate] SDK initialized with company code: \(companyCode), verbose logging: \(verboseLogging), deep links enabled: \(insertAffiliateDeepLinksEnabled), clipboard enabled: \(insertAffiliateDeepLinksClipboardEnabled)")
         } else {
             self.companyCode = nil
             self.verboseLogging = verboseLogging
