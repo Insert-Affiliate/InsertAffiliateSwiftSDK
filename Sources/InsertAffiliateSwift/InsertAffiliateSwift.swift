@@ -768,8 +768,15 @@ public struct InsertAffiliateSwift {
     /// Retrieves and validates clipboard content for UUID format
     private static func getClipboardUUID() -> String? {
         print("[Insert Affiliate] Getting clipboard UUID")
+        
+        // Check if pasteboard access is available first
+        guard UIPasteboard.general.hasStrings else {
+            print("[Insert Affiliate] Pasteboard has no strings or access denied")
+            return nil
+        }
+        
         guard let clipboardString = UIPasteboard.general.string else {
-            print("[Insert Affiliate] No clipboard string found")
+            print("[Insert Affiliate] No clipboard string found or access denied")
             return nil
         }
         
@@ -1015,6 +1022,8 @@ public struct InsertAffiliateSwift {
             if verboseLogging {
                 print("[Insert Affiliate] Found valid clipboard UUID: \(clipboardUUID)")
             }
+        } else if verboseLogging {
+            print("[Insert Affiliate] Clipboard UUID not available - may require NSPasteboardGeneralUseDescription in host app's Info.plist")
         }
         
         // Add language information (matching exact field names)
