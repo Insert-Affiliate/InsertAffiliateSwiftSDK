@@ -67,9 +67,19 @@ public struct InsertAffiliateSwift {
     @available(iOS 13.0.0, *)
     private static let state = InsertAffiliateState()
     
-    // Store settings synchronously for immediate access
-    private static var _insertAffiliateDeepLinksEnabled = false
-    private static var _insertAffiliateDeepLinksClipboardEnabled = false
+    // Thread-safe storage for settings using UserDefaults
+    private static let deepLinksEnabledKey = "InsertAffiliate_DeepLinksEnabled"
+    private static let clipboardEnabledKey = "InsertAffiliate_ClipboardEnabled"
+    
+    private static var insertAffiliateDeepLinksEnabled: Bool {
+        get { UserDefaults.standard.bool(forKey: deepLinksEnabledKey) }
+        set { UserDefaults.standard.set(newValue, forKey: deepLinksEnabledKey) }
+    }
+    
+    private static var insertAffiliateDeepLinksClipboardEnabled: Bool {
+        get { UserDefaults.standard.bool(forKey: clipboardEnabledKey) }
+        set { UserDefaults.standard.set(newValue, forKey: clipboardEnabledKey) }
+    }
 
     public static func initialize(
         companyCode: String?, 
@@ -83,8 +93,8 @@ public struct InsertAffiliateSwift {
         }
 
         // Store settings for immediate synchronous access
-        _insertAffiliateDeepLinksEnabled = insertAffiliateDeepLinksEnabled
-        _insertAffiliateDeepLinksClipboardEnabled = insertAffiliateDeepLinksClipboardEnabled
+        self.insertAffiliateDeepLinksEnabled = insertAffiliateDeepLinksEnabled
+        self.insertAffiliateDeepLinksClipboardEnabled = insertAffiliateDeepLinksClipboardEnabled
         
         Task {
             do {
@@ -97,7 +107,7 @@ public struct InsertAffiliateSwift {
                 let _ = getOrCreateUserAccountToken()
                 
                 // Collect system info on initialization
-                if _insertAffiliateDeepLinksEnabled {
+                if insertAffiliateDeepLinksEnabled {
                     let systemInfo = await getEnhancedSystemInfo()
                     await sendSystemInfoToBackend(systemInfo)    
                 }
@@ -523,7 +533,7 @@ public struct InsertAffiliateSwift {
         print("[Insert Affiliate] Attempting to handle URL: \(url.absoluteString)")
         
         // Check if deep links are enabled synchronously
-        guard _insertAffiliateDeepLinksEnabled else {
+        guard insertAffiliateDeepLinksEnabled else {
             print("[Insert Affiliate] Deep links are disabled, not handling URL")
             return false
         }
@@ -808,7 +818,7 @@ public struct InsertAffiliateSwift {
     /// Retrieves and validates clipboard content for UUID format
     private static func getClipboardUUID() -> String? {
         // Check if clipboard access is enabled
-        guard _insertAffiliateDeepLinksClipboardEnabled else {
+        guard insertAffiliateDeepLinksClipboardEnabled else {
             return nil
         }
         
@@ -1068,7 +1078,7 @@ public struct InsertAffiliateSwift {
                 print("[Insert Affiliate] Found valid clipboard UUID: \(clipboardUUID)")
             }
         } else if verboseLogging {
-            if _insertAffiliateDeepLinksClipboardEnabled {
+            if insertAffiliateDeepLinksClipboardEnabled {
                 print("[Insert Affiliate] Clipboard UUID not available - may require NSPasteboardGeneralUseDescription in host app's Info.plist")
             } else {
                 print("[Insert Affiliate] Clipboard access is disabled")
