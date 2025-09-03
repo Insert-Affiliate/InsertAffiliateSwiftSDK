@@ -547,7 +547,7 @@ public struct InsertAffiliateSwift {
         guard let scheme = url.scheme, scheme.starts(with: "ia-") else {
             return false
         }
-        
+        let retrievedCompanyCode =  await state.getCompanyCode()
         // Extract company code from scheme (remove "ia-" prefix)
         let companyCode = String(scheme.dropFirst(3))
         
@@ -560,7 +560,7 @@ public struct InsertAffiliateSwift {
         
         // Validate company code matches initialized one
         Task {
-            if let initializedCompanyCode = await state.getCompanyCode() {
+            if let initializedCompanyCode = retrievedCompanyCode {
                 if companyCode.lowercased() != initializedCompanyCode.lowercased() {
                     print("[Insert Affiliate] Warning: URL company code (\(companyCode)) doesn't match initialized company code (\(initializedCompanyCode))")
                 }
@@ -568,7 +568,7 @@ public struct InsertAffiliateSwift {
         }
         
         // Process the affiliate attribution
-        processAffiliateAttribution(shortCode: shortCode, companyCode: companyCode)
+        processAffiliateAttribution(shortCode: shortCode, companyCode: retrievedCompanyCode)
         
         return true
     }
@@ -643,7 +643,7 @@ public struct InsertAffiliateSwift {
     /// Fetch deep link data from the API to get affiliate information
     private static func fetchDeepLinkData(shortCode: String, companyCode: String) {
         Task {
-            let urlString = "https://api.insertaffiliate.com/V1/getDeepLinkData/\(companyCode)/\(shortCode)"
+            let urlString = "https://insertaffiliate.link/V1/getDeepLinkData/\(companyCode)/\(shortCode)"
             print("[Insert Affiliate] Fetching deep link data from: \(urlString)")
             
             guard let url = URL(string: urlString) else {

@@ -385,7 +385,7 @@ Insert Affiliate supports direct deep linking into your app using custom URL sch
 
 #### Initial Setup
 
-Before you can use Insert Links, you must complete the setup steps in [our docs](https://docs.insertaffiliate.cominsert-links)
+Before you can use Insert Links, you must complete the setup steps in [our docs](https://docs.insertaffiliate.com/insert-links)
 
 2. **Handle Insert Links** in your AppDelegate
 
@@ -442,7 +442,48 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
 }
 ```
 
-> **Note**: The SwiftUI `.onOpenURL` approach is recommended for modern SwiftUI apps as it's cleaner and more declarative. The AppDelegate approach is still needed for handling universal links and launch-time deep links.
+### 3. SwiftUI - On Open URL
+For SwiftUI apps, you can handle Insert Links directly using the .onOpenURL modifier. This allows you to capture and process deep links while the app is already running.
+
+#### SwiftUI App example
+
+```swift
+import InsertAffiliateSwift
+import RevenueCat
+import SwiftUI
+
+@main
+struct InsertAffiliateAppApp: App {
+    @StateObject private var viewModel = InAppPurchaseViewModel()
+
+    @Environment(\.scenePhase) private var scenePhase
+    @UIApplicationDelegateAdaptor(AppDelegate.self) var appDelegate
+
+    var body: some Scene {
+        WindowGroup {
+           ContentView()
+                .environmentObject(viewModel)
+                .onAppear {
+                  //...
+                }
+               .onOpenURL(perform: { url in
+
+                    // Handle InsertAffiliate deep links
+                    if InsertAffiliateSwift.handleInsertLinks(url) {
+                        
+                        // Update RevenueCat attribution with the new affiliate info
+                        if let affiliateIdentifier = InsertAffiliateSwift.returnInsertAffiliateIdentifier() {
+                            Purchases.shared.attribution.setAttributes(["insert_affiliate": affiliateIdentifier])
+                        }
+                    }
+               })
+        }
+    }
+}
+```
+
+> **Note**: The SwiftUI `.onOpenURL` approach is recommended for modern SwiftUI apps as it's cleaner and more declarative. The AppDelegate approach is still needed for handling universal links and launch-time deep linksz
+
 
 #### Integration Examples
 
