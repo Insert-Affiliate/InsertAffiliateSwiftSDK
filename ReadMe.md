@@ -138,15 +138,15 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
 
 **Recommendation**: Enable verbose logging only for development and TestFlight builds, and disable it for production App Store releases.
 
-### Deep Link and Clipboard Control (BETA)
+### Insert Link and Clipboard Control (BETA)
 
-We are currently beta testing our in-house deep linking provider, which generates links for use with your affiliates.
+We are currently beta testing our in-house deep linking provider, Insert Links, which generates links for use with your affiliates.
 
 For larger projects where accuracy is critical, we recommend using established third-party deep linking platforms to generate the links you use within Insert Affiliate - such as Appsflyer or Branch.io, as described in the rest of this README.
 
-If you encounter any issues while using our in-house deep linking, please raise an issue on this GitHub repository or contact us directly at michael@insertaffiliate.com
+If you encounter any issues while using Insert Links, please raise an issue on this GitHub repository or contact us directly at michael@insertaffiliate.com
 
-#### Deep Link Control
+#### Insert Link Initialization
 
 ```swift
 import InsertAffiliateSwift
@@ -160,20 +160,20 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
         // Enable Insert Affiliate deep link handling
         InsertAffiliateSwift.initialize(
           companyCode: "{{ your_company_code }}", 
-          insertAffiliateDeepLinksEnabled: true,
-          insertAffiliateDeepLinksClipboardEnabled: true,
+          insertLinksEnabled: true,
+          insertLinksClipboardEnabled: true,
         )
         return true
     }
 }
 ```
 
-**When to use `insertAffiliateDeepLinksEnabled`:**
-- Set to `true` (default: `false`) if you are using Insert Affiliate's built-in deep link and universal link handling
+**When to use `insertLinksEnabled`:**
+- Set to `true` (default: `false`) if you are using Insert Affiliate's built-in deep link and universal link handling (Insert Links)
 - Set to `false` if you are using an external provider for deep links
 
-**When to use `insertAffiliateDeepLinksClipboardEnabled`:**
-- Set to `true` (default: `false`) if you are using Insert Affiliate's built-in deep links **and** would like to improve the effectiveness of our deep links through the clipboard
+**When to use `insertLinksClipboardEnabled`:**
+- Set to `true` (default: `false`) if you are using Insert Affiliate's built-in deep links (Insert Links) **and** would like to improve the effectiveness of our deep links through the clipboard
 - **Important caveat**: This will trigger a system prompt asking the user for permission to access the clipboard when the SDK initializes
 
 
@@ -191,13 +191,16 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
         InsertAffiliateSwift.initialize(
             companyCode: "{{ your_company_code }}",
             verboseLogging: true, // Enable for debugging
-            insertAffiliateDeepLinksEnabled: true, // Enable Insert Affiliate deep link handling
-            insertAffiliateDeepLinksClipboardEnabled: false // Disable clipboard access to avoid permission prompt
+            insertLinksEnabled: true, // Enable Insert Links
+            insertLinksClipboardEnabled: false // Disable clipboard access to avoid permission prompt
         )
         return true
     }
 }
 ```
+
+
+
 
 ## In-App Purchase Setup [Required]
 Insert Affiliate requires a Receipt Verification platform to validate in-app purchases. You must choose **one** of our supported partners:
@@ -400,82 +403,39 @@ Add your iOS URL scheme to your app's `Info.plist` file which you can get from [
 </array>
 ```
 
-2. **Handle Deep Links**
+2. **Handle Insert Links** in your AppDelegate
 
-The SDK provides a single `handleURL` method that automatically detects and handles different URL types. You must implement this in two places:
-
-### Step A: SwiftUI App with .onOpenURL**
-
-```swift
-import SwiftUI
-import InsertAffiliateSwift
-import RevenueCat
-
-@main
-struct YourApp: App {
-    @StateObject private var viewModel = InAppPurchaseViewModelRevenueCat()
-    @UIApplicationDelegateAdaptor(AppDelegate.self) var appDelegate
-
-    var body: some Scene {
-        WindowGroup {
-            ContentView()
-                .environmentObject(viewModel)
-                .onOpenURL { url in
-                    // Handle Insert Affiliate deep links
-                    if InsertAffiliateSwift.handleURL(url) {
-                        print("[Deep Link] InsertAffiliate handled URL: \(url.absoluteString)")
-                        
-                        // Update attribution with the affiliate info
-                        if let affiliateIdentifier = InsertAffiliateSwift.returnInsertAffiliateIdentifier() {
-                            Purchases.shared.attribution.setAttributes(["insert_affiliate": affiliateIdentifier])
-                        }
-                    }
-                }
-        }
-    }
-}
-```
-
-### Step B: Handle Deep Links in AppDelegate
-
-The SDK provides a single `handleURL` method that automatically detects and handles different URL types:
+The SDK provides a single `handleInsertLinks` method that automatically detects and handles different URL types. 
 
 ```swift
 import UIKit
-import BranchSDK
 import RevenueCat
 import InsertAffiliateSwift
 
 class AppDelegate: UIResponder, UIApplicationDelegate {
-  func application(_ application: UIApplication, didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]? = nil) -> Bool {  
-    // Handle deep links from launch options
+  func application(_ application: UIApplication, didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]? = nil) -> Bool { 
+
     if let url = launchOptions?[.url] as? URL {
-      if InsertAffiliateSwift.handleURL(url) {
-        // Update attribution with the affiliate info
+      if InsertAffiliateSwift.handleInsertLinks(url) {
+
+        // If the link used was an Insert Link, returnInsertAffiliateIdentifier will now return the correct value
         if let affiliateIdentifier = InsertAffiliateSwift.returnInsertAffiliateIdentifier() {
+
+          // Required if you're using RevenueCat
           Purchases.shared.attribution.setAttributes(["insert_affiliate": affiliateIdentifier])
         }
       }
     }
-
-    // Initialize Branch (if using Branch)
-    Branch.getInstance().initSession(launchOptions: launchOptions) { (params, error) in
-      if let referringLink = params?["~referring_link"] as? String {
-        InsertAffiliateSwift.setInsertAffiliateIdentifier(referringLink: referringLink) { result in
-          guard let shortCode = result else { return }
-          Purchases.shared.attribution.setAttributes(["insert_affiliate": shortCode])
-        }
-      }
-    }
-
     return true
   }
 
   func application(_ app: UIApplication, open url: URL, options: [UIApplication.OpenURLOptionsKey : Any] = [:]) -> Bool {
-    // Handle Insert Affiliate deep links first
-    if InsertAffiliateSwift.handleURL(url) {        
-      // Update attribution with the affiliate info
+    if InsertAffiliateSwift.handleInsertLinks(url) {
+
+      // If the link used was an Insert Link, returnInsertAffiliateIdentifier will now return the correct value
       if let affiliateIdentifier = InsertAffiliateSwift.returnInsertAffiliateIdentifier() {
+
+        // Required if you're using RevenueCat
         Purchases.shared.attribution.setAttributes(["insert_affiliate": affiliateIdentifier])
       }
     }
@@ -484,10 +444,12 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
   }
   
   func application(_ application: UIApplication, continue userActivity: NSUserActivity, restorationHandler: @escaping ([UIUserActivityRestoring]?) -> Void) -> Bool {    
-    // Handle Insert Affiliate universal links
-    if let url = userActivity.webpageURL, InsertAffiliateSwift.handleURL(url) {        
-      // Update attribution with the affiliate info
+   
+    if let url = userActivity.webpageURL, InsertAffiliateSwift.handleInsertLinks(url) {        
+      // If the link used was an Insert Link, returnInsertAffiliateIdentifier will now return the correct value
       if let affiliateIdentifier = InsertAffiliateSwift.returnInsertAffiliateIdentifier() {
+
+        // Required if you're using RevenueCat
         Purchases.shared.attribution.setAttributes(["insert_affiliate": affiliateIdentifier])
       }
     }
