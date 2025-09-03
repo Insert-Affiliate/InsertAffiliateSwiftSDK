@@ -383,25 +383,9 @@ Insert Affiliate requires a Deep Linking platform to create links for your affil
 
 Insert Affiliate supports direct deep linking into your app using custom URL schemes and universal links. This allows you to track affiliate attribution when users click affiliate links and your app is already installed on their device.
 
-#### URL Scheme Setup
+#### Initial Setup
 
-1. **Configure URL Schemes in Info.plist**
-Add your iOS URL scheme to your app's `Info.plist` file which you can get from [Our Settings](https://app.insertaffiliate.com/settings):
-
-```xml
-<key>CFBundleURLTypes</key>
-<array>
-  <dict>
-    <key>CFBundleURLName</key>
-    <string>InsertAffiliate</string>
-    <key>CFBundleURLSchemes</key>
-    <array>
-      <string>{{ your_iOS_URL_Scheme }}</string>
-    </array>
-  </dict>
-  <!-- Your other URL schemes (like Branch) should also be here -->
-</array>
-```
+Before you can use Insert Links, you must complete the setup steps in [our docs](https://docs.insertaffiliate.cominsert-links)
 
 2. **Handle Insert Links** in your AppDelegate
 
@@ -470,7 +454,7 @@ import InsertAffiliateSwift
 
 // In your AppDelegate
 func application(_ app: UIApplication, open url: URL, options: [UIApplication.OpenURLOptionsKey : Any] = [:]) -> Bool {
-  if InsertAffiliateSwift.handleURL(url) {
+  if InsertAffiliateSwift.handleInsertLinks(url) {
     // Update RevenueCat attribution
     if let affiliateIdentifier = InsertAffiliateSwift.returnInsertAffiliateIdentifier() {
       Purchases.shared.attribution.setAttributes(["insert_affiliate": affiliateIdentifier])
@@ -489,7 +473,7 @@ import InsertAffiliateSwift
 
 // In your AppDelegate
 func application(_ app: UIApplication, open url: URL, options: [UIApplication.OpenURLOptionsKey : Any] = [:]) -> Bool {
-  if InsertAffiliateSwift.handleURL(url) {
+  if InsertAffiliateSwift.handleInsertLinks(url) {
     // Reinitialize Iaptic with affiliate identifier
     if let affiliateIdentifier = InsertAffiliateSwift.returnInsertAffiliateIdentifier() {
       let iapProductsArray = [

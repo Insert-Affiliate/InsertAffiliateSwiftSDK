@@ -616,14 +616,6 @@ public struct InsertAffiliateSwift {
         fetchDeepLinkData(shortCode: uppercasedShortCode, companyCode: companyCode)
     }
     
-    /// Handle deep links with the format `ia-companycode://shortcode`
-    /// Call this method from your AppDelegate's URL handling methods
-    /// @deprecated Use handleURL(_:) instead
-    public static func handleDeepLink(_ url: URL) -> Bool {
-        print("[Insert Affiliate] handleDeepLink is deprecated. Use handleURL(_:) instead.")
-        return handleURL(url)
-    }
-    
     /// Parse short code from deep link URL
     private static func parseShortCodeFromURL(_ url: URL) -> String? {
         // Handle format: ia-companycode://shortcode
