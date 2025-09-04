@@ -535,7 +535,7 @@ public struct InsertAffiliateSwift {
         }
         
         // Handle universal links (https://insertaffiliate.link/V1/companycode/shortcode)
-        if url.scheme == "https" && url.host?.contains("insertaffiliate.com") == true {
+        if url.scheme == "https" && url.host?.contains("insertaffiliate.link") == true {
             return handleUniversalLink(url)
         }
         
@@ -547,7 +547,6 @@ public struct InsertAffiliateSwift {
         guard let scheme = url.scheme, scheme.starts(with: "ia-") else {
             return false
         }
-        let retrievedCompanyCode =  await state.getCompanyCode()
         // Extract company code from scheme (remove "ia-" prefix)
         let companyCode = String(scheme.dropFirst(3))
         
@@ -560,7 +559,7 @@ public struct InsertAffiliateSwift {
         
         // Validate company code matches initialized one
         Task {
-            if let initializedCompanyCode = retrievedCompanyCode {
+            if let initializedCompanyCode = await state.getCompanyCode() {
                 if companyCode.lowercased() != initializedCompanyCode.lowercased() {
                     print("[Insert Affiliate] Warning: URL company code (\(companyCode)) doesn't match initialized company code (\(initializedCompanyCode))")
                 }
