@@ -566,10 +566,10 @@ public struct InsertAffiliateSwift {
                 }
             }
         }
-        
-        // Process the affiliate attribution
-        processAffiliateAttribution(shortCode: shortCode, companyCode: retrievedCompanyCode)
-        
+
+        // if URL scheme is used, we can straight away store the short code as the referring link
+        storeInsertAffiliateIdentifier(referringLink: shortCode)
+
         return true
     }
     
