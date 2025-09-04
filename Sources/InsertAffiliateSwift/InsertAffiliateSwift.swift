@@ -534,7 +534,7 @@ public struct InsertAffiliateSwift {
             return handleCustomURLScheme(url)
         }
         
-        // Handle universal links (https://api.insertaffiliate.com/V1/companycode/shortcode)
+        // Handle universal links (https://insertaffiliate.link/V1/companycode/shortcode)
         if url.scheme == "https" && url.host?.contains("insertaffiliate.com") == true {
             return handleUniversalLink(url)
         }
@@ -573,7 +573,7 @@ public struct InsertAffiliateSwift {
         return true
     }
     
-    /// Handle universal links like https://api.insertaffiliate.com/V1/companycode/shortcode
+    /// Handle universal links like https://insertaffiliate.link/V1/companycode/shortcode
     private static func handleUniversalLink(_ url: URL) -> Bool {
         let pathComponents = url.pathComponents
         
@@ -1156,7 +1156,6 @@ public struct InsertAffiliateSwift {
         }
         
         let apiUrlString = "https://insertaffiliate.link/V1/appDeepLinkEvents"
-        // let apiUrlString = "https://f7912e765f41.ngrok-free.app/V1/appDeepLinkEvents"
 
         guard let apiUrl = URL(string: apiUrlString) else {
             print("[Insert Affiliate] Invalid backend API URL")
@@ -1172,8 +1171,7 @@ public struct InsertAffiliateSwift {
         if verboseLogging {
             print("[Insert Affiliate] Sending request to: \(apiUrlString)")
         }
-        
-        // Send the request using modern async/await
+
         do {
             let (data, response) = try await URLSession.shared.data(for: request)
             
@@ -1188,9 +1186,32 @@ public struct InsertAffiliateSwift {
                     print("[Insert Affiliate] System info response: \(responseString)")
                 }
             }
+
+            // Try to parse backend response and persist matched short code if present
+            if let jsonObject = try? JSONSerialization.jsonObject(with: data, options: []),
+               let json = jsonObject as? [String: Any] {
+                let matchFound = json["matchFound"] as? Bool ?? false
+                if matchFound, let matchedShortCode = json["matched_affiliate_shortCode"] as? String, !matchedShortCode.isEmpty {
+                    if verboseLogging {
+                        print("[Insert Affiliate] Matched short code from backend: \(matchedShortCode)")
+                    }
+                    
+                    
+                    if verboseLogging {
+                        print("[Insert Affiliate] Insert Affiliate Identifier before updating from backend (matched short code): \(returnInsertAffiliateIdentifier())")
+                    }
+
+                    storeInsertAffiliateIdentifier(referringLink: matchedShortCode)
+
+                    
+                    if verboseLogging {
+                        print("[Insert Affiliate] Updated Insert Affiliate Identifier after updating from backend (matched short code): \(returnInsertAffiliateIdentifier())")
+                    }
+                }
+            }
             
             // Check for a successful response
-            if httpResponse.statusCode == 201 {
+            if (200...299).contains(httpResponse.statusCode) {
                 if verboseLogging {
                     print("[Insert Affiliate] System info sent successfully")
                 }
