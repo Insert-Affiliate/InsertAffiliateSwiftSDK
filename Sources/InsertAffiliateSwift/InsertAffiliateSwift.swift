@@ -57,7 +57,7 @@ actor InsertAffiliateState {
 public struct InsertAffiliateSwift {
     public typealias InsertAffiliateIdentifierChangeCallback = (String?) -> Void
     private static let callbackQueue = DispatchQueue(label: "com.insertaffiliate.callback", attributes: .concurrent)
-    private static var _insertAffiliateIdentifierChangeCallback: InsertAffiliateIdentifierChangeCallback?
+    nonisolated(unsafe) private static var _insertAffiliateIdentifierChangeCallback: InsertAffiliateIdentifierChangeCallback?
     
     private static var insertAffiliateIdentifierChangeCallback: InsertAffiliateIdentifierChangeCallback? {
         get {
