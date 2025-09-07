@@ -55,6 +55,12 @@ actor InsertAffiliateState {
 }
 
 public struct InsertAffiliateSwift {
+    public typealias InsertAffiliateIdentifierChangeCallback = (String?) -> Void
+    private static var insertAffiliateIdentifierChangeCallback: InsertAffiliateIdentifierChangeCallback?
+    
+    public static func setInsertAffiliateIdentifierChangeCallback(_ callback: @escaping InsertAffiliateIdentifierChangeCallback) {
+        insertAffiliateIdentifierChangeCallback = callback
+    }
     @available(iOS 13.0.0, *)
     private static let state = InsertAffiliateState()
     
@@ -290,6 +296,9 @@ public struct InsertAffiliateSwift {
         let insertAffiliateIdentifier = "\(referringLink)-\(returnShortUniqueDeviceID())"
         UserDefaults.standard.set(insertAffiliateIdentifier, forKey: "insertAffiliateIdentifier")
         
+        // Notify callback of identifier change
+        insertAffiliateIdentifierChangeCallback?(insertAffiliateIdentifier)
+
         // Automatically fetch and store offer code ONLY if it's a short code
         if isShortCode(referringLink) {
             retrieveAndStoreOfferCode(affiliateLink: referringLink) { offerCode in

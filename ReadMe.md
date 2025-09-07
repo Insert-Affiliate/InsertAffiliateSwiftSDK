@@ -350,7 +350,7 @@ final class AppDelegate: UIResponder, UIApplicationDelegate, UNUserNotificationC
 
 
     if let applicationUsername = InsertAffiliateSwift.returnInsertAffiliateIdentifier() {
-        Apphud.setUserProperty(key: .init("insert_affiliate"), value: applicationUsername, setOnce: false)
+      Apphud.setUserProperty(key: .init("insert_affiliate"), value: applicationUsername, setOnce: false)
     }
 
     return true
@@ -401,12 +401,11 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
 
     if let url = launchOptions?[.url] as? URL {
       if InsertAffiliateSwift.handleInsertLinks(url) {
-
-        // If the link used was an Insert Link, returnInsertAffiliateIdentifier will now return the correct value
-        if let affiliateIdentifier = InsertAffiliateSwift.returnInsertAffiliateIdentifier() {
-
-          // Required if you're using RevenueCat
-          Purchases.shared.attribution.setAttributes(["insert_affiliate": affiliateIdentifier])
+        // Set up callback to update RevenueCat when affiliate identifier changes, signaling that an Insert Link was used
+        InsertAffiliateSwift.setInsertAffiliateIdentifierChangeCallback { identifier in
+          if let identifier = identifier {
+            Purchases.shared.attribution.setAttributes(["insert_affiliate": identifier]) // Required if you're using RevenueCat
+          }
         }
       }
     }
@@ -415,12 +414,11 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
 
   func application(_ app: UIApplication, open url: URL, options: [UIApplication.OpenURLOptionsKey : Any] = [:]) -> Bool {
     if InsertAffiliateSwift.handleInsertLinks(url) {
-
-      // If the link used was an Insert Link, returnInsertAffiliateIdentifier will now return the correct value
-      if let affiliateIdentifier = InsertAffiliateSwift.returnInsertAffiliateIdentifier() {
-
-        // Required if you're using RevenueCat
-        Purchases.shared.attribution.setAttributes(["insert_affiliate": affiliateIdentifier])
+      // Set up callback to update RevenueCat when affiliate identifier changes, signaling that an Insert Link was used
+      InsertAffiliateSwift.setInsertAffiliateIdentifierChangeCallback { identifier in
+        if let identifier = identifier {
+          Purchases.shared.attribution.setAttributes(["insert_affiliate": identifier]) // Required if you're using RevenueCat
+        }
       }
     }
 
