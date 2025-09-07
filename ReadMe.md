@@ -393,47 +393,44 @@ The SDK provides a single `handleInsertLinks` method that automatically detects 
 
 ```swift
 import UIKit
-import RevenueCat
 import InsertAffiliateSwift
 
 class AppDelegate: UIResponder, UIApplicationDelegate {
   func application(_ application: UIApplication, didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]? = nil) -> Bool { 
+    InsertAffiliateSwift.setInsertAffiliateIdentifierChangeCallback { identifier in
+      if let identifier = identifier {
+        // *** Required if using RevenueCat *** //
+        Purchases.shared.attribution.setAttributes(["insert_affiliate": identifier]) 
+        // *** End of RevenueCat section *** //
+
+        // *** Required if using Apphud *** //
+        Apphud.setUserProperty(key: .init("insert_affiliate"), value: shortCode, setOnce: false) 
+        // *** End of Apphud Section
+
+        /// *** Required only if you're using Iaptic ** //
+        InAppPurchase.initialize( 
+          iapProducts: iapProductsArray,
+          validatorUrlString: "https://validator.iaptic.com/v3/validate?appName={{ your_iaptic_app_name }}&apiKey={{ your_iaptic_app_key_goes_here }}",
+          applicationUsername: affiliateIdentifier
+        )
+        // *** End of Iaptic Section ** //
+      }
+    }
 
     if let url = launchOptions?[.url] as? URL {
-      if InsertAffiliateSwift.handleInsertLinks(url) {
-        // Set up callback to update RevenueCat when affiliate identifier changes, signaling that an Insert Link was used
-        InsertAffiliateSwift.setInsertAffiliateIdentifierChangeCallback { identifier in
-          if let identifier = identifier {
-            Purchases.shared.attribution.setAttributes(["insert_affiliate": identifier]) // Required if you're using RevenueCat
-          }
-        }
-      }
+      InsertAffiliateSwift.handleInsertLinks(url)
     }
     return true
   }
 
   func application(_ app: UIApplication, open url: URL, options: [UIApplication.OpenURLOptionsKey : Any] = [:]) -> Bool {
-    if InsertAffiliateSwift.handleInsertLinks(url) {
-      // Set up callback to update RevenueCat when affiliate identifier changes, signaling that an Insert Link was used
-      InsertAffiliateSwift.setInsertAffiliateIdentifierChangeCallback { identifier in
-        if let identifier = identifier {
-          Purchases.shared.attribution.setAttributes(["insert_affiliate": identifier]) // Required if you're using RevenueCat
-        }
-      }
-    }
-
+    InsertAffiliateSwift.handleInsertLinks(url)
     return true
   }
   
   func application(_ application: UIApplication, continue userActivity: NSUserActivity, restorationHandler: @escaping ([UIUserActivityRestoring]?) -> Void) -> Bool {    
-   
-    if let url = userActivity.webpageURL, InsertAffiliateSwift.handleInsertLinks(url) {        
-      // If the link used was an Insert Link, returnInsertAffiliateIdentifier will now return the correct value
-      if let affiliateIdentifier = InsertAffiliateSwift.returnInsertAffiliateIdentifier() {
-
-        // Required if you're using RevenueCat
-        Purchases.shared.attribution.setAttributes(["insert_affiliate": affiliateIdentifier])
-      }
+    if let url = userActivity.webpageURL {
+      InsertAffiliateSwift.handleInsertLinks(url)
     }
     return true
   }
