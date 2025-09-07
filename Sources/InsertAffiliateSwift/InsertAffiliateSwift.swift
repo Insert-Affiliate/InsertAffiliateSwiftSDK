@@ -71,6 +71,7 @@ public struct InsertAffiliateSwift {
     public static func setInsertAffiliateIdentifierChangeCallback(_ callback: @escaping InsertAffiliateIdentifierChangeCallback) {
         insertAffiliateIdentifierChangeCallback = callback
     }
+
     @available(iOS 13.0.0, *)
     private static let state = InsertAffiliateState()
     
