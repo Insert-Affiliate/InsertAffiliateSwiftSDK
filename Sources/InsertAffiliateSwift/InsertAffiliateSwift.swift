@@ -539,6 +539,7 @@ public struct InsertAffiliateSwift {
     /// Handle all InsertAffiliate URLs (deep links, universal links, etc.)
     /// Call this method from your AppDelegate's URL handling methods
     /// Returns true if the URL was handled by InsertAffiliate, false otherwise
+    @discardableResult
     public static func handleInsertLinks(_ url: URL) -> Bool {
         print("[Insert Affiliate] Attempting to handle URL: \(url.absoluteString)")
         
