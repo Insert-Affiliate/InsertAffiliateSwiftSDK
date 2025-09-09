@@ -441,7 +441,7 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
 }
 ```
 
-3. **SwiftUI** - On Open URL
+4. **SwiftUI** - On Open URL
 For SwiftUI apps, you can handle Insert Links directly using the .onOpenURL modifier. This allows you to capture and process deep links while the app is already running.
 
 #### SwiftUI App example
