@@ -379,9 +379,9 @@ Insert Affiliate requires a Deep Linking platform to create links for your affil
    ```
 3. **Integrate with a Receipt Verification platform** by using the result from `setInsertAffiliateIdentifier` to log in or set your application’s username. Examples below include [**Iaptic**](https://github.com/Insert-Affiliate/InsertAffiliateSwiftSDK?tab=readme-ov-file#example-with-iaptic), [**RevenueCat**](https://github.com/Insert-Affiliate/InsertAffiliateSwiftSDK?tab=readme-ov-file#example-with-revenuecat) and [**Direct App Store integration**](https://github.com/Insert-Affiliate/InsertAffiliateSwiftSDK?tab=readme-ov-file#example-with-app-store-direct-integration).
 
-### Deep Linking with Insert Affiliate
+### Deep Linking with Insert Links
 
-Insert Affiliate supports direct deep linking into your app using custom URL schemes and universal links. This allows you to track affiliate attribution when users click affiliate links and your app is already installed on their device.
+Insert Links by Insert Affiliate supports direct deep linking into your app. This allows you to track affiliate attribution when end users are referred to your app by clicking on one of your affiliates Insert Links.
 
 #### Initial Setup
 
@@ -405,7 +405,7 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
 
         // *** Required if using Apphud *** //
         Apphud.setUserProperty(key: .init("insert_affiliate"), value: shortCode, setOnce: false) 
-        // *** End of Apphud Section
+        // *** End of Apphud Section *** //
 
         /// *** Required only if you're using Iaptic ** //
         InAppPurchase.initialize( 
