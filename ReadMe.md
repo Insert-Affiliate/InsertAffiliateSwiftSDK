@@ -77,7 +77,7 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
 
 ### Verbose Logging (Optional)
 
-By default, the SDK operates silently to avoid interrupting the user experience. However, you can enable verbose logging to see visual confirmation when deep link attribution is processed. This is particularly useful for debugging during development or TestFlight testing.
+By default, the SDK operates silently to avoid interrupting the user experience. However, you can enable verbose logging to see visual confirmation when affiliate attribution is processed. This is particularly useful for debugging during development or TestFlight testing.
 
 #### Enable Verbose Logging
 
@@ -386,6 +386,10 @@ Insert Links by Insert Affiliate supports direct deep linking into your app. Thi
 #### Initial Setup
 
 Before you can use Insert Links, you must complete the setup steps in [our docs](https://docs.insertaffiliate.com/insert-links)
+
+1. **Initialization** of the Insert Affiliate SDK with Insert Links
+
+You must enable *insertLinksEnabled* when [initialising our SDK](https://github.com/Insert-Affiliate/InsertAffiliateSwiftSDK/tree/feature/deeplink-2?tab=readme-ov-file#insert-link-initialization)
 
 2. **Handle Insert Links** in your AppDelegate
 
