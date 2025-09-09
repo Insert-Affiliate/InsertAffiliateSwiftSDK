@@ -160,8 +160,9 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
         // Enable Insert Affiliate deep link handling
         InsertAffiliateSwift.initialize(
           companyCode: "{{ your_company_code }}", 
-          insertLinksEnabled: true,
-          insertLinksClipboardEnabled: true,
+          verboseLogging: false, // Enable for debugging
+          insertLinksEnabled: true, // Enable Insert Links
+          insertLinksClipboardEnabled: true, // Disable clipboard access to avoid permission prompt
         )
         return true
     }
@@ -175,31 +176,6 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
 **When to use `insertLinksClipboardEnabled`:**
 - Set to `true` (default: `false`) if you are using Insert Affiliate's built-in deep links (Insert Links) **and** would like to improve the effectiveness of our deep links through the clipboard
 - **Important caveat**: This will trigger a system prompt asking the user for permission to access the clipboard when the SDK initializes
-
-
-#### Combined Configuration
-
-```swift
-import InsertAffiliateSwift
-
-@UIApplicationMain
-class AppDelegate: UIResponder, UIApplicationDelegate {
-    func application(
-        _ application: UIApplication,
-        didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]?
-    ) -> Bool {
-        InsertAffiliateSwift.initialize(
-            companyCode: "{{ your_company_code }}",
-            verboseLogging: true, // Enable for debugging
-            insertLinksEnabled: true, // Enable Insert Links
-            insertLinksClipboardEnabled: false // Disable clipboard access to avoid permission prompt
-        )
-        return true
-    }
-}
-```
-
-
 
 
 ## In-App Purchase Setup [Required]
@@ -389,7 +365,7 @@ Insert Links by Insert Affiliate supports direct deep linking into your app. Thi
 
 2. **Initialization** of the Insert Affiliate SDK with Insert Links
 
-You must enable *insertLinksEnabled* when [initialising our SDK](https://github.com/Insert-Affiliate/InsertAffiliateSwiftSDK/tree/feature/deeplink-2?tab=readme-ov-file#insert-link-initialization)
+You must enable *insertLinksEnabled* when [initialising our SDK](https://github.com/Insert-Affiliate/InsertAffiliateSwiftSDK?tab=readme-ov-file#insert-link-initialization)
 
 3. **Handle Insert Links** in your AppDelegate
 
@@ -484,7 +460,7 @@ struct InsertAffiliateAppApp: App {
 > **Note**: The SwiftUI `.onOpenURL` approach is recommended for modern SwiftUI apps as it's cleaner and more declarative. The AppDelegate approach is still needed for handling universal links and launch-time deep linksz
 
 
-#### Integration Examples
+5. **Receipt Verification Integration Examples when Using Insert Links**
 
 ##### With RevenueCat
 
