@@ -385,13 +385,13 @@ Insert Links by Insert Affiliate supports direct deep linking into your app. Thi
 
 #### Initial Setup
 
-Before you can use Insert Links, you must complete the setup steps in [our docs](https://docs.insertaffiliate.com/insert-links)
+1. Before you can use Insert Links, you must complete the setup steps in [our docs](https://docs.insertaffiliate.com/insert-links)
 
-1. **Initialization** of the Insert Affiliate SDK with Insert Links
+2. **Initialization** of the Insert Affiliate SDK with Insert Links
 
 You must enable *insertLinksEnabled* when [initialising our SDK](https://github.com/Insert-Affiliate/InsertAffiliateSwiftSDK/tree/feature/deeplink-2?tab=readme-ov-file#insert-link-initialization)
 
-2. **Handle Insert Links** in your AppDelegate
+3. **Handle Insert Links** in your AppDelegate
 
 The SDK provides a single `handleInsertLinks` method that automatically detects and handles different URL types. 
 
@@ -441,7 +441,7 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
 }
 ```
 
-### 3. SwiftUI - On Open URL
+3. **SwiftUI** - On Open URL
 For SwiftUI apps, you can handle Insert Links directly using the .onOpenURL modifier. This allows you to capture and process deep links while the app is already running.
 
 #### SwiftUI App example
