@@ -816,7 +816,7 @@ public struct InsertAffiliateSwift {
         }
     }
     
-    // MARK: - Clipboard Utilities
+    // MARK: - Deep Linking Utilities
     
     /// Retrieves and validates clipboard content for UUID format
     private static func getClipboardUUID() -> String? {
@@ -1246,49 +1246,5 @@ public struct InsertAffiliateSwift {
         }
     }
     
-    // MARK: - UI Feedback
-    
-    /// Shows an alert with deep link information for TestFlight visibility
-    @MainActor private static func showDeepLinkAlert(userCode: String, affiliateEmail: String?, companyName: String?) {
-        guard let windowScene = UIApplication.shared.connectedScenes.first as? UIWindowScene,
-              let window = windowScene.windows.first else {
-            print("[Insert Affiliate] Could not find window to show alert")
-            return
-        }
-        
-        let alert = UIAlertController(
-            title: "🎉 Deep Link Success",
-            message: buildAlertMessage(userCode: userCode, affiliateEmail: affiliateEmail, companyName: companyName),
-            preferredStyle: .alert
-        )
-        
-        alert.addAction(UIAlertAction(title: "OK", style: .default))
-        
-        // Find the top-most view controller to present the alert
-        var topViewController = window.rootViewController
-        while let presentedViewController = topViewController?.presentedViewController {
-            topViewController = presentedViewController
-        }
-        
-        topViewController?.present(alert, animated: true)
-    }
-    
-    /// Builds the alert message with available information
-    private static func buildAlertMessage(userCode: String, affiliateEmail: String?, companyName: String?) -> String {
-        var message = "InsertAffiliate deep link processed successfully!\n\n"
-        message += "User Code: \(userCode)\n"
-        
-        if let email = affiliateEmail {
-            message += "Affiliate: \(email)\n"
-        }
-        
-        if let company = companyName {
-            message += "Company: \(company)\n"
-        }
-        
-        message += "\nAttribution has been recorded."
-        return message
-    }
-
 }
 
