@@ -741,15 +741,6 @@ public struct InsertAffiliateSwift {
                             let affiliateEmail = deepLink["affiliateEmail"] as? String
                             let companyName = (data["company"] as? [String: Any])?["companyName"] as? String
                             
-                            // Show alert for TestFlight visibility only when verbose logging is enabled
-                            Task { @MainActor in
-                                if await InsertAffiliateSwift.state.getVerboseLogging() {
-                                    InsertAffiliateSwift.showDeepLinkAlert(userCode: userCode, 
-                                                                         affiliateEmail: affiliateEmail,
-                                                                         companyName: companyName)
-                                }
-                            }
-                            
                         } else {
                             print("[Insert Affiliate] Could not extract userCode from response")
                             print("[Insert Affiliate] Available keys in response: \(json.keys)")

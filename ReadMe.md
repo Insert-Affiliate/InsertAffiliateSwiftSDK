@@ -350,25 +350,21 @@ final class AppDelegate: UIResponder, UIApplicationDelegate, UNUserNotificationC
 Insert Affiliate requires a Deep Linking platform to create links for your affiliates. Our platform works with **any** deep linking provider, and you only need to follow these steps:
 1. **Create a deep link** in your chosen third-party platform and pass it to our dashboard when an affiliate signs up. 
 2. **Handle deep link clicks** in your app by passing the clicked link:
-   ```swift
-   InsertAffiliateSwift.setInsertAffiliateIdentifier(referringLink: "{{ link }}")
-   ```
+  ```swift
+  InsertAffiliateSwift.setInsertAffiliateIdentifier(referringLink: "{{ link }}")
+  ```
 3. **Integrate with a Receipt Verification platform** by using the result from `setInsertAffiliateIdentifier` to log in or set your application’s username. Examples below include [**Iaptic**](https://github.com/Insert-Affiliate/InsertAffiliateSwiftSDK?tab=readme-ov-file#example-with-iaptic), [**RevenueCat**](https://github.com/Insert-Affiliate/InsertAffiliateSwiftSDK?tab=readme-ov-file#example-with-revenuecat) and [**Direct App Store integration**](https://github.com/Insert-Affiliate/InsertAffiliateSwiftSDK?tab=readme-ov-file#example-with-app-store-direct-integration).
 
 ### Deep Linking with Insert Links
-
 Insert Links by Insert Affiliate supports direct deep linking into your app. This allows you to track affiliate attribution when end users are referred to your app by clicking on one of your affiliates Insert Links.
 
 #### Initial Setup
-
 1. Before you can use Insert Links, you must complete the setup steps in [our docs](https://docs.insertaffiliate.com/insert-links)
 
 2. **Initialization** of the Insert Affiliate SDK with Insert Links
-
 You must enable *insertLinksEnabled* when [initialising our SDK](https://github.com/Insert-Affiliate/InsertAffiliateSwiftSDK?tab=readme-ov-file#insert-link-initialization)
 
 3. **Handle Insert Links** in your AppDelegate
-
 The SDK provides a single `handleInsertLinks` method that automatically detects and handles different URL types. 
 
 ```swift
