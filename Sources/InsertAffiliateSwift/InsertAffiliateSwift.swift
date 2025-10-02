@@ -25,7 +25,6 @@ actor InsertAffiliateState {
         self.insertLinksEnabled = insertLinksEnabled
         self.insertLinksClipboardEnabled = insertLinksClipboardEnabled
         isInitialized = true
-        print("[Insert Affiliate] SDK initialized with company code: \(companyCode), verbose logging: \(verboseLogging), deep links enabled: \(insertLinksEnabled), clipboard enabled: \(insertLinksClipboardEnabled)")
     }
 
     func getCompanyCode() -> String? {
@@ -416,15 +415,12 @@ public struct InsertAffiliateSwift {
             "companyId": companyCode
         ]
 
-        print("[Insert Affiliate] Tracking event '\(eventName)' with payload: \(payload)")
-
         guard let jsonData = try? JSONSerialization.data(withJSONObject: payload, options: []) else {
             print("[Insert Affiliate] Failed to encode event payload")
             return
         }
 
         let apiUrlString = "https://api.insertaffiliate.com/v1/trackEvent"
-        print("[Insert Affiliate] Sending track event to: \(apiUrlString)")
 
         guard let apiUrl = URL(string: apiUrlString) else {
             print("[Insert Affiliate] Invalid API URL")
@@ -447,15 +443,6 @@ public struct InsertAffiliateSwift {
             guard let httpResponse = response as? HTTPURLResponse else {
                 print("[Insert Affiliate] No response received for track event")
                 return
-            }
-
-            // Log response details
-            print("[Insert Affiliate] Track event response status: \(httpResponse.statusCode)")
-            print("[Insert Affiliate] Track event response headers: \(httpResponse.allHeaderFields)")
-            
-            // Log response data for debugging
-            if let data = data, let responseString = String(data: data, encoding: .utf8) {
-                print("[Insert Affiliate] Track event response body: \(responseString)")
             }
 
             // Check for a successful response
@@ -630,7 +617,6 @@ public struct InsertAffiliateSwift {
         
         // Ensure the short code is uppercase
         let uppercasedShortCode = shortCode.uppercased()
-        print("[Insert Affiliate] Ensuring uppercase short code: '\(uppercasedShortCode)'")
 
         // Fetch additional affiliate data
         fetchDeepLinkData(shortCode: uppercasedShortCode, companyCode: companyCode)

@@ -128,8 +128,8 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
 ```
 
 **When verbose logging is enabled:**
-- A success alert will display when a deep link is processed
-- The alert shows the extracted user code, affiliate email, and company information
+- Console logs will display when a deep link is processed
+- The logs show the extracted user code, affiliate email, and company information
 - Attribution tracking continues to work normally in the background
 
 **When verbose logging is disabled (default):**
@@ -456,57 +456,6 @@ struct InsertAffiliateAppApp: App {
 > **Note**: The SwiftUI `.onOpenURL` approach is recommended for modern SwiftUI apps as it's cleaner and more declarative. The AppDelegate approach is still needed for handling universal links and launch-time deep linksz
 
 
-5. **Receipt Verification Integration Examples when Using Insert Links**
-
-##### With RevenueCat
-
-```swift
-import RevenueCat
-import InsertAffiliateSwift
-
-// In your AppDelegate
-func application(_ app: UIApplication, open url: URL, options: [UIApplication.OpenURLOptionsKey : Any] = [:]) -> Bool {
-  if InsertAffiliateSwift.handleInsertLinks(url) {
-    // Update RevenueCat attribution
-    if let affiliateIdentifier = InsertAffiliateSwift.returnInsertAffiliateIdentifier() {
-      Purchases.shared.attribution.setAttributes(["insert_affiliate": affiliateIdentifier])
-    }
-    return true
-  }
-  return false
-}
-```
-
-##### With Iaptic
-
-```swift
-import InAppPurchaseLib
-import InsertAffiliateSwift
-
-// In your AppDelegate
-func application(_ app: UIApplication, open url: URL, options: [UIApplication.OpenURLOptionsKey : Any] = [:]) -> Bool {
-  if InsertAffiliateSwift.handleInsertLinks(url) {
-    // Reinitialize Iaptic with affiliate identifier
-    if let affiliateIdentifier = InsertAffiliateSwift.returnInsertAffiliateIdentifier() {
-      let iapProductsArray = [
-        IAPProduct(
-          productIdentifier: "{{ apple_in_app_purchase_subscription_id }}",
-          productType: .autoRenewableSubscription
-        )
-      ]
-      
-      InAppPurchase.stop()
-      InAppPurchase.initialize(
-        iapProducts: iapProductsArray,
-        validatorUrlString: "https://validator.iaptic.com/v3/validate?appName={{ your_iaptic_app_name }}&apiKey={{ your_iaptic_app_key_goes_here }}",
-        applicationUsername: affiliateIdentifier
-      )
-    }
-    return true
-  }
-  return false
-}
-```
 
 #### Testing Deep Links
 
