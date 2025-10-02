@@ -75,6 +75,109 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
 }
 ```
 
+### Verbose Logging (Optional)
+
+By default, the SDK operates silently to avoid interrupting the user experience. However, you can enable verbose logging to see visual confirmation when affiliate attribution is processed. This is particularly useful for debugging during development or TestFlight testing.
+
+#### Enable Verbose Logging
+
+```swift
+import InsertAffiliateSwift
+
+@UIApplicationMain
+class AppDelegate: UIResponder, UIApplicationDelegate {
+    func application(
+        _ application: UIApplication,
+        didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]?
+    ) -> Bool {
+        // Enable verbose logging for debugging/testing
+        InsertAffiliateSwift.initialize(companyCode: "{{ your_company_code }}", verboseLogging: true)
+        return true
+    }
+}
+```
+
+#### SwiftUI Initialization with Verbose Logging
+
+```swift
+import SwiftUI
+import InsertAffiliateSwift
+
+@main
+struct MyApp: App {
+    @UIApplicationDelegateAdaptor(AppDelegate.self) var delegate
+    
+    var body: some Scene {
+        WindowGroup {
+            ContentView()
+        }
+    }
+}
+
+class AppDelegate: UIResponder, UIApplicationDelegate {
+    func application(_ application: UIApplication, didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]?) -> Bool {
+        // Enable verbose logging for TestFlight builds
+        #if TESTFLIGHT
+        InsertAffiliateSwift.initialize(companyCode: "{{ your_company_code }}", verboseLogging: true)
+        #else
+        InsertAffiliateSwift.initialize(companyCode: "{{ your_company_code }}")
+        #endif
+        return true
+    }
+}
+```
+
+**When verbose logging is enabled:**
+- A success alert will display when a deep link is processed
+- The alert shows the extracted user code, affiliate email, and company information
+- Attribution tracking continues to work normally in the background
+
+**When verbose logging is disabled (default):**
+- Deep links are processed silently without any user interface interruption
+- All attribution tracking works normally in the background
+
+**Recommendation**: Enable verbose logging only for development and TestFlight builds, and disable it for production App Store releases.
+
+### Insert Link and Clipboard Control (BETA)
+
+We are currently beta testing our in-house deep linking provider, Insert Links, which generates links for use with your affiliates.
+
+For larger projects where accuracy is critical, we recommend using established third-party deep linking platforms to generate the links you use within Insert Affiliate - such as Appsflyer or Branch.io, as described in the rest of this README.
+
+If you encounter any issues while using Insert Links, please raise an issue on this GitHub repository or contact us directly at michael@insertaffiliate.com
+
+#### Insert Link Initialization
+
+```swift
+import InsertAffiliateSwift
+
+@UIApplicationMain
+class AppDelegate: UIResponder, UIApplicationDelegate {
+    func application(
+        _ application: UIApplication,
+        didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]?
+    ) -> Bool {
+        // Enable Insert Affiliate deep link handling
+        InsertAffiliateSwift.initialize(
+          companyCode: "{{ your_company_code }}", 
+          verboseLogging: false, // Enable for debugging
+          insertLinksEnabled: true, // Enable Insert Links
+          insertLinksClipboardEnabled: true, // Disable clipboard access to avoid permission prompt
+        )
+        return true
+    }
+}
+```
+
+**When to use `insertLinksEnabled`:**
+- Set to `true` (default: `false`) if you are using Insert Affiliate's built-in deep link and universal link handling (Insert Links)
+- Set to `false` if you are using an external provider for deep links
+
+**When to use `insertLinksClipboardEnabled`:**
+- Set to `true` (default: `false`) if you are using Insert Affiliate's built-in deep links (Insert Links) **and** would like to improve the effectiveness of our deep links through the clipboard
+- **Important caveat**: This will trigger a system prompt asking the user for permission to access the clipboard when the SDK initializes
+
+
 ## In-App Purchase Setup [Required]
 Insert Affiliate requires a Receipt Verification platform to validate in-app purchases. You must choose **one** of our supported partners:
 - [RevenueCat](https://www.revenuecat.com/)
@@ -223,7 +326,7 @@ final class AppDelegate: UIResponder, UIApplicationDelegate, UNUserNotificationC
 
 
     if let applicationUsername = InsertAffiliateSwift.returnInsertAffiliateIdentifier() {
-        Apphud.setUserProperty(key: .init("insert_affiliate"), value: applicationUsername, setOnce: false)
+      Apphud.setUserProperty(key: .init("insert_affiliate"), value: applicationUsername, setOnce: false)
     }
 
     return true
@@ -247,10 +350,196 @@ final class AppDelegate: UIResponder, UIApplicationDelegate, UNUserNotificationC
 Insert Affiliate requires a Deep Linking platform to create links for your affiliates. Our platform works with **any** deep linking provider, and you only need to follow these steps:
 1. **Create a deep link** in your chosen third-party platform and pass it to our dashboard when an affiliate signs up. 
 2. **Handle deep link clicks** in your app by passing the clicked link:
-   ```swift
-   InsertAffiliateSwift.setInsertAffiliateIdentifier(referringLink: "{{ link }}")
-   ```
+  ```swift
+  InsertAffiliateSwift.setInsertAffiliateIdentifier(referringLink: "{{ link }}")
+  ```
 3. **Integrate with a Receipt Verification platform** by using the result from `setInsertAffiliateIdentifier` to log in or set your application’s username. Examples below include [**Iaptic**](https://github.com/Insert-Affiliate/InsertAffiliateSwiftSDK?tab=readme-ov-file#example-with-iaptic), [**RevenueCat**](https://github.com/Insert-Affiliate/InsertAffiliateSwiftSDK?tab=readme-ov-file#example-with-revenuecat) and [**Direct App Store integration**](https://github.com/Insert-Affiliate/InsertAffiliateSwiftSDK?tab=readme-ov-file#example-with-app-store-direct-integration).
+
+### Deep Linking with Insert Links
+Insert Links by Insert Affiliate supports direct deep linking into your app. This allows you to track affiliate attribution when end users are referred to your app by clicking on one of your affiliates Insert Links.
+
+#### Initial Setup
+1. Before you can use Insert Links, you must complete the setup steps in [our docs](https://docs.insertaffiliate.com/insert-links)
+
+2. **Initialization** of the Insert Affiliate SDK with Insert Links
+You must enable *insertLinksEnabled* when [initialising our SDK](https://github.com/Insert-Affiliate/InsertAffiliateSwiftSDK?tab=readme-ov-file#insert-link-initialization)
+
+3. **Handle Insert Links** in your AppDelegate
+The SDK provides a single `handleInsertLinks` method that automatically detects and handles different URL types. 
+
+```swift
+import UIKit
+import InsertAffiliateSwift
+
+class AppDelegate: UIResponder, UIApplicationDelegate {
+  func application(_ application: UIApplication, didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]? = nil) -> Bool { 
+    InsertAffiliateSwift.setInsertAffiliateIdentifierChangeCallback { identifier in
+      if let identifier = identifier {
+        // *** Required if using RevenueCat *** //
+        Purchases.shared.attribution.setAttributes(["insert_affiliate": identifier]) 
+        // *** End of RevenueCat section *** //
+
+        // *** Required if using Apphud *** //
+        Apphud.setUserProperty(key: .init("insert_affiliate"), value: shortCode, setOnce: false) 
+        // *** End of Apphud Section *** //
+
+        /// *** Required only if you're using Iaptic ** //
+        InAppPurchase.initialize( 
+          iapProducts: iapProductsArray,
+          validatorUrlString: "https://validator.iaptic.com/v3/validate?appName={{ your_iaptic_app_name }}&apiKey={{ your_iaptic_app_key_goes_here }}",
+          applicationUsername: affiliateIdentifier
+        )
+        // *** End of Iaptic Section ** //
+      }
+    }
+
+    if let url = launchOptions?[.url] as? URL {
+      InsertAffiliateSwift.handleInsertLinks(url)
+    }
+    return true
+  }
+
+  func application(_ app: UIApplication, open url: URL, options: [UIApplication.OpenURLOptionsKey : Any] = [:]) -> Bool {
+    InsertAffiliateSwift.handleInsertLinks(url)
+    return true
+  }
+  
+  func application(_ application: UIApplication, continue userActivity: NSUserActivity, restorationHandler: @escaping ([UIUserActivityRestoring]?) -> Void) -> Bool {    
+    if let url = userActivity.webpageURL {
+      InsertAffiliateSwift.handleInsertLinks(url)
+    }
+    return true
+  }
+}
+```
+
+4. **SwiftUI** - On Open URL
+For SwiftUI apps, you can handle Insert Links directly using the .onOpenURL modifier. This allows you to capture and process deep links while the app is already running.
+
+#### SwiftUI App example
+
+```swift
+import InsertAffiliateSwift
+import RevenueCat
+import SwiftUI
+
+@main
+struct InsertAffiliateAppApp: App {
+    @StateObject private var viewModel = InAppPurchaseViewModel()
+
+    @Environment(\.scenePhase) private var scenePhase
+    @UIApplicationDelegateAdaptor(AppDelegate.self) var appDelegate
+
+    var body: some Scene {
+        WindowGroup {
+           ContentView()
+                .environmentObject(viewModel)
+                .onAppear {
+                  //...
+                }
+               .onOpenURL(perform: { url in
+
+                    // Handle InsertAffiliate deep links
+                    if InsertAffiliateSwift.handleInsertLinks(url) {
+                        
+                        // Update RevenueCat attribution with the new affiliate info
+                        if let affiliateIdentifier = InsertAffiliateSwift.returnInsertAffiliateIdentifier() {
+                            Purchases.shared.attribution.setAttributes(["insert_affiliate": affiliateIdentifier])
+                        }
+                    }
+               })
+        }
+    }
+}
+```
+
+> **Note**: The SwiftUI `.onOpenURL` approach is recommended for modern SwiftUI apps as it's cleaner and more declarative. The AppDelegate approach is still needed for handling universal links and launch-time deep linksz
+
+
+5. **Receipt Verification Integration Examples when Using Insert Links**
+
+##### With RevenueCat
+
+```swift
+import RevenueCat
+import InsertAffiliateSwift
+
+// In your AppDelegate
+func application(_ app: UIApplication, open url: URL, options: [UIApplication.OpenURLOptionsKey : Any] = [:]) -> Bool {
+  if InsertAffiliateSwift.handleInsertLinks(url) {
+    // Update RevenueCat attribution
+    if let affiliateIdentifier = InsertAffiliateSwift.returnInsertAffiliateIdentifier() {
+      Purchases.shared.attribution.setAttributes(["insert_affiliate": affiliateIdentifier])
+    }
+    return true
+  }
+  return false
+}
+```
+
+##### With Iaptic
+
+```swift
+import InAppPurchaseLib
+import InsertAffiliateSwift
+
+// In your AppDelegate
+func application(_ app: UIApplication, open url: URL, options: [UIApplication.OpenURLOptionsKey : Any] = [:]) -> Bool {
+  if InsertAffiliateSwift.handleInsertLinks(url) {
+    // Reinitialize Iaptic with affiliate identifier
+    if let affiliateIdentifier = InsertAffiliateSwift.returnInsertAffiliateIdentifier() {
+      let iapProductsArray = [
+        IAPProduct(
+          productIdentifier: "{{ apple_in_app_purchase_subscription_id }}",
+          productType: .autoRenewableSubscription
+        )
+      ]
+      
+      InAppPurchase.stop()
+      InAppPurchase.initialize(
+        iapProducts: iapProductsArray,
+        validatorUrlString: "https://validator.iaptic.com/v3/validate?appName={{ your_iaptic_app_name }}&apiKey={{ your_iaptic_app_key_goes_here }}",
+        applicationUsername: affiliateIdentifier
+      )
+    }
+    return true
+  }
+  return false
+}
+```
+
+#### Testing Deep Links
+
+Test your deep link integration using the iOS Simulator:
+
+```bash
+# Test with your iOS URL scheme from Insert Affiliate dashboard
+xcrun simctl openurl booted "{{ your_iOS_URL_Scheme }}://{{ test_short_code }}"
+
+# Test universal link
+xcrun simctl openurl booted "https://api.insertaffiliate.com/V1/{{ your_company_code }}/{{ test_short_code }}"
+```
+
+Replace `{{ your_iOS_URL_Scheme }}` with the URL scheme from your [Insert Affiliate dashboard](https://app.insertaffiliate.com/settings), and `{{ test_short_code }}` with a test short code.
+
+**Example:**
+```bash
+# If your iOS URL scheme is "ia-clbz8jf3unfp5frzjxby3d3xj382"
+xcrun simctl openurl booted "ia-clbz8jf3unfp5frzjxby3d3xj382://eedwftx2po"
+```
+
+**Debugging Deep Links:** Enable [verbose logging](#verbose-logging-optional) during development to see visual confirmation when deep links are processed successfully. This shows an alert with the extracted user code, affiliate email, and company information.
+
+#### Retrieving Affiliate Information
+
+After handling a deep link, you can retrieve the affiliate information:
+
+```swift
+// Get the affiliate identifier
+if let affiliateIdentifier = InsertAffiliateSwift.returnInsertAffiliateIdentifier() {
+  print("Affiliate ID: \(affiliateIdentifier)")
+}
+```
 
 ### Deep Linking with Branch.io
 To set up deep linking with Branch.io, follow these steps:
@@ -778,7 +1067,7 @@ class InAppPurchaseViewModel: ObservableObject {
     
     func purchase(productIdentifier: String) async {
         guard let product = products[productIdentifier] else { return }
-        
+
         do {
             let userAccountToken = await InsertAffiliateSwift.returnUserAccountTokenAndStoreExpectedTransaction()
             // Optional override: Use your own UUID for the purchase token
