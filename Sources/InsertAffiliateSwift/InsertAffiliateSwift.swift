@@ -9,12 +9,14 @@ actor InsertAffiliateState {
     private var verboseLogging = false
     private var insertLinksEnabled = false
     private var insertLinksClipboardEnabled = false
+    private var affiliateAttributionActiveTime: TimeInterval?
 
     func initialize(
         companyCode: String,
         verboseLogging: Bool = false, // When set to true, the SDK will print verbose logs to the console to help with debugging. This should be set to false in production.
         insertLinksEnabled: Bool = false, // When set to true, the SDK will activate deep links and universal links. If you are using an external provider for deep links, set this to false.
-        insertLinksClipboardEnabled: Bool = false // When set to true, the SDK use the clipboard to improve the effectiveness of deep links. This will trigger a prompt for the user to allow the app to paste from the clipboard upon init of our SDK.
+        insertLinksClipboardEnabled: Bool = false, // When set to true, the SDK use the clipboard to improve the effectiveness of deep links. This will trigger a prompt for the user to allow the app to paste from the clipboard upon init of our SDK.
+        affiliateAttributionActiveTime: TimeInterval? = nil // Optional time interval (in seconds) for how long attribution remains active after affiliate link click
     ) throws {
         guard !isInitialized else {
             throw NSError(domain: "InsertAffiliateSwift", code: 1, userInfo: [NSLocalizedDescriptionKey: "SDK is already initialized."])
@@ -24,6 +26,7 @@ actor InsertAffiliateState {
         self.verboseLogging = verboseLogging
         self.insertLinksEnabled = insertLinksEnabled
         self.insertLinksClipboardEnabled = insertLinksClipboardEnabled
+        self.affiliateAttributionActiveTime = affiliateAttributionActiveTime
         isInitialized = true
     }
 
@@ -42,6 +45,10 @@ actor InsertAffiliateState {
     func getInsertLinksClipboardEnabled() -> Bool {
         return insertLinksClipboardEnabled
     }
+    
+    func getAffiliateAttributionActiveTime() -> TimeInterval? {
+        return affiliateAttributionActiveTime
+    }
 
     func reset() {
         companyCode = nil
@@ -49,6 +56,7 @@ actor InsertAffiliateState {
         verboseLogging = false
         insertLinksEnabled = false
         insertLinksClipboardEnabled = false
+        affiliateAttributionActiveTime = nil
         print("[Insert Affiliate] SDK has been reset.")
     }
 }
@@ -92,7 +100,8 @@ public struct InsertAffiliateSwift {
         companyCode: String, 
         verboseLogging: Bool = false,
         insertLinksEnabled: Bool = false,
-        insertLinksClipboardEnabled: Bool = false
+        insertLinksClipboardEnabled: Bool = false,
+        affiliateAttributionActiveTime: TimeInterval? = nil
     ) {
         guard #available(iOS 13.0, *) else {
             print("[Insert Affiliate] This SDK requires iOS 13.0 or newer.")
@@ -109,7 +118,8 @@ public struct InsertAffiliateSwift {
                     companyCode: companyCode, 
                     verboseLogging: verboseLogging,
                     insertLinksEnabled: insertLinksEnabled,
-                    insertLinksClipboardEnabled: insertLinksClipboardEnabled
+                    insertLinksClipboardEnabled: insertLinksClipboardEnabled,
+                    affiliateAttributionActiveTime: affiliateAttributionActiveTime
                 )
                 let _ = getOrCreateUserAccountToken()
                 
@@ -143,9 +153,9 @@ public struct InsertAffiliateSwift {
 
     // Function to return the stored UUID for users using App Store Receipts directly without a Receipt Validator
     public static func returnUserAccountTokenAndStoreExpectedTransaction(overrideUUID: String? = nil) async -> UUID? {
-        // 1: Check if they have an affiliate assigned before storing the transaction
-        guard returnInsertAffiliateIdentifier() != nil else {
-            print("[Insert Affiliate] No affiliate stored - not saving expected transaction")
+        // 1: Check if they have a valid affiliate assigned before storing the transaction
+        guard await returnValidInsertAffiliateIdentifier() != nil else {
+            print("[Insert Affiliate] No valid affiliate stored or attribution expired - not saving expected transaction")
             return nil
         }
 
@@ -306,6 +316,20 @@ public struct InsertAffiliateSwift {
         let insertAffiliateIdentifier = "\(referringLink)-\(returnShortUniqueDeviceID())"
         UserDefaults.standard.set(insertAffiliateIdentifier, forKey: "insertAffiliateIdentifier")
         
+        // Store the date when the affiliate identifier was stored (AffiliateStoredDate)
+        let dateFormatter = ISO8601DateFormatter()
+        let currentDate = Date()
+        let storedDateString = dateFormatter.string(from: currentDate)
+        UserDefaults.standard.set(storedDateString, forKey: "affiliateStoredDate")
+        
+        Task {
+            let verboseLogging = await state.getVerboseLogging()
+            if verboseLogging {
+                print("[Insert Affiliate] Stored affiliate identifier: \(insertAffiliateIdentifier)")
+                print("[Insert Affiliate] Stored affiliate date: \(storedDateString)")
+            }
+        }
+        
         // Notify callback of identifier change
         insertAffiliateIdentifierChangeCallback?(insertAffiliateIdentifier)
 
@@ -321,6 +345,91 @@ public struct InsertAffiliateSwift {
 
     public static func returnInsertAffiliateIdentifier() -> String? {
         return UserDefaults.standard.string(forKey: "insertAffiliateIdentifier")
+    }
+    
+    /// Returns the stored affiliate identifier only if attribution is still valid (within timeout)
+    /// If no timeout is configured, always returns the identifier as valid
+    public static func returnValidInsertAffiliateIdentifier() async -> String? {
+        let verboseLogging = await state.getVerboseLogging()
+        
+        guard let affiliateIdentifier = UserDefaults.standard.string(forKey: "insertAffiliateIdentifier") else {
+            if verboseLogging {
+                print("[Insert Affiliate] No affiliate identifier found in storage")
+            }
+            return nil
+        }
+        
+        // Check if attribution timeout is configured
+        guard let attributionTimeout = await state.getAffiliateAttributionActiveTime() else {
+            // No timeout configured, always return identifier as valid
+            if verboseLogging {
+                print("[Insert Affiliate] No attribution timeout configured, returning identifier as valid: \(affiliateIdentifier)")
+            }
+            return affiliateIdentifier
+        }
+        
+        if verboseLogging {
+            print("[Insert Affiliate] Attribution timeout configured: \(attributionTimeout) seconds")
+        }
+        
+        // Check if stored date exists
+        guard let storedDateString = UserDefaults.standard.string(forKey: "affiliateStoredDate") else {
+            // No stored date (backward compatibility), return identifier as valid
+            if verboseLogging {
+                print("[Insert Affiliate] No stored date found (backward compatibility), returning identifier as valid: \(affiliateIdentifier)")
+            }
+            return affiliateIdentifier
+        }
+        
+        // Parse stored date
+        let dateFormatter = ISO8601DateFormatter()
+        guard let storedDate = dateFormatter.date(from: storedDateString) else {
+            // Invalid date format (backward compatibility), return identifier as valid
+            if verboseLogging {
+                print("[Insert Affiliate] Invalid date format (backward compatibility), returning identifier as valid: \(affiliateIdentifier)")
+            }
+            return affiliateIdentifier
+        }
+        
+        // Check if attribution has expired
+        let currentDate = Date()
+        let timeSinceStored = currentDate.timeIntervalSince(storedDate)
+        
+        if verboseLogging {
+            print("[Insert Affiliate] Stored date: \(storedDateString)")
+            print("[Insert Affiliate] Time since stored: \(timeSinceStored) seconds")
+            print("[Insert Affiliate] Attribution timeout: \(attributionTimeout) seconds")
+        }
+        
+        if timeSinceStored <= attributionTimeout {
+            // Attribution is still valid
+            if verboseLogging {
+                print("[Insert Affiliate] Attribution is still valid, returning identifier: \(affiliateIdentifier)")
+            }
+            return affiliateIdentifier
+        } else {
+            // Attribution has expired
+            if verboseLogging {
+                print("[Insert Affiliate] Attribution has expired (\(timeSinceStored)s > \(attributionTimeout)s), returning nil")
+            }
+            return nil
+        }
+    }
+    
+    /// Returns the date when the affiliate identifier was stored
+    public static func getAffiliateStoredDate() -> Date? {
+        guard let storedDateString = UserDefaults.standard.string(forKey: "affiliateStoredDate") else {
+            return nil
+        }
+        
+        let dateFormatter = ISO8601DateFormatter()
+        return dateFormatter.date(from: storedDateString)
+    }
+    
+    /// Checks if the current affiliate attribution is still valid based on the timeout
+    /// If no timeout is configured, always returns true if affiliate exists
+    public static func isAffiliateAttributionValid() async -> Bool {
+        return await returnValidInsertAffiliateIdentifier() != nil
     }
     
     public static var OfferCode: String? {
@@ -399,8 +508,8 @@ public struct InsertAffiliateSwift {
     }
 
     public static func trackEvent(eventName: String) async {
-        guard let deepLinkParam = returnInsertAffiliateIdentifier() else {
-            print("[Insert Affiliate] No affiliate identifier found. Please set one before tracking events.")
+        guard let deepLinkParam = await returnValidInsertAffiliateIdentifier() else {
+            print("[Insert Affiliate] No valid affiliate identifier found or attribution expired. Please set one before tracking events.")
             return
         }
 
@@ -462,8 +571,8 @@ public struct InsertAffiliateSwift {
             return
         }
 
-        guard let shortCode = returnInsertAffiliateIdentifier() else {
-            print("[Insert Affiliate] No affiliate identifier found. Please set one before tracking events.")
+        guard let shortCode = await returnValidInsertAffiliateIdentifier() else {
+            print("[Insert Affiliate] No valid affiliate identifier found or attribution expired. Please set one before tracking events.")
             return
         }
 

@@ -159,10 +159,11 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
     ) -> Bool {
         // Enable Insert Affiliate deep link handling
         InsertAffiliateSwift.initialize(
-          companyCode: "{{ your_company_code }}", 
-          verboseLogging: false, // Enable for debugging
-          insertLinksEnabled: true, // Enable Insert Links
-          insertLinksClipboardEnabled: true, // Disable clipboard access to avoid permission prompt
+            companyCode: "{{ your_company_code }}", 
+            verboseLogging: false, // Enable for debugging
+            insertLinksEnabled: true, // Enable Insert Links
+            insertLinksClipboardEnabled: true, // Enable clipboard access (triggers permission prompt)
+            affiliateAttributionActiveTime: 604800 // Optional: 7 days attribution timeout (default: no timeout)
         )
         return true
     }
@@ -1110,3 +1111,81 @@ struct PurchaseView: View {
 Make sure you have created the corresponding subscription products in App Store Connect:
 - Your base subscription (e.g., `oneMonthSubscriptionTwo`)
 - Promotional offer variants (e.g., `oneMonthSubscriptionTwo_oneWeekFree`)
+
+
+### Attribution Timeout Control (NEW)
+
+By default, affiliate attribution has no timeout - once set, the attribution remains valid indefinitely. However, you can now configure an attribution timeout to limit how long after an affiliate link click that purchases can be attributed to that affiliate.
+
+#### Enable Attribution Timeout
+
+```swift
+import InsertAffiliateSwift
+
+@UIApplicationMain
+class AppDelegate: UIResponder, UIApplicationDelegate {
+    func application(
+        _ application: UIApplication,
+        didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]?
+    ) -> Bool {
+        // Set 7 days (604800 seconds) attribution timeout
+        InsertAffiliateSwift.initialize(
+            companyCode: "{{ your_company_code }}",
+            affiliateAttributionActiveTime: 604800 // 7 days in seconds
+        )
+        return true
+    }
+}
+```
+
+#### Common Attribution Timeout Values
+
+```swift
+// 1 day timeout
+InsertAffiliateSwift.initialize(
+    companyCode: "{{ your_company_code }}",
+    affiliateAttributionActiveTime: 86400
+)
+
+// 7 days timeout (recommended for most apps)
+InsertAffiliateSwift.initialize(
+    companyCode: "{{ your_company_code }}",
+    affiliateAttributionActiveTime: 604800
+)
+
+// 30 days timeout
+InsertAffiliateSwift.initialize(
+    companyCode: "{{ your_company_code }}",
+    affiliateAttributionActiveTime: 2592000
+)
+
+// No timeout (default behavior)
+InsertAffiliateSwift.initialize(
+    companyCode: "{{ your_company_code }}"
+    // affiliateAttributionActiveTime not specified = no timeout
+)
+```
+
+**Verbose Logging for Debugging Attribution Timeout:**
+Enable verbose logging to see detailed attribution timeout information in the console:
+
+```swift
+InsertAffiliateSwift.initialize(
+    companyCode: "{{ your_company_code }}",
+    verboseLogging: true, // Shows timeout validation details
+    affiliateAttributionActiveTime: 604800 // 7 days
+)
+```
+
+**Additional Methods:**
+
+```swift
+// Check if current attribution is still valid
+let isValid = await InsertAffiliateSwift.isAffiliateAttributionValid()
+
+// Get when affiliate was stored
+let storedDate = InsertAffiliateSwift.getAffiliateStoredDate()
+
+// Get valid affiliate identifier (respects timeout)
+let validIdentifier = await InsertAffiliateSwift.returnValidInsertAffiliateIdentifier()
+```
