@@ -485,9 +485,14 @@ xcrun simctl openurl booted "ia-clbz8jf3unfp5frzjxby3d3xj382://eedwftx2po"
 After handling a deep link, you can retrieve the affiliate information:
 
 ```swift
-// Get the affiliate identifier
+// Get the affiliate identifier (respects timeout by default)  
 if let affiliateIdentifier = InsertAffiliateSwift.returnInsertAffiliateIdentifier() {
   print("Affiliate ID: \(affiliateIdentifier)")
+}
+
+// Get identifier regardless of timeout (for debugging)
+if let rawIdentifier = InsertAffiliateSwift.returnInsertAffiliateIdentifier(ignoreTimeout: true) {
+  print("Raw Affiliate ID: \(rawIdentifier)")
 }
 ```
 
@@ -1180,12 +1185,18 @@ InsertAffiliateSwift.initialize(
 **Additional Methods:**
 
 ```swift
+// Get affiliate identifier (respects timeout by default)
+let identifier = await InsertAffiliateSwift.returnInsertAffiliateIdentifier()
+
+// Get affiliate identifier ignoring timeout (for debugging)
+let rawIdentifier = await InsertAffiliateSwift.returnInsertAffiliateIdentifier(ignoreTimeout: true)
+
+// Get stored identifier synchronously (always ignores timeout)
+let storedIdentifier = InsertAffiliateSwift.returnStoredInsertAffiliateIdentifier()
+
 // Check if current attribution is still valid
 let isValid = await InsertAffiliateSwift.isAffiliateAttributionValid()
 
 // Get when affiliate was stored
 let storedDate = InsertAffiliateSwift.getAffiliateStoredDate()
-
-// Get valid affiliate identifier (respects timeout)
-let validIdentifier = await InsertAffiliateSwift.returnValidInsertAffiliateIdentifier()
 ```
