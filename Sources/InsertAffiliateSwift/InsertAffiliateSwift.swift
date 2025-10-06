@@ -314,6 +314,22 @@ public struct InsertAffiliateSwift {
 
     public static func storeInsertAffiliateIdentifier(referringLink: String) {
         let insertAffiliateIdentifier = "\(referringLink)-\(returnShortUniqueDeviceID())"
+        
+        // Check if this is the same affiliate identifier that's already stored
+        let existingIdentifier = UserDefaults.standard.string(forKey: "insertAffiliateIdentifier")
+        
+        if existingIdentifier == insertAffiliateIdentifier {
+            // Same affiliate identifier, don't update the stored date
+            Task {
+                let verboseLogging = await state.getVerboseLogging()
+                if verboseLogging {
+                    print("[Insert Affiliate] Same affiliate identifier already stored, not updating date: \(insertAffiliateIdentifier)")
+                }
+            }
+            return
+        }
+        
+        // Different affiliate identifier, store it and update the date
         UserDefaults.standard.set(insertAffiliateIdentifier, forKey: "insertAffiliateIdentifier")
         
         // Store the date when the affiliate identifier was stored (AffiliateStoredDate)
@@ -325,7 +341,11 @@ public struct InsertAffiliateSwift {
         Task {
             let verboseLogging = await state.getVerboseLogging()
             if verboseLogging {
-                print("[Insert Affiliate] Stored affiliate identifier: \(insertAffiliateIdentifier)")
+                if existingIdentifier != nil {
+                    print("[Insert Affiliate] Replaced affiliate identifier: \(existingIdentifier!) -> \(insertAffiliateIdentifier)")
+                } else {
+                    print("[Insert Affiliate] Stored new affiliate identifier: \(insertAffiliateIdentifier)")
+                }
                 print("[Insert Affiliate] Stored affiliate date: \(storedDateString)")
             }
         }
