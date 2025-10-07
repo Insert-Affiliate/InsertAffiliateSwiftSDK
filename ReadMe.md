@@ -1191,9 +1191,6 @@ let identifier = await InsertAffiliateSwift.returnInsertAffiliateIdentifier()
 // Get affiliate identifier ignoring timeout (for debugging)
 let rawIdentifier = await InsertAffiliateSwift.returnInsertAffiliateIdentifier(ignoreTimeout: true)
 
-// Get stored identifier synchronously (always ignores timeout)
-let storedIdentifier = InsertAffiliateSwift.returnStoredInsertAffiliateIdentifier()
-
 // Check if current attribution is still valid
 let isValid = await InsertAffiliateSwift.isAffiliateAttributionValid()
 
