@@ -485,14 +485,9 @@ xcrun simctl openurl booted "ia-clbz8jf3unfp5frzjxby3d3xj382://eedwftx2po"
 After handling a deep link, you can retrieve the affiliate information:
 
 ```swift
-// Get the affiliate identifier (respects timeout by default)  
+// Get the affiliate identifier
 if let affiliateIdentifier = InsertAffiliateSwift.returnInsertAffiliateIdentifier() {
   print("Affiliate ID: \(affiliateIdentifier)")
-}
-
-// Get identifier regardless of timeout (for debugging)
-if let rawIdentifier = InsertAffiliateSwift.returnInsertAffiliateIdentifier(ignoreTimeout: true) {
-  print("Raw Affiliate ID: \(rawIdentifier)")
 }
 ```
 
