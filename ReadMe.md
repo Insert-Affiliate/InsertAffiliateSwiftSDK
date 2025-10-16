@@ -183,7 +183,7 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
 Insert Affiliate requires a Receipt Verification platform to validate in-app purchases. You must choose **one** of our supported partners:
 - [RevenueCat](https://www.revenuecat.com/)
 - [Iaptic](https://www.iaptic.com/account)
-- [App Store Direct Integration](#app-store-direct-integration)
+- [App Store Direct Integration](#option-3-app-store-direct-integration)
 - [Apphud](https://apphud.com/)
 
 ### Option 1: RevenueCat Integration
