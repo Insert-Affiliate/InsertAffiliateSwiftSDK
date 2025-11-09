@@ -675,18 +675,12 @@ class AppDelegate: UIResponder, UIApplicationDelegate, AppsFlyerLibDelegate {
         handleAppsFlyerDeepLink(attributionData)
     }
 
-     /// Legacy direct attribution (nice to keep)
-    func onAppOpenAttribution(_ attributionData: [AnyHashable: Any]) {
-        handleAppsFlyerDeepLink(attributionData)
-    }
-
     /// First install (deferred) fallback via conversion data
     func onConversionDataSuccess(_ installData: [AnyHashable : Any]) {
         let data = installData as? [String: Any] ?? [:]
         let isFirst = (data["is_first_launch"] as? Bool) ?? false
         if isFirst { handleAppsFlyerDeepLink(installData) }
     }
-
     
     private func handleAppsFlyerDeepLink(_ attributionData: [AnyHashable: Any]) {
         let dict = attributionData as? [String: Any] ?? [:]
@@ -746,6 +740,13 @@ class AppDelegate: UIResponder, UIApplicationDelegate, AppsFlyerLibDelegate {
     func onDeepLink(_ deepLink: AppsFlyerDeepLink) {
         let attributionData = deepLink.clickEvent ?? [:]
         handleAppsFlyerDeepLink(attributionData)
+    }
+
+    /// First install (deferred) fallback via conversion data
+    func onConversionDataSuccess(_ installData: [AnyHashable : Any]) {
+        let data = installData as? [String: Any] ?? [:]
+        let isFirst = (data["is_first_launch"] as? Bool) ?? false
+        if isFirst { handleAppsFlyerDeepLink(installData) }
     }
     
     private func handleAppsFlyerDeepLink(_ attributionData: [AnyHashable: Any]) {
@@ -823,7 +824,14 @@ class AppDelegate: UIResponder, UIApplicationDelegate, AppsFlyerLibDelegate {
         let attributionData = deepLink.clickEvent ?? [:]
         handleAppsFlyerDeepLink(attributionData)
     }
-    
+
+    /// First install (deferred) fallback via conversion data
+    func onConversionDataSuccess(_ installData: [AnyHashable : Any]) {
+        let data = installData as? [String: Any] ?? [:]
+        let isFirst = (data["is_first_launch"] as? Bool) ?? false
+        if isFirst { handleAppsFlyerDeepLink(installData) }
+    }
+
     private func handleAppsFlyerDeepLink(_ attributionData: [AnyHashable: Any]) {
         let dict = attributionData as? [String: Any] ?? [:]
         let referringLink = (dict["link"] as? String) ?? (dict["deep_link_value"] as? String) ?? (dict["af_dp"] as? String)
