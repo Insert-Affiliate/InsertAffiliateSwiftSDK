@@ -491,6 +491,136 @@ if let affiliateIdentifier = InsertAffiliateSwift.returnInsertAffiliateIdentifie
 }
 ```
 
+### Getting Affiliate Details
+
+You can retrieve detailed information about an affiliate by their short code or deep link using the `getAffiliateDetails` method. This is useful for displaying affiliate information to users or showing personalized content based on the referrer.
+
+#### Method Signature
+
+```swift
+getAffiliateDetails(affiliateCode: String) async -> AffiliateDetails?
+
+public struct AffiliateDetails {
+    public let affiliateName: String
+    public let affiliateShortCode: String
+    public let deeplinkUrl: String
+}
+```
+
+#### Usage Example
+
+```swift
+import SwiftUI
+import InsertAffiliateSwift
+
+struct MyView: View {
+    @State private var affiliateName: String?
+
+    var body: some View {
+        VStack(spacing: 20) {
+            if let name = affiliateName {
+                Text("Referred by: \(name)")
+                    .font(.headline)
+            }
+
+            Button("Get Affiliate Info") {
+                Task {
+                    await handleGetAffiliateInfo(code: "JOIN123")
+                }
+            }
+            .buttonStyle(.bordered)
+        }
+        .padding()
+    }
+
+    func handleGetAffiliateInfo(code: String) async {
+        if let details = await InsertAffiliateSwift.getAffiliateDetails(affiliateCode: code) {
+            print("Affiliate Name: \(details.affiliateName)")
+            print("Short Code: \(details.affiliateShortCode)")
+            print("Deep Link: \(details.deeplinkUrl)")
+
+            // Update UI with affiliate name
+            affiliateName = details.affiliateName
+        } else {
+            print("Affiliate not found")
+        }
+    }
+}
+```
+
+#### Return Value
+
+Returns an `AffiliateDetails` object with affiliate information if the code exists:
+- `affiliateName`: The name of the affiliate
+- `affiliateShortCode`: The affiliate's short code
+- `deeplinkUrl`: The affiliate's deep link URL
+
+Returns `nil` if:
+- The affiliate code doesn't exist
+- The company code is not initialized
+- There's a network error or API issue
+
+#### Important Notes
+
+- This method **does not store or set** the affiliate identifier - it only retrieves information
+- Use `setShortCode()` to actually associate an affiliate with a user
+- The method automatically strips UUIDs from codes (e.g., "ABC123-uuid" becomes "ABC123")
+- Works with both short codes and deep link URLs
+
+#### Getting the Stored Affiliate Identifier
+
+To retrieve the currently stored affiliate identifier (the one associated with the current user), use `returnInsertAffiliateIdentifier()`:
+
+```swift
+// Get the current affiliate identifier
+if let affiliateIdentifier = InsertAffiliateSwift.returnInsertAffiliateIdentifier() {
+    print("Current affiliate identifier: \(affiliateIdentifier)")
+} else {
+    print("No affiliate identifier found")
+}
+```
+
+**Important Notes:**
+- This method should only be called after SDK initialization is complete
+- Returns `nil` if no affiliate identifier has been set
+- Respects the attribution timeout if configured (see [Attribution Timeout Control](#attribution-timeout-control-new))
+- The identifier is automatically stored when a user clicks an affiliate link or enters a short code
+
+#### Additional Affiliate Information Methods
+
+The SDK also provides methods to retrieve additional affiliate details:
+
+```swift
+// Get the affiliate email
+if let email = InsertAffiliateSwift.getAffiliateEmail() {
+    print("Affiliate email: \(email)")
+}
+
+// Get the affiliate ID
+if let id = InsertAffiliateSwift.getAffiliateId() {
+    print("Affiliate ID: \(id)")
+}
+
+// Get the company name
+if let company = InsertAffiliateSwift.getCompanyName() {
+    print("Company name: \(company)")
+}
+
+// Get when the affiliate was stored
+if let storedDate = InsertAffiliateSwift.getAffiliateStoredDate() {
+    print("Affiliate stored on: \(storedDate)")
+}
+
+// Check if attribution is still valid (respects timeout)
+let isValid = InsertAffiliateSwift.isAffiliateAttributionValid()
+print("Attribution valid: \(isValid)")
+
+// Get affiliate identifier even if attribution has expired
+if let affiliateIdentifier = InsertAffiliateSwift.returnInsertAffiliateIdentifier(ignoreTimeout: true) {
+    print("Affiliate identifier (ignoring timeout): \(affiliateIdentifier)")
+}
+```
+
 ### Deep Linking with Branch.io
 To set up deep linking with Branch.io, follow these steps:
 
