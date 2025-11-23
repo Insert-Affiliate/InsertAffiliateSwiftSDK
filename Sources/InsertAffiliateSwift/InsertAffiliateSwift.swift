@@ -197,12 +197,15 @@ public struct InsertAffiliateSwift {
         return nil
     }
 
-    public static func setShortCode(shortCode: String) {
+    /// Validates and sets a short code for affiliate tracking
+    /// - Parameter shortCode: The short code to validate and set
+    /// - Returns: true if the short code exists and was successfully validated and stored, false otherwise
+    public static func setShortCode(shortCode: String) async -> Bool {
         let capitalisedShortCode = shortCode.uppercased()
 
         guard capitalisedShortCode.count >= 3 && capitalisedShortCode.count <= 25 else {
             print("[Insert Affiliate] Error: Short code must be between 3 and 25 characters long.")
-            return
+            return false
         }
 
         // Check if the short code contains only letters and numbers
@@ -210,17 +213,27 @@ public struct InsertAffiliateSwift {
         let isValidShortCode = capitalisedShortCode.unicodeScalars.allSatisfy { alphanumericSet.contains($0) }
         guard isValidShortCode else {
             print("[Insert Affiliate] Error: Short code must contain only letters and numbers.")
-            return
+            return false
         }
 
-        // If all checks pass, set the Insert Affiliate Identifier
+        // Validate that the short code exists in the system
+        guard let affiliateDetails = await getAffiliateDetails(affiliateCode: capitalisedShortCode) else {
+            print("[Insert Affiliate] Error: Short code '\(capitalisedShortCode)' does not exist or validation failed.")
+            return false
+        }
+
+        print("[Insert Affiliate] Short code validated successfully for affiliate: \(affiliateDetails.affiliateName)")
+
+        // If validation passes, set the Insert Affiliate Identifier
         storeInsertAffiliateIdentifier(referringLink: capitalisedShortCode)
 
-        // Return and print the Insert Affiliate Identifier
+        // Verify it was stored successfully
         if let insertAffiliateIdentifier = returnInsertAffiliateIdentifier() {
             print("[Insert Affiliate] Successfully set affiliate identifier: \(insertAffiliateIdentifier)")
+            return true
         } else {
             print("[Insert Affiliate] Failed to set affiliate identifier.")
+            return false
         }
     }
 
@@ -371,9 +384,11 @@ public struct InsertAffiliateSwift {
 
         // Automatically fetch and store offer code ONLY if it's a short code
         if isShortCode(referringLink) {
-            retrieveAndStoreOfferCode(affiliateLink: referringLink) { offerCode in
-                if let offerCode = offerCode {
-                    print("[Insert Affiliate] Automatically retrieved and stored offer code: \(offerCode)")
+            Task {
+                await retrieveAndStoreOfferCode(affiliateLink: referringLink) { offerCode in
+                    if let offerCode = offerCode {
+                        print("[Insert Affiliate] Automatically retrieved and stored offer code: \(offerCode)")
+                    }
                 }
             }
         }
@@ -450,15 +465,22 @@ public struct InsertAffiliateSwift {
         return string.unicodeScalars.filter { allowedCharacters.contains($0) }.map { Character($0) }.reduce("") { $0 + String($1) }
     }
     
-    internal static func fetchOfferCode(affiliateLink: String, completion: @Sendable @escaping (String?) -> Void) {
+    internal static func fetchOfferCode(affiliateLink: String, completion: @Sendable @escaping (String?) -> Void) async {
+        guard let companyCode = await state.getCompanyCode(), !companyCode.isEmpty else {
+            print("[Insert Affiliate] Company code is not set. Cannot fetch offer code.")
+            completion(nil)
+            return
+        }
+
         guard let encodedAffiliateLink = affiliateLink.addingPercentEncoding(withAllowedCharacters: .urlPathAllowed) else {
             print("[Insert Affiliate] Failed to encode affiliate link")
             completion(nil)
             return
         }
 
-        let offerCodeUrlString = "https://api.insertaffiliate.com/v1/affiliateReturnOfferCode/" + encodedAffiliateLink
-        
+        let platformType = "ios"
+        let offerCodeUrlString = "https://api.insertaffiliate.com/v1/affiliateReturnOfferCode/\(companyCode)/\(encodedAffiliateLink)?platformType=\(platformType)"
+
         guard let offerCodeUrl = URL(string: offerCodeUrlString) else {
             print("[Insert Affiliate] Invalid offer code URL")
             completion(nil)
@@ -501,8 +523,8 @@ public struct InsertAffiliateSwift {
         task.resume()
     }
 
-    private static func retrieveAndStoreOfferCode(affiliateLink: String, completion: @escaping @Sendable (String?) -> Void = { _ in }) {
-        fetchOfferCode(affiliateLink: affiliateLink) { offerCode in
+    private static func retrieveAndStoreOfferCode(affiliateLink: String, completion: @escaping @Sendable (String?) -> Void = { _ in }) async {
+        await fetchOfferCode(affiliateLink: affiliateLink) { offerCode in
             if let offerCode = offerCode {
                 UserDefaults.standard.set(offerCode, forKey: "OfferCode")
                 print("[Insert Affiliate] Offer code stored: \(offerCode)")
@@ -900,7 +922,7 @@ public struct InsertAffiliateSwift {
         guard let data = UserDefaults.standard.data(forKey: "deepLinkData") else {
             return nil
         }
-        
+
         do {
             return try JSONSerialization.jsonObject(with: data, options: []) as? [String: Any]
         } catch {
@@ -908,7 +930,87 @@ public struct InsertAffiliateSwift {
             return nil
         }
     }
-    
+
+    /// Affiliate details returned from the API
+    public struct AffiliateDetails {
+        public let affiliateName: String
+        public let affiliateShortCode: String
+        public let deeplinkUrl: String
+    }
+
+    /// Retrieves detailed information about an affiliate by their short code or deep link
+    /// This method queries the API and does not store or set the affiliate identifier
+    /// - Parameter affiliateCode: The short code or deep link to look up
+    /// - Returns: AffiliateDetails if found, nil otherwise
+    public static func getAffiliateDetails(affiliateCode: String) async -> AffiliateDetails? {
+        guard let companyCode = await state.getCompanyCode(), !companyCode.isEmpty else {
+            print("[Insert Affiliate] Company code is not set. Please initialize the SDK with a valid company code.")
+            return nil
+        }
+
+        // Strip UUID from code if present (e.g., "ABC123-uuid" becomes "ABC123")
+        let cleanCode = affiliateCode.components(separatedBy: "-").first ?? affiliateCode
+
+        let urlString = "https://api.insertaffiliate.com/V1/checkAffiliateExists"
+
+        guard let url = URL(string: urlString) else {
+            print("[Insert Affiliate] Invalid URL for getting affiliate details")
+            return nil
+        }
+
+        let payload: [String: Any] = [
+            "companyId": companyCode,
+            "affiliateCode": cleanCode
+        ]
+
+        guard let jsonData = try? JSONSerialization.data(withJSONObject: payload, options: []) else {
+            print("[Insert Affiliate] Failed to encode affiliate details payload")
+            return nil
+        }
+
+        var request = URLRequest(url: url)
+        request.httpMethod = "POST"
+        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        request.httpBody = jsonData
+
+        do {
+            let (data, response) = try await URLSession.shared.data(for: request)
+
+            guard let httpResponse = response as? HTTPURLResponse else {
+                print("[Insert Affiliate] No response received for affiliate details")
+                return nil
+            }
+
+            guard httpResponse.statusCode == 200 else {
+                if let errorResponse = String(data: data, encoding: .utf8) {
+                    print("[Insert Affiliate] API Error (\(httpResponse.statusCode)): \(errorResponse)")
+                }
+                return nil
+            }
+
+            guard let json = try JSONSerialization.jsonObject(with: data, options: []) as? [String: Any],
+                  let exists = json["exists"] as? Bool,
+                  exists == true,
+                  let affiliate = json["affiliate"] as? [String: Any],
+                  let affiliateName = affiliate["affiliateName"] as? String,
+                  let affiliateShortCode = affiliate["affiliateShortCode"] as? String,
+                  let deeplinkUrl = affiliate["deeplinkurl"] as? String else {
+                print("[Insert Affiliate] Failed to parse affiliate details from response")
+                return nil
+            }
+
+            return AffiliateDetails(
+                affiliateName: affiliateName,
+                affiliateShortCode: affiliateShortCode,
+                deeplinkUrl: deeplinkUrl
+            )
+
+        } catch {
+            print("[Insert Affiliate] Error fetching affiliate details: \(error.localizedDescription)")
+            return nil
+        }
+    }
+
     // MARK: - Deep Linking Utilities
     
     /// Retrieves and validates clipboard content for UUID format
