@@ -938,21 +938,27 @@ public struct InsertAffiliateSwift {
         // Strip UUID from code if present (e.g., "ABC123-uuid" becomes "ABC123")
         let cleanCode = affiliateCode.components(separatedBy: "-").first ?? affiliateCode
 
-        guard let encodedCode = cleanCode.addingPercentEncoding(withAllowedCharacters: .urlPathAllowed) else {
-            print("[Insert Affiliate] Failed to encode affiliate code")
-            return nil
-        }
-
-        let urlString = "https://insertaffiliate.link/V1/getDeepLinkData/\(companyCode)/\(encodedCode)"
+        let urlString = "https://api.insertaffiliate.com/V1/checkAffiliateExists"
 
         guard let url = URL(string: urlString) else {
             print("[Insert Affiliate] Invalid URL for getting affiliate details")
             return nil
         }
 
+        let payload: [String: Any] = [
+            "companyId": companyCode,
+            "affiliateCode": cleanCode
+        ]
+
+        guard let jsonData = try? JSONSerialization.data(withJSONObject: payload, options: []) else {
+            print("[Insert Affiliate] Failed to encode affiliate details payload")
+            return nil
+        }
+
         var request = URLRequest(url: url)
-        request.httpMethod = "GET"
+        request.httpMethod = "POST"
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        request.httpBody = jsonData
 
         do {
             let (data, response) = try await URLSession.shared.data(for: request)
@@ -970,18 +976,19 @@ public struct InsertAffiliateSwift {
             }
 
             guard let json = try JSONSerialization.jsonObject(with: data, options: []) as? [String: Any],
-                  let dataDict = json["data"] as? [String: Any],
-                  let deepLink = dataDict["deepLink"] as? [String: Any],
-                  let affiliateName = deepLink["affiliateName"] as? String,
-                  let userCode = deepLink["userCode"] as? String,
-                  let deeplinkUrl = deepLink["deepLinkUrl"] as? String else {
+                  let exists = json["exists"] as? Bool,
+                  exists == true,
+                  let affiliate = json["affiliate"] as? [String: Any],
+                  let affiliateName = affiliate["affiliateName"] as? String,
+                  let affiliateShortCode = affiliate["affiliateShortCode"] as? String,
+                  let deeplinkUrl = affiliate["deeplinkurl"] as? String else {
                 print("[Insert Affiliate] Failed to parse affiliate details from response")
                 return nil
             }
 
             return AffiliateDetails(
                 affiliateName: affiliateName,
-                affiliateShortCode: userCode,
+                affiliateShortCode: affiliateShortCode,
                 deeplinkUrl: deeplinkUrl
             )
 
