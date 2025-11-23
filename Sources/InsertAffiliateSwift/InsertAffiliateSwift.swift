@@ -197,12 +197,15 @@ public struct InsertAffiliateSwift {
         return nil
     }
 
-    public static func setShortCode(shortCode: String) {
+    /// Validates and sets a short code for affiliate tracking
+    /// - Parameter shortCode: The short code to validate and set
+    /// - Returns: true if the short code exists and was successfully validated and stored, false otherwise
+    public static func setShortCode(shortCode: String) async -> Bool {
         let capitalisedShortCode = shortCode.uppercased()
 
         guard capitalisedShortCode.count >= 3 && capitalisedShortCode.count <= 25 else {
             print("[Insert Affiliate] Error: Short code must be between 3 and 25 characters long.")
-            return
+            return false
         }
 
         // Check if the short code contains only letters and numbers
@@ -210,17 +213,27 @@ public struct InsertAffiliateSwift {
         let isValidShortCode = capitalisedShortCode.unicodeScalars.allSatisfy { alphanumericSet.contains($0) }
         guard isValidShortCode else {
             print("[Insert Affiliate] Error: Short code must contain only letters and numbers.")
-            return
+            return false
         }
 
-        // If all checks pass, set the Insert Affiliate Identifier
+        // Validate that the short code exists in the system
+        guard let affiliateDetails = await getAffiliateDetails(affiliateCode: capitalisedShortCode) else {
+            print("[Insert Affiliate] Error: Short code '\(capitalisedShortCode)' does not exist or validation failed.")
+            return false
+        }
+
+        print("[Insert Affiliate] Short code validated successfully for affiliate: \(affiliateDetails.affiliateName)")
+
+        // If validation passes, set the Insert Affiliate Identifier
         storeInsertAffiliateIdentifier(referringLink: capitalisedShortCode)
 
-        // Return and print the Insert Affiliate Identifier
+        // Verify it was stored successfully
         if let insertAffiliateIdentifier = returnInsertAffiliateIdentifier() {
             print("[Insert Affiliate] Successfully set affiliate identifier: \(insertAffiliateIdentifier)")
+            return true
         } else {
             print("[Insert Affiliate] Failed to set affiliate identifier.")
+            return false
         }
     }
 

@@ -1013,84 +1013,102 @@ For more information, visit the [Insert Affiliate Short Codes Documentation](htt
 
 ### Setting a Short Code
 
-Use the `setShortCode` method to associate a short code with an affiliate. This is ideal for scenarios where users enter the code via an input field, pop-up, or similar UI element.
+Use the `setShortCode` method to validate and associate a short code with an affiliate. This is ideal for scenarios where users enter the code via an input field, pop-up, or similar UI element.
 
-Short codes must meet the following criteria:
-- Between **3 and 25 characters long**.
-- Contain only **letters and numbers** (alphanumeric characters).
-- Replace {{ user_entered_short_code }} with the short code the user enters through your chosen input method, i.e. an input field / pop up element
+#### Method Signature
 
 ```swift
-InsertAffiliateSwift.setShortCode(shortCode: "{{user_entered_short_code}}")
+setShortCode(shortCode: String) async -> Bool
 ```
 
-#### Example Integration
-Below is an example SwiftUI implementation where users can enter a short code, which will be validated and associated with the affiliate's account:
+#### Return Value
+
+`setShortCode` returns a `Bool`:
+- Returns **`true`** if the short code exists and was successfully validated and stored
+- Returns **`false`** if the short code does not exist or validation failed
+
+This allows you to provide immediate feedback to users about whether their entered code is valid.
+
+#### Short Code Requirements
+
+Short codes must meet the following criteria:
+- Between **3 and 25 characters long**
+- Contain only **letters and numbers** (alphanumeric characters)
+
+#### Basic Usage
+
+```swift
+// Basic usage (without validation feedback)
+Task {
+    await InsertAffiliateSwift.setShortCode(shortCode: "JOIN123")
+}
+```
+
+#### Recommended Usage with Validation Feedback
 
 ```swift
 import SwiftUI
 import InsertAffiliateSwift
 
 struct ShortCodeView: View {
-  @State private var shortCode: String = ""
-  @State private var errorMessage: String?
+    @State private var shortCode: String = ""
+    @State private var showAlert = false
+    @State private var alertTitle = ""
+    @State private var alertMessage = ""
 
-  var body: some View {
-    VStack(spacing: 20) {
-      Text("Enter your Short Code")
-        .font(.headline)
+    var body: some View {
+        VStack(spacing: 20) {
+            Text("Enter your Short Code")
+                .font(.headline)
 
-      TextField("Short Code", text: $shortCode)
-        .textFieldStyle(RoundedBorderTextFieldStyle())
-        .autocapitalization(.allCharacters)
+            TextField("Short Code", text: $shortCode)
+                .textFieldStyle(RoundedBorderTextFieldStyle())
+                .autocapitalization(.allCharacters)
+                .padding()
+
+            Button(action: {
+                Task {
+                    let isValid = await InsertAffiliateSwift.setShortCode(shortCode: shortCode)
+                    if isValid {
+                        alertTitle = "Success"
+                        alertMessage = "Affiliate code applied successfully!"
+                    } else {
+                        alertTitle = "Error"
+                        alertMessage = "Invalid affiliate code. Please check and try again."
+                    }
+                    showAlert = true
+                }
+            }) {
+                Text("Set Short Code")
+                    .frame(maxWidth: .infinity)
+                    .padding()
+                    .background(Color.blue)
+                    .foregroundColor(.white)
+                    .cornerRadius(8)
+            }
+        }
         .padding()
-
-      Button(action: {
-          setShortCode()
-      }) {
-        Text("Set Short Code")
-          .frame(maxWidth: .infinity)
-          .padding()
-          .background(Color.blue)
-          .foregroundColor(.white)
-          .cornerRadius(8)
-      }
-
-      if let errorMessage = errorMessage {
-        Text(errorMessage)
-          .foregroundColor(.red)
-          .font(.subheadline)
-      }
+        .alert(alertTitle, isPresented: $showAlert) {
+            Button("OK", role: .cancel) { }
+        } message: {
+            Text(alertMessage)
+        }
     }
-    .padding()
-  }
-
-  func setShortCode() {
-    let trimmedShortCode = shortCode.trimmingCharacters(in: .whitespacesAndNewlines).uppercased()
-
-    guard trimmedShortCode.count == 10 else {
-      errorMessage = "Short code must be exactly 10 characters long."
-      return
-    }
-
-    let alphanumericSet = CharacterSet.alphanumerics
-    guard trimmedShortCode.unicodeScalars.allSatisfy({ alphanumericSet.contains($0) }) else {
-      errorMessage = "Short code must contain only letters and numbers."
-      return
-    }
-
-    // Set the short code using InsertAffiliateSwift
-    InsertAffiliateSwift.setShortCode(shortCode: trimmedShortCode)
-    errorMessage = nil
-  }
 }
 
 struct ShortCodeView_Previews: PreviewProvider {
-  static var previews: some View {
-    ShortCodeView()
-  }
+    static var previews: some View {
+        ShortCodeView()
+    }
 }
 ```
+
+#### Important Notes
+
+- The method validates the short code against the Insert Affiliate API before storing it
+- Validation checks both format (length, alphanumeric) and existence in your affiliate database
+- Short codes are automatically converted to uppercase
+- Use the return value to show success/error messages to your users
 
 ### 3. Discounts for Users → Offer Codes / Dynamic Product IDs
 
