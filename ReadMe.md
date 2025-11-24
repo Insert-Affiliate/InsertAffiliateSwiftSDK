@@ -145,7 +145,12 @@ InsertAffiliateSwift.initialize(
 **Parameters:**
 - `verboseLogging`: Shows detailed logs for debugging (disable in production)
 - `insertLinksEnabled`: Set to `true` if using Insert Links, `false` if using Branch/AppsFlyer
-- `insertLinksClipboardEnabled`: Improves Insert Links effectiveness via clipboard (triggers system permission prompt)
+- `insertLinksClipboardEnabled`: Enables clipboard-based attribution for Insert Links. When enabled:
+  - **How it works**: When a user clicks an Insert Link, the affiliate identifier is automatically copied to their clipboard
+  - **What the SDK does**: On app launch, the SDK checks the clipboard for Insert Affiliate identifiers and applies them
+  - **Why it's useful**: This massively increases attribution success rate and accuracy by providing a reliable fallback when direct deep linking fails (e.g., user manually opens app later, deep link doesn't work, app wasn't installed yet, etc.)
+  - **User experience**: iOS will show a one-time permission prompt: "[Your App] would like to paste from [App Name]"
+  - **Recommendation**: Strongly recommended for maximum attribution accuracy, though users will see the clipboard permission prompt
 - `affiliateAttributionActiveTime`: How long affiliate attribution lasts in seconds (0 = never expires)
 
 </details>
@@ -271,8 +276,6 @@ Replace:
 <details>
 <summary><h4>Option 3: App Store Direct (Beta)</h4></summary>
 
-**Note:** Our direct App Store integration currently supports **subscriptions only**. Consumables and one-off purchases are not yet supported due to App Store server-to-server notification limitations.
-
 **Step 1: Apple App Store Notification Setup**
 
 Visit [our docs](https://docs.insertaffiliate.com/direct-store-purchase-integration#1-apple-app-store-server-notifications) and complete the required App Store Server to Server Notifications setup.
@@ -371,8 +374,9 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
     // Initialize SDK with Insert Links enabled
     InsertAffiliateSwift.initialize(
       companyCode: "YOUR_COMPANY_CODE",
-      verboseLogging: true,  // Enable for debugging
-      insertLinksEnabled: true  // Enable Insert Links
+      verboseLogging: true,              // Enable for debugging
+      insertLinksEnabled: true,          // Enable Insert Links
+      insertLinksClipboardEnabled: false // Set to true if attribution accuracy is most important (triggers clipboard permission prompt)
     )
 
     // Set up callback for affiliate identifier changes
@@ -557,7 +561,7 @@ InsertAffiliateSwift.trackEvent(eventName: "user_signup")
 </details>
 
 <details>
-<summary><h3>Short Codes (Beta)</h3></summary>
+<summary><h3>Short Codes</h3></summary>
 
 Short codes are unique, 3-25 character alphanumeric identifiers that affiliates can share (e.g., "SAVE20" in a TikTok video description).
 
