@@ -1,64 +1,58 @@
 # InsertAffiliateSwift SDK for iOS
 
-![Version](https://img.shields.io/badge/version-1.0.0-brightgreen) ![Swift](https://img.shields.io/badge/Swift-5.0%2B-orange)
+![Version](https://img.shields.io/badge/version-1.0.0-brightgreen) ![Swift](https://img.shields.io/badge/Swift-5.0%2B-orange) ![iOS](https://img.shields.io/badge/iOS-13.0%2B-blue)
 
-## Overview
+The official iOS SDK for [Insert Affiliate](https://insertaffiliate.com) - track affiliate-driven in-app purchases and reward your partners automatically.
 
-The **InsertAffiliateSwift SDK** is designed for iOS applications, providing seamless integration with the [Insert Affiliate platform](https://insertaffiliate.com). 
-The InsertAffiliateSwift SDK simplifies affiliate marketing for iOS apps with in-app-purchases, allowing developers to create a seamless user experience for affiliate tracking and monetisation.
+**What does this SDK do?** It connects your iOS app to Insert Affiliate's platform, enabling you to track which affiliates drive subscriptions and automatically pay them commissions when users make in-app purchases.
 
-### Features
+## 📋 Table of Contents
 
-- **Unique Device ID**: Creates a unique ID to anonymously associate purchases with users for tracking purposes.
-- **Affiliate Identifier Management**: Set and retrieve the affiliate identifier based on user-specific links.
-- **In-App Purchase (IAP) Initialisation**: Easily reinitialise in-app purchases with the option to validate using an affiliate identifier.
-- **Discounts for End Users**: Fetch discount modifiers from the Insert Affiliate API.
+- [Quick Start (5 Minutes)](#-quick-start-5-minutes)
+- [Essential Setup](#%EF%B8%8F-essential-setup)
+  - [1. Initialize the SDK](#1-initialize-the-sdk)
+  - [2. Configure In-App Purchase Verification](#2-configure-in-app-purchase-verification)
+  - [3. Set Up Deep Linking](#3-set-up-deep-linking)
+- [Verify Your Integration](#-verify-your-integration)
+- [Advanced Features](#-advanced-features)
+- [Troubleshooting](#-troubleshooting)
+- [Support](#-support)
 
-## Getting Started
-To get started with the InsertAffiliateSwift SDK:
+---
 
-1. [Install the SDK via Swift Package Manager](#installation)
-2. [Initialise the SDK in your AppDelegate or SwiftUI @main entry point](#basic-usage)
-3. [Set up in-app purchases (Required)](#in-app-purchase-setup-required)
-4. [Set up deep linking (Required)](#deep-link-setup-required)
-5. [Use additional features like event tracking based on your app's requirements.](#additional-features)
+## 🚀 Quick Start (5 Minutes)
 
+Get up and running with minimal code to validate the SDK works before tackling IAP and deep linking setup.
 
-Refer to the below Examples section for detailed implementation steps.
+### Prerequisites
 
-## Installation
+- **iOS 13.0+** and **Swift 5.0+**
+- **Xcode 12.0+**
+- **Company Code** from your [Insert Affiliate dashboard](https://app.insertaffiliate.com/settings)
 
-To integrate the InsertAffiliateSwift SDK into your iOS app:
+### Installation
 
-1. Open your Xcode project.
-2. Go to File > Add Packages.
-3. Enter the repository URL: https://github.com/Insert-Affiliate/InsertAffiliateSwiftSDK.git
-4. Select the branch main.
-5. Confirm and integrate the package.
+**Step 1:** Open your Xcode project
 
+**Step 2:** Go to `File > Add Packages`
+
+**Step 3:** Enter the repository URL:
+```
+https://github.com/Insert-Affiliate/InsertAffiliateSwiftSDK.git
+```
+
+**Step 4:** Select the branch `main` and confirm
+
+**Alternative: Swift Package Manager**
+
+Add to your `Package.swift`:
 ```swift
 .package(url: "https://github.com/Insert-Affiliate/InsertAffiliateSwiftSDK.git", branch: "main")
 ```
 
-### Troubleshooting Tips:
+### Your First Integration
 
-If you encounter build errors, ensure your project uses Swift 5.0+ and targets iOS 13.0 or later.
-For Xcode-specific issues, clean the build folder using ```Shift + Command + K``` and rebuild the project.
-
-## Basic Usage
-### Import the SDK
-
-Import the SDK in your Swift files:
-
-```swift
-import InsertAffiliateSwift
-```
-
-### Initialisation in AppDelegate
-
-To ensure proper initialisation of the **InsertAffiliateSwift SDK**, you should call the `initialise` method early in your app's lifecycle, typically within the `AppDelegate`.
-
-- Replace `{{ your_company_code }}` with the unique company code associated with your Insert Affiliate account. You can find this code in your dashboard under [Settings](http://app.insertaffiliate.com/settings).
+Add this minimal code to your `AppDelegate.swift` to test the SDK:
 
 ```swift
 import InsertAffiliateSwift
@@ -69,35 +63,17 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
         _ application: UIApplication,
         didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]?
     ) -> Bool {
-        InsertAffiliateSwift.initialize(companyCode: "{{ your_company_code }}")
+        // Initialize SDK with verbose logging (recommended during setup)
+        InsertAffiliateSwift.initialize(
+            companyCode: "YOUR_COMPANY_CODE",  // Get from https://app.insertaffiliate.com/settings
+            verboseLogging: true                // Enable verbose logging for setup
+        )
         return true
     }
 }
 ```
 
-### Verbose Logging (Optional)
-
-By default, the SDK operates silently to avoid interrupting the user experience. However, you can enable verbose logging to see visual confirmation when affiliate attribution is processed. This is particularly useful for debugging during development or TestFlight testing.
-
-#### Enable Verbose Logging
-
-```swift
-import InsertAffiliateSwift
-
-@UIApplicationMain
-class AppDelegate: UIResponder, UIApplicationDelegate {
-    func application(
-        _ application: UIApplication,
-        didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]?
-    ) -> Bool {
-        // Enable verbose logging for debugging/testing
-        InsertAffiliateSwift.initialize(companyCode: "{{ your_company_code }}", verboseLogging: true)
-        return true
-    }
-}
-```
-
-#### SwiftUI Initialization with Verbose Logging
+**For SwiftUI apps:**
 
 ```swift
 import SwiftUI
@@ -106,7 +82,7 @@ import InsertAffiliateSwift
 @main
 struct MyApp: App {
     @UIApplicationDelegateAdaptor(AppDelegate.self) var delegate
-    
+
     var body: some Scene {
         WindowGroup {
             ContentView()
@@ -116,88 +92,97 @@ struct MyApp: App {
 
 class AppDelegate: UIResponder, UIApplicationDelegate {
     func application(_ application: UIApplication, didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]?) -> Bool {
-        // Enable verbose logging for TestFlight builds
-        #if TESTFLIGHT
-        InsertAffiliateSwift.initialize(companyCode: "{{ your_company_code }}", verboseLogging: true)
-        #else
-        InsertAffiliateSwift.initialize(companyCode: "{{ your_company_code }}")
-        #endif
+        InsertAffiliateSwift.initialize(companyCode: "YOUR_COMPANY_CODE", verboseLogging: true)
         return true
     }
 }
 ```
 
-**When verbose logging is enabled:**
-- Console logs will display when a deep link is processed
-- The logs show the extracted user code, affiliate email, and company information
-- Attribution tracking continues to work normally in the background
+**Expected Console Output:**
 
-**When verbose logging is disabled (default):**
-- Deep links are processed silently without any user interface interruption
-- All attribution tracking works normally in the background
+When the SDK initializes successfully, you'll see logs confirming initialization:
 
-**Recommendation**: Enable verbose logging only for development and TestFlight builds, and disable it for production App Store releases.
+```
+[InsertAffiliateSwift] SDK initialized with company code: YOUR_COMPANY_CODE
+[InsertAffiliateSwift] Verbose logging enabled
+```
 
-### Insert Link and Clipboard Control (BETA)
+✅ **If you see these logs, the SDK is working!** Now proceed to Essential Setup below.
 
-We are currently beta testing our in-house deep linking provider, Insert Links, which generates links for use with your affiliates.
+⚠️ **Disable verbose logging in production** by setting `verboseLogging: false` or omitting it.
 
-For larger projects where accuracy is critical, we recommend using established third-party deep linking platforms to generate the links you use within Insert Affiliate - such as Appsflyer or Branch.io, as described in the rest of this README.
+---
 
-If you encounter any issues while using Insert Links, please raise an issue on this GitHub repository or contact us directly at michael@insertaffiliate.com
+## ⚙️ Essential Setup
 
-#### Insert Link Initialization
+Complete these three required steps to start tracking affiliate-driven purchases.
+
+### 1. Initialize the SDK
+
+The SDK must be initialized in your `AppDelegate` before using any features. You've already done the basic initialization above, but here are additional options:
+
+#### Basic Initialization (Recommended for Getting Started)
 
 ```swift
-import InsertAffiliateSwift
-
-@UIApplicationMain
-class AppDelegate: UIResponder, UIApplicationDelegate {
-    func application(
-        _ application: UIApplication,
-        didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]?
-    ) -> Bool {
-        // Enable Insert Affiliate deep link handling
-        InsertAffiliateSwift.initialize(
-            companyCode: "{{ your_company_code }}", 
-            verboseLogging: false, // Enable for debugging
-            insertLinksEnabled: true, // Enable Insert Links
-            insertLinksClipboardEnabled: true, // Enable clipboard access (triggers permission prompt)
-            affiliateAttributionActiveTime: 604800 // Optional: 7 days attribution timeout (default: no timeout)
-        )
-        return true
-    }
-}
+// Minimal setup with verbose logging enabled (recommended during development)
+InsertAffiliateSwift.initialize(companyCode: "YOUR_COMPANY_CODE", verboseLogging: true)
 ```
 
-**When to use `insertLinksEnabled`:**
-- Set to `true` (default: `false`) if you are using Insert Affiliate's built-in deep link and universal link handling (Insert Links)
-- Set to `false` if you are using an external provider for deep links
+<details>
+<summary><strong>Advanced Initialization Options</strong> (click to expand)</summary>
 
-**When to use `insertLinksClipboardEnabled`:**
-- Set to `true` (default: `false`) if you are using Insert Affiliate's built-in deep links (Insert Links) **and** would like to improve the effectiveness of our deep links through the clipboard
-- **Important caveat**: This will trigger a system prompt asking the user for permission to access the clipboard when the SDK initializes
+```swift
+// With Insert Links enabled (for Insert Affiliate's built-in deep linking)
+InsertAffiliateSwift.initialize(
+    companyCode: "YOUR_COMPANY_CODE",
+    verboseLogging: true,                      // Enable verbose logging
+    insertLinksEnabled: true,                  // Enable Insert Links
+    insertLinksClipboardEnabled: true,         // Enable clipboard access (triggers permission prompt)
+    affiliateAttributionActiveTime: 604800     // Optional: 7 days attribution timeout (default: no timeout)
+)
+```
 
+**Parameters:**
+- `verboseLogging`: Shows detailed logs for debugging (disable in production)
+- `insertLinksEnabled`: Set to `true` if using Insert Links, `false` if using Branch/AppsFlyer
+- `insertLinksClipboardEnabled`: Enables clipboard-based attribution for Insert Links. When enabled:
+  - **How it works**: When a user clicks an Insert Link, the affiliate identifier is automatically copied to their clipboard
+  - **What the SDK does**: On app launch, the SDK checks the clipboard for Insert Affiliate identifiers and applies them
+  - **Why it's useful**: This massively increases attribution success rate and accuracy by providing a reliable fallback when direct deep linking fails (e.g., user manually opens app later, deep link doesn't work, app wasn't installed yet, etc.)
+  - **User experience**: iOS will show a one-time permission prompt: "[Your App] would like to paste from [App Name]"
+  - **Recommendation**: Strongly recommended for maximum attribution accuracy, though users will see the clipboard permission prompt
+- `affiliateAttributionActiveTime`: How long affiliate attribution lasts in seconds (0 = never expires)
 
-## In-App Purchase Setup [Required]
-Insert Affiliate requires a Receipt Verification platform to validate in-app purchases. You must choose **one** of our supported partners:
-- [RevenueCat](https://www.revenuecat.com/)
-- [Iaptic](https://www.iaptic.com/account)
-- [App Store Direct Integration](#option-3-app-store-direct-integration)
-- [Apphud](https://apphud.com/)
+</details>
 
-### Option 1: RevenueCat Integration
-#### 1. Code Setup
-First, complete the [RevenueCat SDK installation](https://www.revenuecat.com/docs/getting-started/installation/ios). Then modify your `AppDelegate.swift`:
+---
+
+### 2. Configure In-App Purchase Verification
+
+**Insert Affiliate requires a receipt verification method to validate purchases.** Choose **ONE** of the following:
+
+| Method | Best For | Setup Time | Complexity |
+|--------|----------|------------|------------|
+| [**RevenueCat**](#option-1-revenuecat-recommended) | Most developers, managed infrastructure | ~10 min | ⭐ Simple |
+| [**Iaptic**](#option-2-iaptic) | Custom requirements, direct control | ~15 min | ⭐⭐ Medium |
+| [**App Store Direct**](#option-3-app-store-direct-beta) | No 3rd party fees (subscriptions only) | ~20 min | ⭐⭐ Medium |
+| [**Apphud**](#option-4-apphud) | Alternative managed infrastructure | ~10 min | ⭐ Simple |
+
+<details open>
+<summary><h4>Option 1: RevenueCat (Recommended)</h4></summary>
+
+**Step 1: Code Setup**
+
+Complete the [RevenueCat SDK installation](https://www.revenuecat.com/docs/getting-started/installation/ios) first, then modify your `AppDelegate.swift`:
 
 ```swift
 import SwiftUI
 import RevenueCat
 import InsertAffiliateSwift
 
-final class AppDelegate: UIResponder, UIApplicationDelegate, UNUserNotificationCenterDelegate {
+final class AppDelegate: UIResponder, UIApplicationDelegate {
   func application(_ application: UIApplication, didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]? = nil) -> Bool {
-    Purchases.configure(withAPIKey: "{{ your_revenue_cat_api_key }}")
+    Purchases.configure(withAPIKey: "YOUR_REVENUE_CAT_API_KEY")
 
     if let applicationUsername = InsertAffiliateSwift.returnInsertAffiliateIdentifier() {
       Purchases.shared.attribution.setAttributes(["insert_affiliate": applicationUsername])
@@ -207,30 +192,31 @@ final class AppDelegate: UIResponder, UIApplicationDelegate, UNUserNotificationC
   }
 }
 ```
-Replace `{{ your_revenue_cat_api_key }}` with your **RevenueCat API Key**. You can find this [here](https://www.revenuecat.com/docs/welcome/authentication).
 
-#### 2. Webhook Setup
+Replace `YOUR_REVENUE_CAT_API_KEY` with your **RevenueCat API Key** from [here](https://www.revenuecat.com/docs/welcome/authentication).
 
-1. Go to RevenueCat and [create a new webhook](https://www.revenuecat.com/docs/integrations/webhooks)
+**Step 2: Webhook Setup**
 
-2. Configure the webhook with these settings:
-   - Webhook URL: `https://api.insertaffiliate.com/v1/api/revenuecat-webhook`
-   - Authorization header: Use the value from your Insert Affiliate dashboard (you'll get this in step 4)
-   - Set "Event Type" to "All events"
+1. In RevenueCat, [create a new webhook](https://www.revenuecat.com/docs/integrations/webhooks)
+2. Configure webhook settings:
+   - **Webhook URL**: `https://api.insertaffiliate.com/v1/api/revenuecat-webhook`
+   - **Event Type**: "All events"
+3. In your [Insert Affiliate dashboard](https://app.insertaffiliate.com/settings):
+   - Set **In-App Purchase Verification** to `RevenueCat`
+   - Copy the `RevenueCat Webhook Authentication Header` value
+4. Back in RevenueCat webhook config:
+   - Paste the authentication header value into the **Authorization header** field
 
-3. In your [Insert Affiliate dashboard settings](https://app.insertaffiliate.com/settings):
-   - Navigate to the verification settings
-   - Set the in-app purchase verification method to `RevenueCat`
+✅ **RevenueCat setup complete!** Now skip to [Step 3: Set Up Deep Linking](#3-set-up-deep-linking)
 
-4. Back in your Insert Affiliate dashboard:
-   - Locate the `RevenueCat Webhook Authentication Header` value
-   - Copy this value
-   - Paste it as the Authorization header value in your RevenueCat webhook configuration
+</details>
 
-### Option 2: Iaptic Integration
-#### 1. Code Setup
+<details>
+<summary><h4>Option 2: Iaptic</h4></summary>
 
-First, complete the [Iaptic account setup](https://www.iaptic.com/documentation/setup/ios) and [SDK installation.](https://github.com/iridescent-dev/iap-swift-lib) Then modify your ```AppDelegate.swift```:
+**Step 1: Code Setup**
+
+Complete the [Iaptic account setup](https://www.iaptic.com/documentation/setup/ios) and [SDK installation](https://github.com/iridescent-dev/iap-swift-lib). Then modify your `AppDelegate.swift`:
 
 ```swift
 import SwiftUI
@@ -238,93 +224,98 @@ import InAppPurchaseLib
 import InsertAffiliateSwift
 
 class AppDelegate: UIResponder, UIApplicationDelegate {
-  InsertAffiliateSwift.initialize(companyCode: "{{ your_company_code }}")
-
   func application(_ application: UIApplication, didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]? = nil) -> Bool {
 
-    // Step 1: Define products
+    InsertAffiliateSwift.initialize(companyCode: "YOUR_COMPANY_CODE")
+
+    // Define products
     let iapProductsArray = [
       IAPProduct(
-        productIdentifier: "{{ apple_in_app_purchase_subscription_id }}",
+        productIdentifier: "YOUR_APPLE_IAP_SUBSCRIPTION_ID",
         productType: .autoRenewableSubscription
       )
     ]
 
-    // Step 2: Reinitialise In-App Purchases
+    // Reinitialise In-App Purchases
     InAppPurchase.stop()
     if let applicationUsername = InsertAffiliateSwift.returnInsertAffiliateIdentifier() {
       InAppPurchase.initialize(
         iapProducts: iapProductsArray,
-        validatorUrlString: "https://validator.iaptic.com/v3/validate?appName={{ your_iaptic_app_name }}&apiKey={{ your_iaptic_app_key_goes_here }}",
+        validatorUrlString: "https://validator.iaptic.com/v3/validate?appName=YOUR_IAPTIC_APP_NAME&apiKey=YOUR_IAPTIC_PUBLIC_KEY",
         applicationUsername: applicationUsername
       )
     } else {
       InAppPurchase.initialize(
         iapProducts: iapProductsArray,
-        validatorUrlString: "https://validator.iaptic.com/v3/validate?appName={{ your_iaptic_app_name }}&apiKey={{ your_iaptic_app_key_goes_here }}"
+        validatorUrlString: "https://validator.iaptic.com/v3/validate?appName=YOUR_IAPTIC_APP_NAME&apiKey=YOUR_IAPTIC_PUBLIC_KEY"
       )
     }
     return true
   }
 }
 ```
-Replace the following:
-- `{{ your_iaptic_app_name }}` with your [Iaptic App Name](https://www.iaptic.com/account)
-- `{{ your_iaptic_public_key }}` with your [Iaptic Public Key](https://www.iaptic.com/settings)
 
-#### 2. Webhook Setup
+Replace:
+- `YOUR_IAPTIC_APP_NAME` with your [Iaptic App Name](https://www.iaptic.com/account)
+- `YOUR_IAPTIC_PUBLIC_KEY` with your [Iaptic Public Key](https://www.iaptic.com/settings)
+
+**Step 2: Webhook Setup**
 
 1. Open the [Insert Affiliate settings](https://app.insertaffiliate.com/settings):
-  - Navigate to the Verification Settings section
-  - Set the In-App Purchase Verification method to `Iaptic`
-  - Copy the `Iaptic Webhook URL` and the `Iaptic Webhook Sandbox URL`- you'll need it in the next step.
-2. Go to the [Iaptic Settings](https://www.iaptic.com/settings)
-- Paste the copied `Iaptic Webhook URL` into the `Webhook URL` field
-- Paste the copied `Iaptic Webhook Sandbox URL` into the `Sandbox Webhook URL` field
-- Click **Save Settings**.
-3. Check that you have completed the [Iaptic setup for the App Store Server Notifications](https://www.iaptic.com/documentation/setup/ios-subscription-status-url)
+   - Set the In-App Purchase Verification method to `Iaptic`
+   - Copy the `Iaptic Webhook URL` and `Iaptic Webhook Sandbox URL`
+2. Go to [Iaptic Settings](https://www.iaptic.com/settings):
+   - Paste the Webhook URLs into the corresponding fields
+   - Click **Save Settings**
+3. Complete the [Iaptic App Store Server Notifications setup](https://www.iaptic.com/documentation/setup/ios-subscription-status-url)
 
-### Option 3: App Store Direct Integration
+✅ **Iaptic setup complete!** Now proceed to [Step 3: Set Up Deep Linking](#3-set-up-deep-linking)
 
-Our direct App Store integration is currently in beta and currently supports subscriptions only. **Consumables and one-off purchases are not yet supported** due to App Store server-to-server notification limitations.
+</details>
 
-We plan to release support for consumables and one-off purchases soon. In the meantime, you can use a receipt verification platform from the other integration options.
+<details>
+<summary><h4>Option 3: App Store Direct (Beta)</h4></summary>
 
-#### 1. Apple App Store Notification Setup
-To proceed, visit [our docs](https://docs.insertaffiliate.com/direct-store-purchase-integration#1-apple-app-store-server-notifications) and complete the required setup steps to set up App Store Server to Server Notifications.
+**Step 1: Apple App Store Notification Setup**
 
-#### 2. Implementing Purchases
+Visit [our docs](https://docs.insertaffiliate.com/direct-store-purchase-integration#1-apple-app-store-server-notifications) and complete the required App Store Server to Server Notifications setup.
+
+**Step 2: Implementing Purchases**
 
 ```swift
-// Step 1: Initialise purchases, retrieve the product
-
-// Step 2: Within the function where you are making the purchase...
+// Within the function where you are making the purchase...
 func purchase(productIdentifier: String) async {
     do {
-      // Step 3: Replace your product.purchase() with the lines below
-      let token = await InsertAffiliateSwift.returnUserAccountTokenAndStoreExpectedTransaction() 
+      // Replace your product.purchase() with the lines below
+      let token = await InsertAffiliateSwift.returnUserAccountTokenAndStoreExpectedTransaction()
       // Optional override: Use your own UUID for the purchase token
       // let token = await InsertAffiliateSwift.returnUserAccountTokenAndStoreExpectedTransaction(
-      //     overrideUUIDString: "{{your_own_uuid}}"
+      //     overrideUUIDString: "YOUR_OWN_UUID"
       // )
       let result = try await product.purchase(options: token.map { [.appAccountToken($0)] } ?? [])
     }
 }
 ```
 
-### Option 4: Apphud Integration
-#### 1. Code Setup
-First, complete the [Apphud Quickstart and Setup](https://docs.apphud.com/docs/quickstart). Then modify your ```AppDelegate.swift```:
+✅ **App Store Direct setup complete!** Now proceed to [Step 3: Set Up Deep Linking](#3-set-up-deep-linking)
+
+</details>
+
+<details>
+<summary><h4>Option 4: Apphud</h4></summary>
+
+**Step 1: Code Setup**
+
+Complete the [Apphud Quickstart and Setup](https://docs.apphud.com/docs/quickstart). Then modify your `AppDelegate.swift`:
 
 ```swift
 import SwiftUI
 import ApphudSDK
 import InsertAffiliateSwift
 
-final class AppDelegate: UIResponder, UIApplicationDelegate, UNUserNotificationCenterDelegate {
+final class AppDelegate: UIResponder, UIApplicationDelegate {
   func application(_ application: UIApplication, didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]? = nil) -> Bool {
-    Apphud.start(apiKey: "{{ your_apphud_key }}")
-
+    Apphud.start(apiKey: "YOUR_APPHUD_KEY")
 
     if let applicationUsername = InsertAffiliateSwift.returnInsertAffiliateIdentifier() {
       Apphud.setUserProperty(key: .init("insert_affiliate"), value: applicationUsername, setOnce: false)
@@ -334,66 +325,74 @@ final class AppDelegate: UIResponder, UIApplicationDelegate, UNUserNotificationC
   }
 }
 ```
-- Replace {{ your_apphud_key }} with your **Apphud API Key**.
 
-#### 2. Webhook Setup
+Replace `YOUR_APPHUD_KEY` with your **Apphud API Key**.
+
+**Step 2: Webhook Setup**
+
 1. Open the [Insert Affiliate settings](https://app.insertaffiliate.com/settings):
-   - Navigate to the Verification Settings section
    - Set the In-App Purchase Verification method to `Apphud`
-   - Copy the `Apphud Webhook URL`- you'll need it in the next step.
-2. Go to the [Apphud Dashboard](https://app.apphud.com/)
-3. Navigate to **Settings** -> **iOS App Settings:**
-- Paste the copied `Apphud Webhook URL` into the `Proxy App Store server notifications to this URL` field
-- Click **Save**.
+   - Copy the `Apphud Webhook URL`
+2. Go to the [Apphud Dashboard](https://app.apphud.com/):
+   - Navigate to **Settings** → **iOS App Settings**
+   - Paste the webhook URL into the `Proxy App Store server notifications to this URL` field
+   - Click **Save**
 
+✅ **Apphud setup complete!** Now proceed to [Step 3: Set Up Deep Linking](#3-set-up-deep-linking)
 
-## Deep Link Setup [Required]
-Insert Affiliate requires a Deep Linking platform to create links for your affiliates. Our platform works with **any** deep linking provider, and you only need to follow these steps:
-1. **Create a deep link** in your chosen third-party platform and pass it to our dashboard when an affiliate signs up. 
-2. **Handle deep link clicks** in your app by passing the clicked link:
-  ```swift
-  InsertAffiliateSwift.setInsertAffiliateIdentifier(referringLink: "{{ link }}")
-  ```
-3. **Integrate with a Receipt Verification platform** by using the result from `setInsertAffiliateIdentifier` to log in or set your application’s username. Examples below include [**Iaptic**](https://github.com/Insert-Affiliate/InsertAffiliateSwiftSDK?tab=readme-ov-file#example-with-iaptic), [**RevenueCat**](https://github.com/Insert-Affiliate/InsertAffiliateSwiftSDK?tab=readme-ov-file#example-with-revenuecat) and [**Direct App Store integration**](https://github.com/Insert-Affiliate/InsertAffiliateSwiftSDK?tab=readme-ov-file#example-with-app-store-direct-integration).
+</details>
 
-### Deep Linking with Insert Links
-Insert Links by Insert Affiliate supports direct deep linking into your app. This allows you to track affiliate attribution when end users are referred to your app by clicking on one of your affiliates Insert Links.
+---
 
-#### Initial Setup
-1. Before you can use Insert Links, you must complete the setup steps in [our docs](https://docs.insertaffiliate.com/insert-links)
+### 3. Set Up Deep Linking
 
-2. **Initialization** of the Insert Affiliate SDK with Insert Links
-You must enable *insertLinksEnabled* when [initialising our SDK](https://github.com/Insert-Affiliate/InsertAffiliateSwiftSDK?tab=readme-ov-file#insert-link-initialization)
+**Deep linking lets affiliates share unique links that track users to your app.** Choose **ONE** deep linking provider:
 
-3. **Handle Insert Links** in your AppDelegate
-The SDK provides a single `handleInsertLinks` method that automatically detects and handles different URL types. 
+| Provider | Best For | Complexity | Setup Guide |
+|----------|----------|------------|-------------|
+| [**Insert Links**](#option-1-insert-links-simplest) | Simple setup, no 3rd party | ⭐ Simple | [View](#option-1-insert-links-simplest) |
+| [**Branch.io**](#option-2-branchio) | Robust attribution, deferred deep linking | ⭐⭐ Medium | [View](#option-2-branchio) |
+| [**AppsFlyer**](#option-3-appsflyer) | Enterprise analytics, comprehensive attribution | ⭐⭐ Medium | [View](#option-3-appsflyer) |
+
+<details open>
+<summary><h4>Option 1: Insert Links (Simplest)</h4></summary>
+
+Insert Links is Insert Affiliate's built-in deep linking solution—no third-party SDK required.
+
+**Prerequisites:**
+- Complete the [Insert Links setup](https://docs.insertaffiliate.com/insert-links) in the Insert Affiliate dashboard
+
+**Code Implementation:**
 
 ```swift
 import UIKit
 import InsertAffiliateSwift
 
 class AppDelegate: UIResponder, UIApplicationDelegate {
-  func application(_ application: UIApplication, didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]? = nil) -> Bool { 
+  func application(_ application: UIApplication, didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]? = nil) -> Bool {
+
+    // Initialize SDK with Insert Links enabled
+    InsertAffiliateSwift.initialize(
+      companyCode: "YOUR_COMPANY_CODE",
+      verboseLogging: true,              // Enable for debugging
+      insertLinksEnabled: true,          // Enable Insert Links
+      insertLinksClipboardEnabled: false // Set to true if attribution accuracy is most important (triggers clipboard permission prompt)
+    )
+
+    // Set up callback for affiliate identifier changes
     InsertAffiliateSwift.setInsertAffiliateIdentifierChangeCallback { identifier in
       if let identifier = identifier {
-        // *** Required if using RevenueCat *** //
-        Purchases.shared.attribution.setAttributes(["insert_affiliate": identifier]) 
-        // *** End of RevenueCat section *** //
+        print("Affiliate identifier: \(identifier)")
 
-        // *** Required if using Apphud *** //
-        Apphud.setUserProperty(key: .init("insert_affiliate"), value: shortCode, setOnce: false) 
-        // *** End of Apphud Section *** //
+        // If using RevenueCat, update attributes here
+        Purchases.shared.attribution.setAttributes(["insert_affiliate": identifier])
 
-        /// *** Required only if you're using Iaptic ** //
-        InAppPurchase.initialize( 
-          iapProducts: iapProductsArray,
-          validatorUrlString: "https://validator.iaptic.com/v3/validate?appName={{ your_iaptic_app_name }}&apiKey={{ your_iaptic_app_key_goes_here }}",
-          applicationUsername: affiliateIdentifier
-        )
-        // *** End of Iaptic Section ** //
+        // If using Apphud, update property here
+        // Apphud.setUserProperty(key: .init("insert_affiliate"), value: identifier, setOnce: false)
       }
     }
 
+    // Handle deep link from app launch
     if let url = launchOptions?[.url] as? URL {
       InsertAffiliateSwift.handleInsertLinks(url)
     }
@@ -404,8 +403,8 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
     InsertAffiliateSwift.handleInsertLinks(url)
     return true
   }
-  
-  func application(_ application: UIApplication, continue userActivity: NSUserActivity, restorationHandler: @escaping ([UIUserActivityRestoring]?) -> Void) -> Bool {    
+
+  func application(_ application: UIApplication, continue userActivity: NSUserActivity, restorationHandler: @escaping ([UIUserActivityRestoring]?) -> Void) -> Bool {
     if let url = userActivity.webpageURL {
       InsertAffiliateSwift.handleInsertLinks(url)
     }
@@ -414,10 +413,7 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
 }
 ```
 
-4. **SwiftUI** - On Open URL
-For SwiftUI apps, you can handle Insert Links directly using the .onOpenURL modifier. This allows you to capture and process deep links while the app is already running.
-
-#### SwiftUI App example
+**SwiftUI - On Open URL:**
 
 ```swift
 import InsertAffiliateSwift
@@ -425,24 +421,15 @@ import RevenueCat
 import SwiftUI
 
 @main
-struct InsertAffiliateAppApp: App {
-    @StateObject private var viewModel = InAppPurchaseViewModel()
-
-    @Environment(\.scenePhase) private var scenePhase
+struct MyApp: App {
     @UIApplicationDelegateAdaptor(AppDelegate.self) var appDelegate
 
     var body: some Scene {
         WindowGroup {
            ContentView()
-                .environmentObject(viewModel)
-                .onAppear {
-                  //...
-                }
                .onOpenURL(perform: { url in
-
                     // Handle InsertAffiliate deep links
                     if InsertAffiliateSwift.handleInsertLinks(url) {
-                        
                         // Update RevenueCat attribution with the new affiliate info
                         if let affiliateIdentifier = InsertAffiliateSwift.returnInsertAffiliateIdentifier() {
                             Purchases.shared.attribution.setAttributes(["insert_affiliate": affiliateIdentifier])
@@ -454,910 +441,297 @@ struct InsertAffiliateAppApp: App {
 }
 ```
 
-> **Note**: The SwiftUI `.onOpenURL` approach is recommended for modern SwiftUI apps as it's cleaner and more declarative. The AppDelegate approach is still needed for handling universal links and launch-time deep linksz
-
-
-
-#### Testing Deep Links
-
-Test your deep link integration using the iOS Simulator:
+**Testing Deep Links:**
 
 ```bash
 # Test with your iOS URL scheme from Insert Affiliate dashboard
-xcrun simctl openurl booted "{{ your_iOS_URL_Scheme }}://{{ test_short_code }}"
+xcrun simctl openurl booted "YOUR_IOS_URL_SCHEME://TEST_SHORT_CODE"
 
 # Test universal link
-xcrun simctl openurl booted "https://api.insertaffiliate.com/V1/{{ your_company_code }}/{{ test_short_code }}"
+xcrun simctl openurl booted "https://api.insertaffiliate.com/V1/YOUR_COMPANY_CODE/TEST_SHORT_CODE"
 ```
 
-Replace `{{ your_iOS_URL_Scheme }}` with the URL scheme from your [Insert Affiliate dashboard](https://app.insertaffiliate.com/settings), and `{{ test_short_code }}` with a test short code.
+✅ **Insert Links setup complete!** Skip to [Verify Your Integration](#-verify-your-integration)
 
-**Example:**
+</details>
+
+<details>
+<summary><h4>Option 2: Branch.io</h4></summary>
+
+Branch.io provides robust attribution and deferred deep linking capabilities.
+
+**Key Integration Steps:**
+1. Install and configure [Branch SDK for iOS](https://help.branch.io/developers-hub/docs/ios-basic-integration)
+2. Extract `~referring_link` from Branch callback
+3. Pass to Insert Affiliate SDK using `setInsertAffiliateIdentifier()`
+
+📖 **[View complete Branch.io integration guide →](docs/deep-linking-branch.md)**
+
+Includes full examples for:
+- RevenueCat integration
+- Apphud integration
+- Iaptic integration
+- App Store Direct integration
+
+✅ **After completing Branch setup**, skip to [Verify Your Integration](#-verify-your-integration)
+
+</details>
+
+<details>
+<summary><h4>Option 3: AppsFlyer</h4></summary>
+
+AppsFlyer provides enterprise-grade analytics and comprehensive attribution.
+
+**Key Integration Steps:**
+1. Install and configure [AppsFlyer SDK for iOS](https://dev.appsflyer.com/hc/docs/ios-sdk-reference-getting-started)
+2. Create AppsFlyer OneLink in dashboard
+3. Extract deep link from `onAppOpenAttribution()` callback
+4. Pass to Insert Affiliate SDK using `setInsertAffiliateIdentifier()`
+
+📖 **[View complete AppsFlyer integration guide →](docs/deep-linking-appsflyer.md)**
+
+Includes full examples for:
+- RevenueCat integration
+- Iaptic integration
+- App Store Direct integration
+- Deferred deep linking setup
+
+✅ **After completing AppsFlyer setup**, proceed to [Verify Your Integration](#-verify-your-integration)
+
+</details>
+
+---
+
+## ✅ Verify Your Integration
+
+Before going live, verify everything works correctly:
+
+### Integration Checklist
+
+- [ ] **SDK Initializes**: Check console for `SDK initialized with company code` log
+- [ ] **Affiliate Identifier Stored**: Click a test affiliate link and verify identifier is stored
+- [ ] **Purchase Tracked**: Make a test purchase and verify transaction is sent to Insert Affiliate
+
+### Testing Commands
+
+**Test Deep Link (via Simulator):**
+
 ```bash
-# If your iOS URL scheme is "ia-clbz8jf3unfp5frzjxby3d3xj382"
-xcrun simctl openurl booted "ia-clbz8jf3unfp5frzjxby3d3xj382://eedwftx2po"
+# Replace with your actual deep link URL
+xcrun simctl openurl booted "https://your-app.onelink.me/abc123"
 ```
 
-**Debugging Deep Links:** Enable [verbose logging](#verbose-logging-optional) during development to see visual confirmation when deep links are processed successfully. This shows an alert with the extracted user code, affiliate email, and company information.
-
-#### Retrieving Affiliate Information
-
-After handling a deep link, you can retrieve the affiliate information:
+**Check Stored Affiliate Identifier:**
 
 ```swift
-// Get the affiliate identifier
-if let affiliateIdentifier = InsertAffiliateSwift.returnInsertAffiliateIdentifier() {
-  print("Affiliate ID: \(affiliateIdentifier)")
+if let affiliateId = InsertAffiliateSwift.returnInsertAffiliateIdentifier() {
+    print("Current affiliate ID: \(affiliateId)")
 }
 ```
 
-### Getting Affiliate Details
+**Expected Output:** `Current affiliate ID: AFFILIATE1-a1b2c3`
 
-You can retrieve detailed information about an affiliate by their short code or deep link using the `getAffiliateDetails` method. This is useful for displaying affiliate information to users or showing personalized content based on the referrer.
+### Common Setup Issues
 
-#### Method Signature
+| Issue | Solution |
+|-------|----------|
+| "Company code is not set" | Ensure `initialize()` is called in `AppDelegate` before any other SDK methods |
+| "No affiliate identifier found" | User must click an affiliate link before making a purchase |
+| Deep link opens browser instead of app | Verify associated domains in Xcode project and deep linking provider dashboard |
+| Purchase not tracked | Check webhook configuration in IAP verification platform |
+
+---
+
+## 🔧 Advanced Features
+
+<details>
+<summary><h3>Event Tracking (Beta)</h3></summary>
+
+Track custom events beyond purchases (e.g., signups, referrals) to incentivize affiliates for specific actions.
 
 ```swift
-getAffiliateDetails(affiliateCode: String) async -> AffiliateDetails?
-
-public struct AffiliateDetails {
-    public let affiliateName: String
-    public let affiliateShortCode: String
-    public let deeplinkUrl: String
-}
+// Track custom event (affiliate identifier must be set first)
+InsertAffiliateSwift.trackEvent(eventName: "user_signup")
 ```
 
-#### Usage Example
+**Use Cases:**
+- Pay affiliates for signups instead of purchases
+- Track trial starts, content unlocks, or other conversions
+
+</details>
+
+<details>
+<summary><h3>Short Codes</h3></summary>
+
+Short codes are unique, 3-25 character alphanumeric identifiers that affiliates can share (e.g., "SAVE20" in a TikTok video description).
+
+**Validate and Store Short Code:**
 
 ```swift
-import SwiftUI
-import InsertAffiliateSwift
-
-struct MyView: View {
-    @State private var affiliateName: String?
-
-    var body: some View {
-        VStack(spacing: 20) {
-            if let name = affiliateName {
-                Text("Referred by: \(name)")
-                    .font(.headline)
-            }
-
-            Button("Get Affiliate Info") {
-                Task {
-                    await handleGetAffiliateInfo(code: "JOIN123")
-                }
-            }
-            .buttonStyle(.bordered)
-        }
-        .padding()
-    }
-
-    func handleGetAffiliateInfo(code: String) async {
-        if let details = await InsertAffiliateSwift.getAffiliateDetails(affiliateCode: code) {
-            print("Affiliate Name: \(details.affiliateName)")
-            print("Short Code: \(details.affiliateShortCode)")
-            print("Deep Link: \(details.deeplinkUrl)")
-
-            // Update UI with affiliate name
-            affiliateName = details.affiliateName
-        } else {
-            print("Affiliate not found")
-        }
+Task {
+    let isValid = await InsertAffiliateSwift.setShortCode(shortCode: "SAVE20")
+    if isValid {
+        print("Short code is valid!")
+        // Show success message to user
+    } else {
+        print("Invalid short code")
+        // Show error message
     }
 }
 ```
 
-#### Return Value
-
-Returns an `AffiliateDetails` object with affiliate information if the code exists:
-- `affiliateName`: The name of the affiliate
-- `affiliateShortCode`: The affiliate's short code
-- `deeplinkUrl`: The affiliate's deep link URL
-
-Returns `nil` if:
-- The affiliate code doesn't exist
-- The company code is not initialized
-- There's a network error or API issue
-
-#### Important Notes
-
-- This method **does not store or set** the affiliate identifier - it only retrieves information
-- Use `setShortCode()` to actually associate an affiliate with a user
-- The method automatically strips UUIDs from codes (e.g., "ABC123-uuid" becomes "ABC123")
-- Works with both short codes and deep link URLs
-
-#### Getting the Stored Affiliate Identifier
-
-To retrieve the currently stored affiliate identifier (the one associated with the current user), use `returnInsertAffiliateIdentifier()`:
+**Get Affiliate Details Without Setting:**
 
 ```swift
-// Get the current affiliate identifier
-if let affiliateIdentifier = InsertAffiliateSwift.returnInsertAffiliateIdentifier() {
-    print("Current affiliate identifier: \(affiliateIdentifier)")
+if let details = await InsertAffiliateSwift.getAffiliateDetails(affiliateCode: "SAVE20") {
+    print("Affiliate Name: \(details.affiliateName)")
+    print("Short Code: \(details.affiliateShortCode)")
+    print("Deep Link: \(details.deeplinkUrl)")
+}
+```
+
+Learn more: [Short Codes Documentation](https://docs.insertaffiliate.com/short-codes)
+
+</details>
+
+<details>
+<summary><h3>Dynamic Offer Codes / Discounts</h3></summary>
+
+Automatically apply discounts or trials when users come from specific affiliates.
+
+**How It Works:**
+1. Configure an offer code modifier in your [Insert Affiliate dashboard](https://app.insertaffiliate.com/affiliates) (e.g., `_oneWeekFree`)
+2. SDK automatically fetches and stores the modifier when affiliate identifier is set
+3. Use the modifier to construct dynamic product IDs
+
+**Quick Example:**
+
+```swift
+var dynamicProductIdentifier: String {
+    let baseProductId = "oneMonthSubscription"
+
+    if let offerCode = InsertAffiliateSwift.OfferCode {
+        let cleanOfferCode = offerCode.trimmingCharacters(in: CharacterSet(charactersIn: "\"'"))
+        return "\(baseProductId)\(cleanOfferCode)"
+    }
+
+    return baseProductId
+}
+```
+
+📖 **[View complete Dynamic Offer Codes guide →](docs/dynamic-offer-codes.md)**
+
+Includes full examples for:
+- App Store Connect setup
+- RevenueCat integration with dynamic product selection
+- Native StoreKit 2 integration
+- Testing and troubleshooting
+
+</details>
+
+<details>
+<summary><h3>Attribution Timeout Control</h3></summary>
+
+Control how long affiliate attribution remains active after a user clicks a link (e.g., 7-day attribution window).
+
+**Set Timeout During Initialization:**
+
+```swift
+// 7-day attribution window (604800 seconds)
+InsertAffiliateSwift.initialize(
+    companyCode: "YOUR_COMPANY_CODE",
+    affiliateAttributionActiveTime: 604800
+)
+```
+
+**Check Attribution Validity:**
+
+```swift
+let isValid = await InsertAffiliateSwift.isAffiliateAttributionValid()
+if isValid {
+    // Attribution is still active
 } else {
-    print("No affiliate identifier found")
+    // Attribution expired
 }
 ```
 
-**Important Notes:**
-- This method should only be called after SDK initialization is complete
-- Returns `nil` if no affiliate identifier has been set
-- Respects the attribution timeout if configured (see [Attribution Timeout Control](#attribution-timeout-control-new))
-- The identifier is automatically stored when a user clicks an affiliate link or enters a short code
+**Common Timeout Values:**
+- 1 day: `86400`
+- 7 days: `604800` (recommended)
+- 30 days: `2592000`
+- No timeout: omit parameter (default)
 
-#### Additional Affiliate Information Methods
-
-The SDK also provides methods to retrieve additional affiliate details:
+**Get Attribution Date:**
 
 ```swift
-// Get the affiliate email
-if let email = InsertAffiliateSwift.getAffiliateEmail() {
-    print("Affiliate email: \(email)")
-}
-
-// Get the affiliate ID
-if let id = InsertAffiliateSwift.getAffiliateId() {
-    print("Affiliate ID: \(id)")
-}
-
-// Get the company name
-if let company = InsertAffiliateSwift.getCompanyName() {
-    print("Company name: \(company)")
-}
-
-// Get when the affiliate was stored
 if let storedDate = InsertAffiliateSwift.getAffiliateStoredDate() {
     print("Affiliate stored on: \(storedDate)")
 }
-
-// Check if attribution is still valid (respects timeout)
-let isValid = InsertAffiliateSwift.isAffiliateAttributionValid()
-print("Attribution valid: \(isValid)")
-
-// Get affiliate identifier even if attribution has expired
-if let affiliateIdentifier = InsertAffiliateSwift.returnInsertAffiliateIdentifier(ignoreTimeout: true) {
-    print("Affiliate identifier (ignoring timeout): \(affiliateIdentifier)")
-}
 ```
 
-### Deep Linking with Branch.io
-To set up deep linking with Branch.io, follow these steps:
+</details>
 
-1. Create a deep link in Branch and pass it to our dashboard when an affiliate signs up.
-    - Example: [Create Affiliate](https://docs.insertaffiliate.com/create-affiliate).
-2. Modify Your Deep Link Handling in AppDelegate.swift
-    - After setting up your Branch integration, add the following code to initialise the Insert Affiliate SDK in your iOS app:
+---
 
+## 🔍 Troubleshooting
 
-#### Example with RevenueCat
-```swift
-import SwiftUI
-import BranchSDK
-import RevenueCat
-import InsertAffiliateSwift
+### Initialization Issues
 
-class AppDelegate: UIResponder, UIApplicationDelegate {
-    func application(_ application: UIApplication, didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]? = nil) -> Bool {
-        Branch.getInstance().initSession(launchOptions: launchOptions) { (params, error) in
-          if let referringLink = params?["~referring_link"] as? String {
-            InsertAffiliateSwift.setInsertAffiliateIdentifier(referringLink: referringLink) { result in
-                guard let shortCode = result else {
-                    return
-                }
+**Error:** "Company code is not set"
+- **Cause:** SDK not initialized or `initialize()` called after other SDK methods
+- **Solution:** Call `InsertAffiliateSwift.initialize()` in `AppDelegate.application(_:didFinishLaunchingWithOptions:)` before any other SDK methods
 
-                Purchases.shared.attribution.setAttributes(["insert_affiliate": shortCode])
-          }
-        }
-        return true
-    }
-}
-```
+### Deep Linking Issues
 
-#### Example with Apphud
-```swift
-import SwiftUI
-import BranchSDK
-import ApphudSDK
-import InsertAffiliateSwift
+**Problem:** Deep link opens browser instead of app
+- **Cause:** Missing or incorrect associated domains, or URL scheme not configured
+- **Solution:**
+  - Verify associated domains in Xcode project match your deep linking provider's domain
+  - Add URL scheme to Info.plist
+  - For universal links, ensure apple-app-site-association file is properly configured
 
-class AppDelegate: UIResponder, UIApplicationDelegate {
-    func application(_ application: UIApplication, didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]? = nil) -> Bool {
-        Branch.getInstance().initSession(launchOptions: launchOptions) { (params, error) in
-          if let referringLink = params?["~referring_link"] as? String {
-            InsertAffiliateSwift.setInsertAffiliateIdentifier(referringLink: referringLink) { result in
-                guard let shortCode = result else {
-                    return
-                }
+**Problem:** "No affiliate identifier found"
+- **Cause:** User hasn't clicked an affiliate link yet
+- **Solution:** Ensure users come from affiliate links before purchases. Test with simulator:
+  ```bash
+  xcrun simctl openurl booted "YOUR_DEEP_LINK_URL"
+  ```
 
-                Apphud.setUserProperty(key: .init("insert_affiliate"), value: shortCode, setOnce: false)
-          }
-        }
-        return true
-    }
-}
-```
+### Purchase Tracking Issues
 
-#### Example with Iaptic
-```swift
-import SwiftUI
-import BranchSDK
-import InAppPurchaseLib
-import InsertAffiliateSwift
+**Problem:** Purchases not appearing in Insert Affiliate dashboard
+- **Cause:** Webhook not configured or affiliate identifier not passed to IAP platform
+- **Solution:**
+  - Verify webhook URL and authorization headers are correct
+  - For RevenueCat: Confirm `insert_affiliate` attribute is set before purchase
+  - For Iaptic/App Store Direct: Check that affiliate identifier exists when purchase is made
+  - Enable verbose logging and check console for errors
 
-class AppDelegate: UIResponder, UIApplicationDelegate {
-  func application(_ application: UIApplication, didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]? = nil) -> Bool {
-    Branch.getInstance().initSession(launchOptions: launchOptions) { (params, error) in
-      if let referringLink = params?["~referring_link"] as? String {
-        InsertAffiliateSwift.setInsertAffiliateIdentifier(referringLink: referringLink) { result in
-          guard let shortCode = result else {
-            return
-          }
+### Verbose Logging
 
-          let iapProductsArray = [
-            IAPProduct(
-              productIdentifier: "{{ apple_in_app_purchase_subscription_id }}",
-              productType: .autoRenewableSubscription
-            )
-          ]
-
-          InAppPurchase.stop()
-          if let applicationUsername = InsertAffiliateSwift.returnInsertAffiliateIdentifier() {
-            InAppPurchase.initialize(
-              iapProducts: iapProductsArray,
-              validatorUrlString: "https://validator.iaptic.com/v3/validate?appName={{ your_iaptic_app_name }}&apiKey={{ your_iaptic_app_key_goes_here }}",
-              applicationUsername: applicationUsername
-            )
-          } else {
-            InAppPurchase.initialize(
-              iapProducts: iapProductsArray,
-              validatorUrlString: "https://validator.iaptic.com/v3/validate?appName={{ your_iaptic_app_name }}&apiKey={{ your_iaptic_app_key_goes_here }}"
-            )
-          }
-      }
-    }
-    return true
-  }
-}
-```
-Replace the following:
-- `{{ your_iaptic_app_name }}` with your [Iaptic App Name](https://www.iaptic.com/account)
-- `{{ your_iaptic_public_key }}` with your [Iaptic Public Key](https://www.iaptic.com/settings)
-
-#### Example with App Store Direct Integration
+Enable detailed logs during development to diagnose issues:
 
 ```swift
-import SwiftUI
-import BranchSDK
-import StoreKit
-import InsertAffiliateSwift
-
-class AppDelegate: UIResponder, UIApplicationDelegate {
-  func application(_ application: UIApplication, didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]? = nil) -> Bool {
-    Branch.getInstance().initSession(launchOptions: launchOptions) { params, _ in
-      if let referringLink = params?["~referring_link"] as? String {
-        InsertAffiliateSwift.setInsertAffiliateIdentifier(referringLink: referringLink) { _ in }
-      }
-    }
-    return true
-  }
-}
-
+InsertAffiliateSwift.initialize(companyCode: "YOUR_COMPANY_CODE", verboseLogging: true)
 ```
 
-### Deep Linking with AppsFlyer
-To set up deep linking with AppsFlyer, follow these steps:
+**Important:** Disable verbose logging in production builds.
 
-1. Create a [OneLink](https://support.appsflyer.com/hc/en-us/articles/208874366-Create-a-OneLink-link-for-your-campaigns) in AppsFlyer and pass it to our dashboard when an affiliate signs up.
-   - Example: [Create Affiliate](https://docs.insertaffiliate.com/create-affiliate).
-2. Initialize AppsFlyer SDK and set up deep link handling in your app.
+### Getting Help
 
-#### Platform Setup
-Complete the deep linking setup for AppsFlyer by following their official documentation:
-- [AppsFlyer Deferred Deep Link Integration Guide](https://dev.appsflyer.com/hc/docs/deeplinkintegrate)
+- 📖 [Documentation](https://docs.insertaffiliate.com)
+- 💬 [Dashboard Support](https://app.insertaffiliate.com/help)
+- 🐛 [Report Issues](https://github.com/Insert-Affiliate/InsertAffiliateSwiftSDK/issues)
 
-This covers all platform-specific configurations including:
-- iOS: Info.plist configuration, AppDelegate setup, and universal links
-- Testing and troubleshooting
+---
 
-#### Example with RevenueCat
+## 📚 Support
 
-```swift
-import SwiftUI
-import AppsFlyerLib
-import RevenueCat
-import InsertAffiliateSwift
+- **Documentation**: [docs.insertaffiliate.com](https://docs.insertaffiliate.com)
+- **Dashboard Support**: [app.insertaffiliate.com/help](https://app.insertaffiliate.com/help)
+- **Issues**: [GitHub Issues](https://github.com/Insert-Affiliate/InsertAffiliateSwiftSDK/issues)
+- **Company Code**: [Get yours from Settings](https://app.insertaffiliate.com/settings)
 
-class AppDelegate: UIResponder, UIApplicationDelegate, AppsFlyerLibDelegate {
-    func application(_ application: UIApplication, didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]? = nil) -> Bool {
-        
-        // Initialize Insert Affiliate SDK
-        InsertAffiliateSwift.initialize(companyCode: "{{ your_company_code }}")
-        
-        // Configure AppsFlyer
-        AppsFlyerLib.shared().appsFlyerDevKey = "{{ your_appsflyer_dev_key }}"
-        AppsFlyerLib.shared().appleAppID = "{{ your_ios_app_id }}"
-        AppsFlyerLib.shared().delegate = self
-        AppsFlyerLib.shared().start()
-        
-        return true
-    }
-    
-    // Handle URL schemes and universal links
-    func application(_ app: UIApplication, open url: URL, options: [UIApplication.OpenURLOptionsKey : Any] = [:]) -> Bool {
-        AppsFlyerLib.shared().handleOpen(url, options: options)
-        return true
-    }
-    
-    func application(_ application: UIApplication, continue userActivity: NSUserActivity, restorationHandler: @escaping ([UIUserActivityRestoring]?) -> Void) -> Bool {
-        AppsFlyerLib.shared().continue(userActivity)
-        return true
-    }
-    
-    // MARK: - AppsFlyer Delegate Methods
-    
-    func onAppOpenAttribution(_ attributionData: [AnyHashable: Any]) {
-        handleAppsFlyerDeepLink(attributionData)
-    }
-    
-    func onDeepLink(_ deepLink: AppsFlyerDeepLink) {
-        let attributionData = deepLink.clickEvent ?? [:]
-        handleAppsFlyerDeepLink(attributionData)
-    }
+---
 
-    /// First install (deferred) fallback via conversion data
-    func onConversionDataSuccess(_ installData: [AnyHashable : Any]) {
-        let data = installData as? [String: Any] ?? [:]
-        let isFirst = (data["is_first_launch"] as? Bool) ?? false
-        if isFirst { handleAppsFlyerDeepLink(installData) }
-    }
-    
-    private func handleAppsFlyerDeepLink(_ attributionData: [AnyHashable: Any]) {
-        let dict = attributionData as? [String: Any] ?? [:]
-        let referringLink = (dict["link"] as? String) ?? (dict["deep_link_value"] as? String) ?? (dict["af_dp"] as? String)
-        
-        guard let link = referringLink else { return }
-        
-        InsertAffiliateSwift.setInsertAffiliateIdentifier(referringLink: link) { shortCode in
-            guard let shortCode = shortCode else { return }
-            
-            Purchases.shared.attribution.setAttributes(["insert_affiliate": shortCode])
-        }
-    }
-}
-```
-
-#### Example with Iaptic
-
-```swift
-import SwiftUI
-import AppsFlyerLib
-import InAppPurchaseLib
-import InsertAffiliateSwift
-
-class AppDelegate: UIResponder, UIApplicationDelegate, AppsFlyerLibDelegate {
-    func application(_ application: UIApplication, didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]? = nil) -> Bool {
-        
-        // Initialize Insert Affiliate SDK
-        InsertAffiliateSwift.initialize(companyCode: "{{ your_company_code }}")
-        
-        // Configure AppsFlyer
-        AppsFlyerLib.shared().appsFlyerDevKey = "{{ your_appsflyer_dev_key }}"
-        AppsFlyerLib.shared().appleAppID = "{{ your_ios_app_id }}"
-        AppsFlyerLib.shared().delegate = self
-        AppsFlyerLib.shared().start()
-        
-        return true
-    }
-    
-    // Handle URL schemes and universal links
-    func application(_ app: UIApplication, open url: URL, options: [UIApplication.OpenURLOptionsKey : Any] = [:]) -> Bool {
-        AppsFlyerLib.shared().handleOpen(url, options: options)
-        return true
-    }
-    
-    func application(_ application: UIApplication, continue userActivity: NSUserActivity, restorationHandler: @escaping ([UIUserActivityRestoring]?) -> Void) -> Bool {
-        AppsFlyerLib.shared().continue(userActivity)
-        return true
-    }
-    
-    // MARK: - AppsFlyer Delegate Methods
-    
-    func onAppOpenAttribution(_ attributionData: [AnyHashable: Any]) {
-        handleAppsFlyerDeepLink(attributionData)
-    }
-    
-    func onDeepLink(_ deepLink: AppsFlyerDeepLink) {
-        let attributionData = deepLink.clickEvent ?? [:]
-        handleAppsFlyerDeepLink(attributionData)
-    }
-
-    /// First install (deferred) fallback via conversion data
-    func onConversionDataSuccess(_ installData: [AnyHashable : Any]) {
-        let data = installData as? [String: Any] ?? [:]
-        let isFirst = (data["is_first_launch"] as? Bool) ?? false
-        if isFirst { handleAppsFlyerDeepLink(installData) }
-    }
-    
-    private func handleAppsFlyerDeepLink(_ attributionData: [AnyHashable: Any]) {
-        let dict = attributionData as? [String: Any] ?? [:]
-        let referringLink = (dict["link"] as? String) ?? (dict["deep_link_value"] as? String) ?? (dict["af_dp"] as? String)
-        
-        guard let link = referringLink else { return }
-        
-        InsertAffiliateSwift.setInsertAffiliateIdentifier(referringLink: link) { shortCode in
-            guard let shortCode = shortCode else { return }
-            
-            // Reinitialize Iaptic with affiliate identifier
-            let iapProducts = [
-                IAPProduct(
-                    productIdentifier: "{{ apple_in_app_purchase_subscription_id }}",
-                    productType: .autoRenewableSubscription
-                )
-            ]
-            
-            InAppPurchase.stop()
-            InAppPurchase.initialize(
-                iapProducts: iapProducts,
-                validatorUrlString: "https://validator.iaptic.com/v3/validate?appName={{ your_iaptic_app_name }}&apiKey={{ your_iaptic_public_key }}",
-                applicationUsername: shortCode
-            )
-        }
-    }
-}
-```
-Replace the following:
-- `{{ your_iaptic_app_name }}` with your [Iaptic App Name](https://www.iaptic.com/account)
-- `{{ your_iaptic_public_key }}` with your [Iaptic Public Key](https://www.iaptic.com/settings)
-
-#### Example with App Store Direct Integration
-
-```swift
-import SwiftUI
-import AppsFlyerLib
-import StoreKit
-import InsertAffiliateSwift
-
-class AppDelegate: UIResponder, UIApplicationDelegate, AppsFlyerLibDelegate {
-    func application(_ application: UIApplication, didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]? = nil) -> Bool {
-        
-        // Initialize Insert Affiliate SDK
-        InsertAffiliateSwift.initialize(companyCode: "{{ your_company_code }}")
-        
-        // Configure AppsFlyer
-        AppsFlyerLib.shared().appsFlyerDevKey = "{{ your_appsflyer_dev_key }}"
-        AppsFlyerLib.shared().appleAppID = "{{ your_ios_app_id }}"
-        AppsFlyerLib.shared().delegate = self
-        AppsFlyerLib.shared().start()
-        
-        return true
-    }
-    
-    // Handle URL schemes and universal links
-    func application(_ app: UIApplication, open url: URL, options: [UIApplication.OpenURLOptionsKey : Any] = [:]) -> Bool {
-        AppsFlyerLib.shared().handleOpen(url, options: options)
-        return true
-    }
-    
-    func application(_ application: UIApplication, continue userActivity: NSUserActivity, restorationHandler: @escaping ([UIUserActivityRestoring]?) -> Void) -> Bool {
-        AppsFlyerLib.shared().continue(userActivity)
-        return true
-    }
-    
-    // MARK: - AppsFlyer Delegate Methods
-    
-    func onAppOpenAttribution(_ attributionData: [AnyHashable: Any]) {
-        handleAppsFlyerDeepLink(attributionData)
-    }
-    
-    func onDeepLink(_ deepLink: AppsFlyerDeepLink) {
-        let attributionData = deepLink.clickEvent ?? [:]
-        handleAppsFlyerDeepLink(attributionData)
-    }
-
-    /// First install (deferred) fallback via conversion data
-    func onConversionDataSuccess(_ installData: [AnyHashable : Any]) {
-        let data = installData as? [String: Any] ?? [:]
-        let isFirst = (data["is_first_launch"] as? Bool) ?? false
-        if isFirst { handleAppsFlyerDeepLink(installData) }
-    }
-
-    private func handleAppsFlyerDeepLink(_ attributionData: [AnyHashable: Any]) {
-        let dict = attributionData as? [String: Any] ?? [:]
-        let referringLink = (dict["link"] as? String) ?? (dict["deep_link_value"] as? String) ?? (dict["af_dp"] as? String)
-        
-        guard let link = referringLink else { return }
-        
-        InsertAffiliateSwift.setInsertAffiliateIdentifier(referringLink: link) { _ in
-            // Affiliate identifier is stored automatically for App Store Direct integration
-        }
-    }
-}
-```
-
-### Deep Linking with Other Platforms
-Insert Affiliate supports all other deep linking providers. The general steps remain the same:
-
-1. Generate a **deep link** using your provider and pass it to our dashboard.
-2. **Extract and pass the deep link** to Insert Affiliate inside your app’s deep link handling logic.
-
-Refer to your deep linking provider’s documentation for specific instructions on how to retrieve the deep link URL as demonstrated above for Branch.io.
-
-## Additional Features
-### 1. Event Tracking (Beta)
-
-The **InsertAffiliateSwift SDK** now includes a beta feature for event tracking. Use event tracking to log key user actions such as signups, purchases, or referrals. This is useful for:
-- Understanding user behaviour.
-- Measuring the effectiveness of marketing campaigns.
-- Incentivising affiliates for designated actions being taken by the end users, rather than just in app purchases (i.e. pay an affilaite for each signup).
-
-At this stage, we cannot guarantee that this feature is fully resistant to tampering or manipulation.
-
-#### Using `trackEvent`
-
-To track an event, use the `trackEvent` function. Make sure to set an affiliate identifier first; otherwise, event tracking won’t work. Here’s an example:
-
-```swift
-InsertAffiliateSwift.trackEvent(eventName: "your_event_name")
-```
-
-### 2. Short Codes (Beta)
-
-### What are Short Codes?
-
-Short codes are unique, 3 to 25 character alphanumeric identifiers that affiliates can use to promote products or subscriptions. These codes are ideal for influencers or partners, making them easier to share than long URLs.
-
-**Example Use Case**: An influencer promotes a subscription with the short code "JOIN123456" within their TikTok video's description. When users enter this code within your app during sign-up or before purchase, the app tracks the subscription back to the influencer for commission payouts.
-
-For more information, visit the [Insert Affiliate Short Codes Documentation](https://docs.insertaffiliate.com/short-codes).
-
-### Setting a Short Code
-
-Use the `setShortCode` method to validate and associate a short code with an affiliate. This is ideal for scenarios where users enter the code via an input field, pop-up, or similar UI element.
-
-#### Method Signature
-
-```swift
-setShortCode(shortCode: String) async -> Bool
-```
-
-#### Return Value
-
-`setShortCode` returns a `Bool`:
-- Returns **`true`** if the short code exists and was successfully validated and stored
-- Returns **`false`** if the short code does not exist or validation failed
-
-This allows you to provide immediate feedback to users about whether their entered code is valid.
-
-#### Short Code Requirements
-
-Short codes must meet the following criteria:
-- Between **3 and 25 characters long**
-- Contain only **letters and numbers** (alphanumeric characters)
-
-#### Basic Usage
-
-```swift
-// Basic usage (without validation feedback)
-Task {
-    await InsertAffiliateSwift.setShortCode(shortCode: "JOIN123")
-}
-```
-
-#### Recommended Usage with Validation Feedback
-
-```swift
-import SwiftUI
-import InsertAffiliateSwift
-
-struct ShortCodeView: View {
-    @State private var shortCode: String = ""
-    @State private var showAlert = false
-    @State private var alertTitle = ""
-    @State private var alertMessage = ""
-
-    var body: some View {
-        VStack(spacing: 20) {
-            Text("Enter your Short Code")
-                .font(.headline)
-
-            TextField("Short Code", text: $shortCode)
-                .textFieldStyle(RoundedBorderTextFieldStyle())
-                .autocapitalization(.allCharacters)
-                .padding()
-
-            Button(action: {
-                Task {
-                    let isValid = await InsertAffiliateSwift.setShortCode(shortCode: shortCode)
-                    if isValid {
-                        alertTitle = "Success"
-                        alertMessage = "Affiliate code applied successfully!"
-                    } else {
-                        alertTitle = "Error"
-                        alertMessage = "Invalid affiliate code. Please check and try again."
-                    }
-                    showAlert = true
-                }
-            }) {
-                Text("Set Short Code")
-                    .frame(maxWidth: .infinity)
-                    .padding()
-                    .background(Color.blue)
-                    .foregroundColor(.white)
-                    .cornerRadius(8)
-            }
-        }
-        .padding()
-        .alert(alertTitle, isPresented: $showAlert) {
-            Button("OK", role: .cancel) { }
-        } message: {
-            Text(alertMessage)
-        }
-    }
-}
-
-struct ShortCodeView_Previews: PreviewProvider {
-    static var previews: some View {
-        ShortCodeView()
-    }
-}
-```
-
-#### Important Notes
-
-- The method validates the short code against the Insert Affiliate API before storing it
-- Validation checks both format (length, alphanumeric) and existence in your affiliate database
-- Short codes are automatically converted to uppercase
-- Use the return value to show success/error messages to your users
-
-### 3. Discounts for Users → Offer Codes / Dynamic Product IDs
-
-The InsertAffiliateSwift SDK lets you pass modifiers based on if the app was installed due to the work of an affiliate for your in app purchases. These modifiers can be used swap your in app purchase being offered to the end user out for one with a discount or trial offer, similar to giving the end user an offer code.
-
-**How It Works**
-
-When someone clicks an affiliate link or enters a short code linked to an offer (set up in the Insert Affiliate Dashboard), the SDK fills in InsertAffiliateSwift.OfferCode with the right modifier (like _oneWeekFree). You can then add this to your regular product ID to load the correct version of the subscription in your app.
-
-**Insert Affiliate Setup Instructions**
-
-1. Go to your Insert Affiliate dashboard at [app.insertaffiliate.com/affiliates](https://app.insertaffiliate.com/affiliates)
-2. Select the affiliate you want to configure
-3. Click "View" to access the affiliate's settings
-4. Assign an **iOS IAP Modifier** to the affiliate (e.g., `_oneWeekFree`, `_threeMonthsFree`)
-5. Save the settings
-
-Once configured, when users click that affiliate's links or enter their short codes, your app will automatically receive the modifier and can load the appropriate discounted product.
-
-**Implementation Examples**
-
-#### RevenueCat Example
-
-```swift
-class InAppPurchaseViewModel: ObservableObject {
-    @Published var products: [StoreProduct] = []
-    
-    var dynamicProductIdentifier: String {
-        let baseProductId = "oneMonthSubscriptionTwo"
-        
-        if let offerCode = InsertAffiliateSwift.OfferCode {
-            let cleanOfferCode = offerCode.trimmingCharacters(in: CharacterSet(charactersIn: "\"'"))
-            return "\(baseProductId)\(cleanOfferCode)"
-        }
-        
-        return baseProductId
-    }
-    
-    func loadProducts() {
-        Purchases.shared.getProducts([dynamicProductIdentifier]) { products in
-            DispatchQueue.main.async {
-                self.products = products
-                print("Loaded product: \(self.dynamicProductIdentifier)")
-            }
-        }
-    }
-}
-```
-
-#### Native StoreKit 2 Example
-
-```swift
-@MainActor
-class InAppPurchaseViewModel: ObservableObject {
-    @Published var products: [String: Product] = [:]
-    private let baseProductIdentifier = "oneMonthSubscriptionTwo"
-    
-    var dynamicProductIdentifier: String {
-        if let offerCode = InsertAffiliateSwift.OfferCode, !offerCode.isEmpty {
-            let cleanOfferCode = offerCode.trimmingCharacters(in: CharacterSet(charactersIn: "\""))
-            return "\(baseProductIdentifier)\(cleanOfferCode)"
-        }
-        return baseProductIdentifier
-    }
-    
-    func fetchProducts() async {
-        do {
-            let fetchedProducts = try await Product.products(for: [dynamicProductIdentifier])
-            products = Dictionary(uniqueKeysWithValues: fetchedProducts.map { ($0.id, $0) })
-            print("Loaded product: \(dynamicProductIdentifier)")
-        } catch {
-            print("Failed to fetch products: \(error.localizedDescription)")
-        }
-    }
-    
-    func purchase(productIdentifier: String) async {
-        guard let product = products[productIdentifier] else { return }
-
-        do {
-            let userAccountToken = await InsertAffiliateSwift.returnUserAccountTokenAndStoreExpectedTransaction()
-            // Optional override: Use your own UUID for the purchase token
-            // let token = await InsertAffiliateSwift.returnUserAccountTokenAndStoreExpectedTransaction(
-            //     overrideUUIDString: "{{your_own_uuid}}"
-            // )
-            let result = try await product.purchase(options: userAccountToken.map { [.appAccountToken($0)] } ?? [])
-            
-            switch result {
-            case .success(let verification):
-                if case .verified(let transaction) = verification {
-                    print("Purchase successful: \(transaction.id)")
-                    await transaction.finish()
-                }
-            case .userCancelled:
-                print("Purchase cancelled")
-            case .pending:
-                print("Purchase pending")
-            default:
-                break
-            }
-        } catch {
-            print("Purchase error: \(error.localizedDescription)")
-        }
-    }
-}
-```
-
-#### Purchase View Integration
-
-This view uses the `dynamicProductIdentifier` which automatically includes any offer code modifiers from the Insert Affiliate SDK, ensuring users see the correct promotional product:
-
-```swift
-struct PurchaseView: View {
-    @StateObject private var viewModel = InAppPurchaseViewModel()
-    
-    var body: some View {
-        VStack(spacing: 15) {
-            if let product = viewModel.products[viewModel.dynamicProductIdentifier] {
-                Text(product.displayName)
-                    .font(.title2)
-                    .fontWeight(.semibold)
-                
-                Text("Price: \(product.price)")
-                    .font(.headline)
-                
-                Text("Product ID: \(product.id)")
-                    .font(.caption)
-                    .foregroundColor(.secondary)
-                
-                Button("Purchase") {
-                    Task {
-                        await viewModel.purchase(productIdentifier: product.id)
-                    }
-                }
-                .buttonStyle(.bordered)
-            } else {
-                Text("Product not found: \(viewModel.dynamicProductIdentifier)")
-                
-                Button("Refresh Products") {
-                    Task {
-                        await viewModel.fetchProducts()
-                    }
-                }
-                .buttonStyle(.bordered)
-            }
-        }
-        .onAppear {
-            Task {
-                await viewModel.fetchProducts() // Load dynamic products with offer codes
-            }
-        }
-    }
-}
-```
-
-**Example Product Identifiers**
-
-- Base product: `oneMonthSubscriptionTwo`
-- With introductory discount: `oneMonthSubscriptionTwo_oneWeekFree`
-- With different offer: `oneMonthSubscriptionTwo_threeMonthsFree`
-
-**Best Practices**
-
-- **Call in Purchase Views**: Always implement this logic in views where users can make purchases
-- **Handle Both Cases**: Ensure your app works whether an offer code is present or not
-- **Fallback**: Have a fallback to your base product if the dynamic product isn't found
-
-**App Store Connect Configuration**
-
-Make sure you have created the corresponding subscription products in App Store Connect:
-- Your base subscription (e.g., `oneMonthSubscriptionTwo`)
-- Promotional offer variants (e.g., `oneMonthSubscriptionTwo_oneWeekFree`)
-
-
-### Attribution Timeout Control (NEW)
-
-By default, affiliate attribution has no timeout - once set, the attribution remains valid indefinitely. However, you can now configure an attribution timeout to limit how long after an affiliate link click that purchases can be attributed to that affiliate.
-
-#### Enable Attribution Timeout
-
-```swift
-import InsertAffiliateSwift
-
-@UIApplicationMain
-class AppDelegate: UIResponder, UIApplicationDelegate {
-    func application(
-        _ application: UIApplication,
-        didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]?
-    ) -> Bool {
-        // Set 7 days (604800 seconds) attribution timeout
-        InsertAffiliateSwift.initialize(
-            companyCode: "{{ your_company_code }}",
-            affiliateAttributionActiveTime: 604800 // 7 days in seconds
-        )
-        return true
-    }
-}
-```
-
-#### Common Attribution Timeout Values
-
-```swift
-// 1 day timeout
-InsertAffiliateSwift.initialize(
-    companyCode: "{{ your_company_code }}",
-    affiliateAttributionActiveTime: 86400
-)
-
-// 7 days timeout (recommended for most apps)
-InsertAffiliateSwift.initialize(
-    companyCode: "{{ your_company_code }}",
-    affiliateAttributionActiveTime: 604800
-)
-
-// 30 days timeout
-InsertAffiliateSwift.initialize(
-    companyCode: "{{ your_company_code }}",
-    affiliateAttributionActiveTime: 2592000
-)
-
-// No timeout (default behavior)
-InsertAffiliateSwift.initialize(
-    companyCode: "{{ your_company_code }}"
-    // affiliateAttributionActiveTime not specified = no timeout
-)
-```
-
-**Verbose Logging for Debugging Attribution Timeout:**
-Enable verbose logging to see detailed attribution timeout information in the console:
-
-```swift
-InsertAffiliateSwift.initialize(
-    companyCode: "{{ your_company_code }}",
-    verboseLogging: true, // Shows timeout validation details
-    affiliateAttributionActiveTime: 604800 // 7 days
-)
-```
-
-**Additional Methods:**
-
-```swift
-// Get affiliate identifier (respects timeout by default)
-let identifier = await InsertAffiliateSwift.returnInsertAffiliateIdentifier()
-
-// Get affiliate identifier ignoring timeout (for debugging)
-let rawIdentifier = await InsertAffiliateSwift.returnInsertAffiliateIdentifier(ignoreTimeout: true)
-
-// Check if current attribution is still valid
-let isValid = await InsertAffiliateSwift.isAffiliateAttributionValid()
-
-// Get when affiliate was stored
-let storedDate = InsertAffiliateSwift.getAffiliateStoredDate()
-```
+**Need help getting started?** Check out our [quickstart guide](https://docs.insertaffiliate.com) or [contact support](https://app.insertaffiliate.com/help).
