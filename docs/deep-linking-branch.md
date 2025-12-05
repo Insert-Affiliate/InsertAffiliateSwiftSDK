@@ -36,6 +36,40 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
 }
 ```
 
+### Example with Adapty
+
+```swift
+import SwiftUI
+import BranchSDK
+import Adapty
+import InsertAffiliateSwift
+
+class AppDelegate: UIResponder, UIApplicationDelegate {
+    func application(_ application: UIApplication, didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]? = nil) -> Bool {
+        Branch.getInstance().initSession(launchOptions: launchOptions) { (params, error) in
+          if let referringLink = params?["~referring_link"] as? String {
+            InsertAffiliateSwift.setInsertAffiliateIdentifier(referringLink: referringLink) { result in
+                guard let shortCode = result else {
+                    return
+                }
+
+                Task {
+                    do {
+                        var builder = AdaptyProfileParameters.Builder()
+                        builder = try builder.with(customAttribute: shortCode, forKey: "insert_affiliate")
+                        try await Adapty.updateProfile(params: builder.build())
+                    } catch {
+                        print("Failed to set Adapty attribution: \(error.localizedDescription)")
+                    }
+                }
+            }
+          }
+        }
+        return true
+    }
+}
+```
+
 ### Example with Apphud
 
 ```swift
@@ -54,6 +88,7 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
                 }
 
                 Apphud.setUserProperty(key: .init("insert_affiliate"), value: shortCode, setOnce: false)
+            }
           }
         }
         return true
