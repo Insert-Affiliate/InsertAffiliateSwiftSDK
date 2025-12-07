@@ -86,6 +86,7 @@ public struct InsertAffiliateSwift {
     private static let insertLinksEnabledKey = "InsertLinks_InsertLinksEnabled"
     private static let insertLinksClipboardEnabledKey = "InsertLinks_InsertLinksClipboardEnabled"
     private static let affiliateAttributionActiveTimeKey = "InsertAffiliate_AttributionActiveTime"
+    private static let sdkInitReportedKey = "InsertAffiliate_SdkInitReported"
     
     private static var insertLinksEnabled: Bool {
         get { UserDefaults.standard.bool(forKey: insertLinksEnabledKey) }
@@ -98,15 +99,47 @@ public struct InsertAffiliateSwift {
     }
     
     private static var affiliateAttributionActiveTime: TimeInterval? {
-        get { 
+        get {
             let value = UserDefaults.standard.object(forKey: affiliateAttributionActiveTimeKey) as? TimeInterval
             return value
         }
-        set { 
+        set {
             if let timeout = newValue {
                 UserDefaults.standard.set(timeout, forKey: affiliateAttributionActiveTimeKey)
             } else {
                 UserDefaults.standard.removeObject(forKey: affiliateAttributionActiveTimeKey)
+            }
+        }
+    }
+
+    /// Reports SDK initialization to the backend for onboarding verification.
+    /// Only reports once per install to minimize server load.
+    private static func reportSdkInitIfNeeded(companyCode: String) {
+        // Only report once per install
+        if UserDefaults.standard.bool(forKey: sdkInitReportedKey) {
+            return
+        }
+
+        // Fire and forget - don't block initialization
+        Task {
+            do {
+                guard let url = URL(string: "https://api.insertaffiliate.com/V1/onboarding/sdk-init") else {
+                    return
+                }
+
+                var request = URLRequest(url: url)
+                request.httpMethod = "POST"
+                request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+
+                let payload = ["companyId": companyCode]
+                request.httpBody = try JSONSerialization.data(withJSONObject: payload, options: [])
+
+                let (_, response) = try await URLSession.shared.data(for: request)
+                if let httpResponse = response as? HTTPURLResponse, httpResponse.statusCode == 200 {
+                    UserDefaults.standard.set(true, forKey: sdkInitReportedKey)
+                }
+            } catch {
+                // Silently fail - this is non-critical telemetry
             }
         }
     }
@@ -127,7 +160,10 @@ public struct InsertAffiliateSwift {
         self.insertLinksEnabled = insertLinksEnabled
         self.insertLinksClipboardEnabled = insertLinksClipboardEnabled
         self.affiliateAttributionActiveTime = affiliateAttributionActiveTime
-        
+
+        // Report SDK initialization for onboarding verification (fire and forget)
+        reportSdkInitIfNeeded(companyCode: companyCode)
+
         Task {
             do {
                 try await state.initialize(
