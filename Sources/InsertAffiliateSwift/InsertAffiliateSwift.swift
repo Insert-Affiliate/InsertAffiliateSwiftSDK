@@ -122,6 +122,12 @@ public struct InsertAffiliateSwift {
 
         // Fire and forget - don't block initialization
         Task {
+            let verboseLogging = await state.getVerboseLogging()
+
+            if verboseLogging {
+                print("[Insert Affiliate] Reporting SDK initialization for onboarding verification...")
+            }
+
             do {
                 guard let url = URL(string: "https://api.insertaffiliate.com/V1/onboarding/sdk-init") else {
                     return
@@ -137,9 +143,18 @@ public struct InsertAffiliateSwift {
                 let (_, response) = try await URLSession.shared.data(for: request)
                 if let httpResponse = response as? HTTPURLResponse, httpResponse.statusCode == 200 {
                     UserDefaults.standard.set(true, forKey: sdkInitReportedKey)
+                    if verboseLogging {
+                        print("[Insert Affiliate] SDK initialization reported successfully")
+                    }
+                } else if verboseLogging {
+                    let statusCode = (response as? HTTPURLResponse)?.statusCode ?? -1
+                    print("[Insert Affiliate] SDK initialization report failed with status: \(statusCode)")
                 }
             } catch {
                 // Silently fail - this is non-critical telemetry
+                if verboseLogging {
+                    print("[Insert Affiliate] SDK initialization report error: \(error.localizedDescription)")
+                }
             }
         }
     }
