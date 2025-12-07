@@ -114,20 +114,18 @@ public struct InsertAffiliateSwift {
 
     /// Reports SDK initialization to the backend for onboarding verification.
     /// Only reports once per install to minimize server load.
-    private static func reportSdkInitIfNeeded(companyCode: String) {
+    private static func reportSdkInitIfNeeded(companyCode: String, verboseLogging: Bool) {
         // Only report once per install
         if UserDefaults.standard.bool(forKey: sdkInitReportedKey) {
             return
         }
 
+        if verboseLogging {
+            print("[Insert Affiliate] Reporting SDK initialization for onboarding verification...")
+        }
+
         // Fire and forget - don't block initialization
         Task {
-            let verboseLogging = await state.getVerboseLogging()
-
-            if verboseLogging {
-                print("[Insert Affiliate] Reporting SDK initialization for onboarding verification...")
-            }
-
             do {
                 guard let url = URL(string: "https://api.insertaffiliate.com/V1/onboarding/sdk-init") else {
                     return
@@ -177,7 +175,7 @@ public struct InsertAffiliateSwift {
         self.affiliateAttributionActiveTime = affiliateAttributionActiveTime
 
         // Report SDK initialization for onboarding verification (fire and forget)
-        reportSdkInitIfNeeded(companyCode: companyCode)
+        reportSdkInitIfNeeded(companyCode: companyCode, verboseLogging: verboseLogging)
 
         Task {
             do {
