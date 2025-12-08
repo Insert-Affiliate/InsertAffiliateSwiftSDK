@@ -90,7 +90,7 @@ public struct InsertAffiliateSwift {
     private static let reportedAffiliateAssociationsKey = "InsertAffiliate_ReportedAssociations"
 
     /// Source types for affiliate association tracking
-    public enum AffiliateAssociationSource: String {
+    public enum AffiliateAssociationSource: String, Sendable {
         case deepLinkIos = "deep_link_ios"           // iOS custom URL scheme (ia-companycode://shortcode)
         case universalLink = "universal_link"         // iOS universal link
         case clipboardMatch = "clipboard_match"       // iOS clipboard UUID match from backend
@@ -921,7 +921,15 @@ public struct InsertAffiliateSwift {
 
     /// Fetch deep link data from the API to get affiliate information
     private static func fetchDeepLinkData(shortCode: String, companyCode: String, source: AffiliateAssociationSource = .referringLink) {
-        Task {
+        // Copy values to local constants to avoid data race warnings in Swift 6
+        let capturedSource = source
+        let capturedShortCode = shortCode
+        let capturedCompanyCode = companyCode
+
+        Task { @Sendable in
+            let shortCode = capturedShortCode
+            let companyCode = capturedCompanyCode
+            let source = capturedSource
             let urlString = "https://insertaffiliate.link/V1/getDeepLinkData/\(companyCode)/\(shortCode)"
             print("[Insert Affiliate] Fetching deep link data from: \(urlString)")
             
@@ -1025,12 +1033,14 @@ public struct InsertAffiliateSwift {
     
     /// Fetch deep link data using the initialized company code (fallback method)
     private static func fetchDeepLinkData(shortCode: String) {
-        Task {
+        let capturedShortCode = shortCode
+        Task { @Sendable in
+            let shortCode = capturedShortCode
             guard let companyCode = await state.getCompanyCode(), !companyCode.isEmpty else {
                 print("[Insert Affiliate] Company code is not set. Cannot fetch deep link data.")
                 return
             }
-            
+
             fetchDeepLinkData(shortCode: shortCode, companyCode: companyCode)
         }
     }
