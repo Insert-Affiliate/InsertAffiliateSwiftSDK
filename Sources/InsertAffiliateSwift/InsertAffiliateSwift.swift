@@ -87,6 +87,16 @@ public struct InsertAffiliateSwift {
     private static let insertLinksClipboardEnabledKey = "InsertLinks_InsertLinksClipboardEnabled"
     private static let affiliateAttributionActiveTimeKey = "InsertAffiliate_AttributionActiveTime"
     private static let sdkInitReportedKey = "InsertAffiliate_SdkInitReported"
+    private static let reportedAffiliateAssociationsKey = "InsertAffiliate_ReportedAssociations"
+
+    /// Source types for affiliate association tracking
+    public enum AffiliateAssociationSource: String {
+        case deepLinkIos = "deep_link_ios"           // iOS custom URL scheme (ia-companycode://shortcode)
+        case universalLink = "universal_link"         // iOS universal link
+        case clipboardMatch = "clipboard_match"       // iOS clipboard UUID match from backend
+        case shortCodeManual = "short_code_manual"   // Developer called setShortCode()
+        case referringLink = "referring_link"         // Developer called setInsertAffiliateIdentifier()
+    }
     
     private static var insertLinksEnabled: Bool {
         get { UserDefaults.standard.bool(forKey: insertLinksEnabledKey) }
@@ -152,6 +162,79 @@ public struct InsertAffiliateSwift {
                 // Silently fail - this is non-critical telemetry
                 if verboseLogging {
                     print("[Insert Affiliate] SDK initialization report error: \(error.localizedDescription)")
+                }
+            }
+        }
+    }
+
+    /// Reports a new affiliate association to the backend for tracking.
+    /// Only reports each unique affiliateIdentifier once to prevent duplicates.
+    private static func reportAffiliateAssociationIfNeeded(affiliateIdentifier: String, source: AffiliateAssociationSource) {
+        Task {
+            let verboseLogging: Bool
+            if #available(iOS 13.0, *) {
+                verboseLogging = await state.getVerboseLogging()
+            } else {
+                verboseLogging = false
+            }
+
+            guard let companyCode = await state.getCompanyCode(), !companyCode.isEmpty else {
+                if verboseLogging {
+                    print("[Insert Affiliate] Cannot report affiliate association: no company code available")
+                }
+                return
+            }
+
+            // Get the set of already-reported affiliate identifiers
+            var reportedAssociations = UserDefaults.standard.stringArray(forKey: reportedAffiliateAssociationsKey) ?? []
+
+            // Check if this affiliate identifier has already been reported
+            if reportedAssociations.contains(affiliateIdentifier) {
+                if verboseLogging {
+                    print("[Insert Affiliate] Affiliate association already reported for: \(affiliateIdentifier), skipping")
+                }
+                return
+            }
+
+            if verboseLogging {
+                print("[Insert Affiliate] Reporting new affiliate association: \(affiliateIdentifier) (source: \(source.rawValue))")
+            }
+
+            guard let url = URL(string: "https://api.insertaffiliate.com/V1/onboarding/affiliate-associated") else {
+                return
+            }
+
+            var request = URLRequest(url: url)
+            request.httpMethod = "POST"
+            request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+
+            let dateFormatter = ISO8601DateFormatter()
+            let payload: [String: Any] = [
+                "companyId": companyCode,
+                "affiliateIdentifier": affiliateIdentifier,
+                "source": source.rawValue,
+                "timestamp": dateFormatter.string(from: Date())
+            ]
+            request.httpBody = try? JSONSerialization.data(withJSONObject: payload, options: [])
+
+            do {
+                let (_, response) = try await URLSession.shared.data(for: request)
+                if let httpResponse = response as? HTTPURLResponse, httpResponse.statusCode == 200 {
+                    // Add to reported set and persist
+                    reportedAssociations.append(affiliateIdentifier)
+                    UserDefaults.standard.set(reportedAssociations, forKey: reportedAffiliateAssociationsKey)
+
+                    if verboseLogging {
+                        print("[Insert Affiliate] Affiliate association reported successfully for: \(affiliateIdentifier)")
+                    }
+                } else if verboseLogging {
+                    let statusCode = (response as? HTTPURLResponse)?.statusCode ?? -1
+                    print("[Insert Affiliate] Affiliate association report failed with status: \(statusCode)")
+                }
+            } catch {
+                // Silently fail - this is non-critical telemetry
+                if verboseLogging {
+                    print("[Insert Affiliate] Affiliate association report error: \(error.localizedDescription)")
                 }
             }
         }
@@ -274,7 +357,7 @@ public struct InsertAffiliateSwift {
         print("[Insert Affiliate] Short code validated successfully for affiliate: \(affiliateDetails.affiliateName)")
 
         // If validation passes, set the Insert Affiliate Identifier
-        storeInsertAffiliateIdentifier(referringLink: capitalisedShortCode)
+        storeInsertAffiliateIdentifier(referringLink: capitalisedShortCode, source: .shortCodeManual)
 
         // Verify it was stored successfully
         if let insertAffiliateIdentifier = returnInsertAffiliateIdentifier() {
@@ -390,12 +473,12 @@ public struct InsertAffiliateSwift {
         return predicate.evaluate(with: link)
     }
 
-    public static func storeInsertAffiliateIdentifier(referringLink: String) {
+    public static func storeInsertAffiliateIdentifier(referringLink: String, source: AffiliateAssociationSource = .referringLink) {
         let insertAffiliateIdentifier = "\(referringLink)-\(returnShortUniqueDeviceID())"
-        
+
         // Check if this is the same affiliate identifier that's already stored
         let existingIdentifier = UserDefaults.standard.string(forKey: "insertAffiliateIdentifier")
-        
+
         if existingIdentifier == insertAffiliateIdentifier {
             // Same affiliate identifier, don't update the stored date
             Task {
@@ -406,16 +489,16 @@ public struct InsertAffiliateSwift {
             }
             return
         }
-        
+
         // Different affiliate identifier, store it and update the date
         UserDefaults.standard.set(insertAffiliateIdentifier, forKey: "insertAffiliateIdentifier")
-        
+
         // Store the date when the affiliate identifier was stored (AffiliateStoredDate)
         let dateFormatter = ISO8601DateFormatter()
         let currentDate = Date()
         let storedDateString = dateFormatter.string(from: currentDate)
         UserDefaults.standard.set(storedDateString, forKey: "affiliateStoredDate")
-        
+
         Task {
             let verboseLogging = await state.getVerboseLogging()
             if verboseLogging {
@@ -427,7 +510,7 @@ public struct InsertAffiliateSwift {
                 print("[Insert Affiliate] Stored affiliate date: \(storedDateString)")
             }
         }
-        
+
         // Notify callback of identifier change
         insertAffiliateIdentifierChangeCallback?(insertAffiliateIdentifier)
 
@@ -441,6 +524,9 @@ public struct InsertAffiliateSwift {
                 }
             }
         }
+
+        // Report this new affiliate association to the backend (fire and forget)
+        reportAffiliateAssociationIfNeeded(affiliateIdentifier: insertAffiliateIdentifier, source: source)
     }
 
     public static func returnInsertAffiliateIdentifier(ignoreTimeout: Bool = false) -> String? {
@@ -762,11 +848,11 @@ public struct InsertAffiliateSwift {
         }
 
         // if URL scheme is used, we can straight away store the short code as the referring link
-        storeInsertAffiliateIdentifier(referringLink: shortCode)
+        storeInsertAffiliateIdentifier(referringLink: shortCode, source: .deepLinkIos)
 
         return true
     }
-    
+
     /// Handle universal links like https://insertaffiliate.link/V1/companycode/shortcode
     private static func handleUniversalLink(_ url: URL) -> Bool {
         let pathComponents = url.pathComponents
@@ -793,20 +879,20 @@ public struct InsertAffiliateSwift {
         }
         
         // Process the affiliate attribution
-        processAffiliateAttribution(shortCode: shortCode, companyCode: companyCode)
-        
+        processAffiliateAttribution(shortCode: shortCode, companyCode: companyCode, source: .universalLink)
+
         return true
     }
-    
+
     /// Process affiliate attribution with the extracted data
-    private static func processAffiliateAttribution(shortCode: String, companyCode: String) {
+    private static func processAffiliateAttribution(shortCode: String, companyCode: String, source: AffiliateAssociationSource = .referringLink) {
         print("[Insert Affiliate] Processing attribution for short code: '\(shortCode)' (length: \(shortCode.count))")
-        
+
         // Ensure the short code is uppercase
         let uppercasedShortCode = shortCode.uppercased()
 
         // Fetch additional affiliate data
-        fetchDeepLinkData(shortCode: uppercasedShortCode, companyCode: companyCode)
+        fetchDeepLinkData(shortCode: uppercasedShortCode, companyCode: companyCode, source: source)
     }
     
     /// Parse short code from deep link URL
@@ -832,9 +918,9 @@ public struct InsertAffiliateSwift {
         return uppercasedShortCode
     }
 
-    
+
     /// Fetch deep link data from the API to get affiliate information
-    private static func fetchDeepLinkData(shortCode: String, companyCode: String) {
+    private static func fetchDeepLinkData(shortCode: String, companyCode: String, source: AffiliateAssociationSource = .referringLink) {
         Task {
             let urlString = "https://insertaffiliate.link/V1/getDeepLinkData/\(companyCode)/\(shortCode)"
             print("[Insert Affiliate] Fetching deep link data from: \(urlString)")
@@ -903,7 +989,7 @@ public struct InsertAffiliateSwift {
                            let deepLink = data["deepLink"] as? [String: Any],
                            let userCode = deepLink["userCode"] as? String {
                             print("[Insert Affiliate] User code extracted: \(userCode)")
-                            storeInsertAffiliateIdentifier(referringLink: userCode)
+                            storeInsertAffiliateIdentifier(referringLink: userCode, source: source)
                             
                             // Store the complete response for reference
                             if let jsonData = try? JSONSerialization.data(withJSONObject: data, options: []) {
@@ -1465,9 +1551,9 @@ public struct InsertAffiliateSwift {
                         print("[Insert Affiliate] Insert Affiliate Identifier before updating from backend (matched short code): \(returnInsertAffiliateIdentifier() ?? "nil")")
                     }
 
-                    storeInsertAffiliateIdentifier(referringLink: matchedShortCode)
+                    storeInsertAffiliateIdentifier(referringLink: matchedShortCode, source: .clipboardMatch)
 
-                    
+
                     if verboseLogging {
                         print("[Insert Affiliate] Updated Insert Affiliate Identifier after updating from backend (matched short code): \(returnInsertAffiliateIdentifier() ?? "nil")")
                     }
