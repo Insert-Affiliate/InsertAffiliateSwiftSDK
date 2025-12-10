@@ -89,6 +89,81 @@ class AppDelegate: UIResponder, UIApplicationDelegate, AppsFlyerLibDelegate {
 }
 ```
 
+### Example with Adapty
+
+```swift
+import SwiftUI
+import AppsFlyerLib
+import Adapty
+import InsertAffiliateSwift
+
+class AppDelegate: UIResponder, UIApplicationDelegate, AppsFlyerLibDelegate {
+    func application(_ application: UIApplication, didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]? = nil) -> Bool {
+
+        // Initialize Insert Affiliate SDK
+        InsertAffiliateSwift.initialize(companyCode: "{{ your_company_code }}")
+
+        // Configure AppsFlyer
+        AppsFlyerLib.shared().appsFlyerDevKey = "{{ your_appsflyer_dev_key }}"
+        AppsFlyerLib.shared().appleAppID = "{{ your_ios_app_id }}"
+        AppsFlyerLib.shared().delegate = self
+        AppsFlyerLib.shared().start()
+
+        return true
+    }
+
+    // Handle URL schemes and universal links
+    func application(_ app: UIApplication, open url: URL, options: [UIApplication.OpenURLOptionsKey : Any] = [:]) -> Bool {
+        AppsFlyerLib.shared().handleOpen(url, options: options)
+        return true
+    }
+
+    func application(_ application: UIApplication, continue userActivity: NSUserActivity, restorationHandler: @escaping ([UIUserActivityRestoring]?) -> Void) -> Bool {
+        AppsFlyerLib.shared().continue(userActivity)
+        return true
+    }
+
+    // MARK: - AppsFlyer Delegate Methods
+
+    func onAppOpenAttribution(_ attributionData: [AnyHashable: Any]) {
+        handleAppsFlyerDeepLink(attributionData)
+    }
+
+    func onDeepLink(_ deepLink: AppsFlyerDeepLink) {
+        let attributionData = deepLink.clickEvent ?? [:]
+        handleAppsFlyerDeepLink(attributionData)
+    }
+
+    /// First install (deferred) fallback via conversion data
+    func onConversionDataSuccess(_ installData: [AnyHashable : Any]) {
+        let data = installData as? [String: Any] ?? [:]
+        let isFirst = (data["is_first_launch"] as? Bool) ?? false
+        if isFirst { handleAppsFlyerDeepLink(installData) }
+    }
+
+    private func handleAppsFlyerDeepLink(_ attributionData: [AnyHashable: Any]) {
+        let dict = attributionData as? [String: Any] ?? [:]
+        let referringLink = (dict["link"] as? String) ?? (dict["deep_link_value"] as? String) ?? (dict["af_dp"] as? String)
+
+        guard let link = referringLink else { return }
+
+        InsertAffiliateSwift.setInsertAffiliateIdentifier(referringLink: link) { shortCode in
+            guard let shortCode = shortCode else { return }
+
+            Task {
+                do {
+                    var builder = AdaptyProfileParameters.Builder()
+                    builder = try builder.with(customAttribute: shortCode, forKey: "insert_affiliate")
+                    try await Adapty.updateProfile(params: builder.build())
+                } catch {
+                    print("Failed to set Adapty attribution: \(error.localizedDescription)")
+                }
+            }
+        }
+    }
+}
+```
+
 ### Example with Iaptic
 
 ```swift

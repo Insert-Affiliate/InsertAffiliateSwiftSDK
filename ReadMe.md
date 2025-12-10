@@ -164,9 +164,10 @@ InsertAffiliateSwift.initialize(
 | Method | Best For | Setup Time | Complexity |
 |--------|----------|------------|------------|
 | [**RevenueCat**](#option-1-revenuecat-recommended) | Most developers, managed infrastructure | ~10 min | ⭐ Simple |
-| [**Iaptic**](#option-2-iaptic) | Custom requirements, direct control | ~15 min | ⭐⭐ Medium |
-| [**App Store Direct**](#option-3-app-store-direct-beta) | No 3rd party fees (subscriptions only) | ~20 min | ⭐⭐ Medium |
-| [**Apphud**](#option-4-apphud) | Alternative managed infrastructure | ~10 min | ⭐ Simple |
+| [**Adapty**](#option-2-adapty) | Paywall A/B testing, analytics | ~10 min | ⭐ Simple |
+| [**Iaptic**](#option-3-iaptic) | Custom requirements, direct control | ~15 min | ⭐⭐ Medium |
+| [**App Store Direct**](#option-4-app-store-direct-beta) | No 3rd party fees (subscriptions only) | ~20 min | ⭐⭐ Medium |
+| [**Apphud**](#option-5-apphud) | Alternative managed infrastructure | ~10 min | ⭐ Simple |
 
 <details open>
 <summary><h4>Option 1: RevenueCat (Recommended)</h4></summary>
@@ -212,7 +213,94 @@ Replace `YOUR_REVENUE_CAT_API_KEY` with your **RevenueCat API Key** from [here](
 </details>
 
 <details>
-<summary><h4>Option 2: Iaptic</h4></summary>
+<summary><h4>Option 2: Adapty</h4></summary>
+
+**Step 1: Code Setup**
+
+Complete the [Adapty SDK installation](https://docs.adapty.io/docs/ios-installation) first, then modify your `AppDelegate.swift`:
+
+```swift
+import SwiftUI
+import Adapty
+import InsertAffiliateSwift
+
+final class AppDelegate: UIResponder, UIApplicationDelegate {
+  func application(_ application: UIApplication, didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]? = nil) -> Bool {
+    // Initialize Adapty
+    Adapty.activate("YOUR_ADAPTY_PUBLIC_SDK_KEY")
+
+    // Initialize Insert Affiliate
+    InsertAffiliateSwift.initialize(companyCode: "YOUR_COMPANY_CODE", verboseLogging: true)
+
+    // Set Insert Affiliate identifier as Adapty custom attribute
+    if let applicationUsername = InsertAffiliateSwift.returnInsertAffiliateIdentifier() {
+      Task {
+        do {
+          var builder = AdaptyProfileParameters.Builder()
+          builder = try builder.with(customAttribute: applicationUsername, forKey: "insert_affiliate")
+          try await Adapty.updateProfile(params: builder.build())
+        } catch {
+          print("Failed to set Adapty attribution: \(error.localizedDescription)")
+        }
+      }
+    }
+
+    return true
+  }
+}
+```
+
+Replace:
+- `YOUR_ADAPTY_PUBLIC_SDK_KEY` with your **Adapty Public SDK Key** from [Adapty Dashboard](https://app.adapty.io/)
+- `YOUR_COMPANY_CODE` with your company code from [Insert Affiliate Settings](https://app.insertaffiliate.com/settings)
+
+**Step 2: Handle Deep Link Attribution Updates**
+
+When using deep linking (Branch, AppsFlyer, or Insert Links), update Adapty when an affiliate identifier is set:
+
+```swift
+// Example with Branch.io
+Branch.getInstance().initSession(launchOptions: launchOptions) { (params, error) in
+    if let referringLink = params?["~referring_link"] as? String {
+        InsertAffiliateSwift.setInsertAffiliateIdentifier(referringLink: referringLink) { result in
+            guard let shortCode = result else { return }
+
+            // Update Adapty with the new affiliate identifier
+            Task {
+                do {
+                    var builder = AdaptyProfileParameters.Builder()
+                    builder = try builder.with(customAttribute: shortCode, forKey: "insert_affiliate")
+                    try await Adapty.updateProfile(params: builder.build())
+                    print("[Adapty] Set insert_affiliate attribute: \(shortCode)")
+                } catch {
+                    print("Failed to set Adapty attribution: \(error.localizedDescription)")
+                }
+            }
+        }
+    }
+}
+```
+
+**Step 3: Webhook Setup**
+
+1. In your [Insert Affiliate dashboard](https://app.insertaffiliate.com/settings):
+   - Set **In-App Purchase Verification** to `Adapty`
+   - Copy the `Adapty Webhook URL` (for both production and sandbox)
+   - Copy the `Adapty Webhook Authorization Header` value
+2. In the [Adapty Dashboard](https://app.adapty.io/integrations):
+   - Navigate to **Integrations** → **Webhooks**
+   - Set **Production URL** and **Sandbox URL** to the webhook URL from Insert Affiliate
+   - Paste the authorization header value into **Authorization header value**
+   - Enable: **Exclude historical events**, **Send attribution**, **Send trial price**, **Send user attributes**
+
+📖 **[View complete Adapty integration guide with examples →](docs/iap-adapty.md)**
+
+✅ **Adapty setup complete!** Now skip to [Step 3: Set Up Deep Linking](#3-set-up-deep-linking)
+
+</details>
+
+<details>
+<summary><h4>Option 3: Iaptic</h4></summary>
 
 **Step 1: Code Setup**
 
@@ -274,7 +362,7 @@ Replace:
 </details>
 
 <details>
-<summary><h4>Option 3: App Store Direct (Beta)</h4></summary>
+<summary><h4>Option 4: App Store Direct (Beta)</h4></summary>
 
 **Step 1: Apple App Store Notification Setup**
 
@@ -302,7 +390,7 @@ func purchase(productIdentifier: String) async {
 </details>
 
 <details>
-<summary><h4>Option 4: Apphud</h4></summary>
+<summary><h4>Option 5: Apphud</h4></summary>
 
 **Step 1: Code Setup**
 
@@ -385,7 +473,14 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
         print("Affiliate identifier: \(identifier)")
 
         // If using RevenueCat, update attributes here
-        Purchases.shared.attribution.setAttributes(["insert_affiliate": identifier])
+        // Purchases.shared.attribution.setAttributes(["insert_affiliate": identifier])
+
+        // If using Adapty, update attributes here
+        // Task {
+        //     var builder = AdaptyProfileParameters.Builder()
+        //     builder = try builder.with(customAttribute: identifier, forKey: "insert_affiliate")
+        //     try await Adapty.updateProfile(params: builder.build())
+        // }
 
         // If using Apphud, update property here
         // Apphud.setUserProperty(key: .init("insert_affiliate"), value: identifier, setOnce: false)
@@ -417,7 +512,6 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
 
 ```swift
 import InsertAffiliateSwift
-import RevenueCat
 import SwiftUI
 
 @main
@@ -430,9 +524,19 @@ struct MyApp: App {
                .onOpenURL(perform: { url in
                     // Handle InsertAffiliate deep links
                     if InsertAffiliateSwift.handleInsertLinks(url) {
-                        // Update RevenueCat attribution with the new affiliate info
                         if let affiliateIdentifier = InsertAffiliateSwift.returnInsertAffiliateIdentifier() {
-                            Purchases.shared.attribution.setAttributes(["insert_affiliate": affiliateIdentifier])
+                            // If using RevenueCat:
+                            // Purchases.shared.attribution.setAttributes(["insert_affiliate": affiliateIdentifier])
+
+                            // If using Adapty:
+                            // Task {
+                            //     var builder = AdaptyProfileParameters.Builder()
+                            //     builder = try builder.with(customAttribute: affiliateIdentifier, forKey: "insert_affiliate")
+                            //     try await Adapty.updateProfile(params: builder.build())
+                            // }
+
+                            // If using Apphud:
+                            // Apphud.setUserProperty(key: .init("insert_affiliate"), value: affiliateIdentifier, setOnce: false)
                         }
                     }
                })
@@ -469,6 +573,7 @@ Branch.io provides robust attribution and deferred deep linking capabilities.
 
 Includes full examples for:
 - RevenueCat integration
+- Adapty integration
 - Apphud integration
 - Iaptic integration
 - App Store Direct integration
@@ -492,6 +597,7 @@ AppsFlyer provides enterprise-grade analytics and comprehensive attribution.
 
 Includes full examples for:
 - RevenueCat integration
+- Adapty integration
 - Iaptic integration
 - App Store Direct integration
 - Deferred deep linking setup
