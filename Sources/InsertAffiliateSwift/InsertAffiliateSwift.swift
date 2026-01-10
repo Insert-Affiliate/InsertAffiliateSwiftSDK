@@ -895,24 +895,63 @@ public struct InsertAffiliateSwift {
         fetchDeepLinkData(shortCode: uppercasedShortCode, companyCode: companyCode, source: source)
     }
     
+    /// Parse short code from query parameter (new format: scheme://insert-affiliate?code=SHORTCODE)
+    private static func parseShortCodeFromQuery(_ url: URL) -> String? {
+        print("[Insert Affiliate] parseShortCodeFromQuery called with URL: \(url.absoluteString)")
+
+        guard let components = URLComponents(url: url, resolvingAgainstBaseURL: false) else {
+            print("[Insert Affiliate] URLComponents failed to parse URL")
+            return nil
+        }
+
+        print("[Insert Affiliate] URLComponents - scheme: \(components.scheme ?? "nil"), host: \(components.host ?? "nil"), query: \(components.query ?? "nil")")
+
+        guard let queryItems = components.queryItems else {
+            print("[Insert Affiliate] No query items found")
+            return nil
+        }
+
+        print("[Insert Affiliate] Query items count: \(queryItems.count)")
+        for item in queryItems {
+            print("[Insert Affiliate] Query item: \(item.name) = \(item.value ?? "nil")")
+            if item.name == "code", let value = item.value, !value.isEmpty {
+                print("[Insert Affiliate] Found short code in query parameter: '\(value)'")
+                return value.uppercased()
+            }
+        }
+        return nil
+    }
+
     /// Parse short code from deep link URL
     private static func parseShortCodeFromURL(_ url: URL) -> String? {
-        // Handle format: ia-companycode://shortcode
+        // First try to extract from query parameter (new format: scheme://insert-affiliate?code=SHORTCODE)
+        if let queryCode = parseShortCodeFromQuery(url) {
+            print("[Insert Affiliate] Using short code from query parameter: '\(queryCode)'")
+            return queryCode
+        }
+
+        // Fall back to path format (legacy: scheme://SHORTCODE)
         let rawShortCode = url.host ?? url.path.replacingOccurrences(of: "/", with: "")
         print("[Insert Affiliate] Raw short code from URL: '\(rawShortCode)'")
-        
+
         guard !rawShortCode.isEmpty else {
             return nil
         }
-        
+
+        // If the path is 'insert-affiliate' (from new format without code param), return nil
+        if rawShortCode.lowercased() == "insert-affiliate" {
+            print("[Insert Affiliate] Path is 'insert-affiliate' without code param, returning nil")
+            return nil
+        }
+
         let uppercasedShortCode = rawShortCode.uppercased()
         print("[Insert Affiliate] Converted to uppercase: '\(uppercasedShortCode)'")
-        
+
         if isShortCode(rawShortCode) {
             print("[Insert Affiliate] Short code validation passed, returning: '\(uppercasedShortCode)'")
             return uppercasedShortCode
         }
-        
+
         // If not in standard format, still return it for processing
         print("[Insert Affiliate] Short code validation failed, still returning uppercase: '\(uppercasedShortCode)'")
         return uppercasedShortCode
