@@ -897,12 +897,23 @@ public struct InsertAffiliateSwift {
     
     /// Parse short code from query parameter (new format: scheme://insert-affiliate?code=SHORTCODE)
     private static func parseShortCodeFromQuery(_ url: URL) -> String? {
-        guard let components = URLComponents(url: url, resolvingAgainstBaseURL: false),
-              let queryItems = components.queryItems else {
+        print("[Insert Affiliate] parseShortCodeFromQuery called with URL: \(url.absoluteString)")
+
+        guard let components = URLComponents(url: url, resolvingAgainstBaseURL: false) else {
+            print("[Insert Affiliate] URLComponents failed to parse URL")
             return nil
         }
 
+        print("[Insert Affiliate] URLComponents - scheme: \(components.scheme ?? "nil"), host: \(components.host ?? "nil"), query: \(components.query ?? "nil")")
+
+        guard let queryItems = components.queryItems else {
+            print("[Insert Affiliate] No query items found")
+            return nil
+        }
+
+        print("[Insert Affiliate] Query items count: \(queryItems.count)")
         for item in queryItems {
+            print("[Insert Affiliate] Query item: \(item.name) = \(item.value ?? "nil")")
             if item.name == "code", let value = item.value, !value.isEmpty {
                 print("[Insert Affiliate] Found short code in query parameter: '\(value)'")
                 return value.uppercased()
