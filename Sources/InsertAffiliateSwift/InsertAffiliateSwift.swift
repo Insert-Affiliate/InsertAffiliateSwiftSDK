@@ -137,7 +137,7 @@ public struct InsertAffiliateSwift {
         // Fire and forget - don't block initialization
         Task {
             do {
-                guard let url = URL(string: "https://api.insertaffiliate.com/V1/onboarding/sdk-init") else {
+                guard let url = URL(string: "https://4dffcbb2e688.ngrok-free.app/V1/onboarding/sdk-init") else {
                     return
                 }
 
@@ -200,7 +200,7 @@ public struct InsertAffiliateSwift {
                 print("[Insert Affiliate] Reporting new affiliate association: \(affiliateIdentifier) (source: \(source.rawValue))")
             }
 
-            guard let url = URL(string: "https://api.insertaffiliate.com/V1/onboarding/affiliate-associated") else {
+            guard let url = URL(string: "https://4dffcbb2e688.ngrok-free.app/V1/onboarding/affiliate-associated") else {
                 return
             }
 
@@ -413,7 +413,7 @@ public struct InsertAffiliateSwift {
                     return
                 }
 
-                let urlString = "https://api.insertaffiliate.com/V1/convert-deep-link-to-short-link?companyId=\(companyCode)&deepLinkUrl=\(encodedAffiliateLink)"
+                let urlString = "https://4dffcbb2e688.ngrok-free.app/V1/convert-deep-link-to-short-link?companyId=\(companyCode)&deepLinkUrl=\(encodedAffiliateLink)"
 
                 guard let url = URL(string: urlString) else {
                     print("[Insert Affiliate] Invalid URL")
@@ -614,7 +614,7 @@ public struct InsertAffiliateSwift {
         }
 
         let platformType = "ios"
-        let offerCodeUrlString = "https://api.insertaffiliate.com/v1/affiliateReturnOfferCode/\(companyCode)/\(encodedAffiliateLink)?platformType=\(platformType)"
+        let offerCodeUrlString = "https://4dffcbb2e688.ngrok-free.app/v1/affiliateReturnOfferCode/\(companyCode)/\(encodedAffiliateLink)?platformType=\(platformType)"
 
         guard let offerCodeUrl = URL(string: offerCodeUrlString) else {
             print("[Insert Affiliate] Invalid offer code URL")
@@ -693,7 +693,7 @@ public struct InsertAffiliateSwift {
             return
         }
 
-        let apiUrlString = "https://api.insertaffiliate.com/v1/trackEvent"
+        let apiUrlString = "https://4dffcbb2e688.ngrok-free.app/v1/trackEvent"
 
         guard let apiUrl = URL(string: apiUrlString) else {
             print("[Insert Affiliate] Invalid API URL")
@@ -760,7 +760,7 @@ public struct InsertAffiliateSwift {
             return
         }
 
-        let apiUrlString = "https://api.insertaffiliate.com/v1/api/app-store-webhook/create-expected-transaction"
+        let apiUrlString = "https://4dffcbb2e688.ngrok-free.app/v1/api/app-store-webhook/create-expected-transaction"
         guard let apiUrl = URL(string: apiUrlString) else {
             print("[Insert Affiliate] Invalid API URL")
             return
@@ -1124,7 +1124,7 @@ public struct InsertAffiliateSwift {
         // Strip UUID from code if present (e.g., "ABC123-uuid" becomes "ABC123")
         let cleanCode = affiliateCode.components(separatedBy: "-").first ?? affiliateCode
 
-        let urlString = "https://api.insertaffiliate.com/V1/checkAffiliateExists"
+        let urlString = "https://4dffcbb2e688.ngrok-free.app/V1/checkAffiliateExists"
 
         guard let url = URL(string: urlString) else {
             print("[Insert Affiliate] Invalid URL for getting affiliate details")
