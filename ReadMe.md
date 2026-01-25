@@ -552,7 +552,7 @@ struct MyApp: App {
 xcrun simctl openurl booted "YOUR_IOS_URL_SCHEME://TEST_SHORT_CODE"
 
 # Test universal link
-xcrun simctl openurl booted "https://api.insertaffiliate.com/V1/YOUR_COMPANY_CODE/TEST_SHORT_CODE"
+xcrun simctl openurl booted "https://insertaffiliate.link/V1/YOUR_COMPANY_CODE/TEST_SHORT_CODE"
 ```
 
 ✅ **Insert Links setup complete!** Skip to [Verify Your Integration](#-verify-your-integration)
