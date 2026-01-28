@@ -84,6 +84,7 @@ class AppDelegate: UIResponder, UIApplicationDelegate, AppsFlyerLibDelegate {
             guard let shortCode = shortCode else { return }
 
             Purchases.shared.attribution.setAttributes(["insert_affiliate": shortCode])
+            Purchases.shared.syncAttributesAndOfferingsIfNeeded { offerings, error in }
         }
     }
 }

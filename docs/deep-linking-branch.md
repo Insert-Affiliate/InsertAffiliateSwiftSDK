@@ -29,6 +29,7 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
                 }
 
                 Purchases.shared.attribution.setAttributes(["insert_affiliate": shortCode])
+                Purchases.shared.syncAttributesAndOfferingsIfNeeded { offerings, error in }
           }
         }
         return true

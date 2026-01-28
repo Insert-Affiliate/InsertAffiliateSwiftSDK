@@ -187,6 +187,9 @@ final class AppDelegate: UIResponder, UIApplicationDelegate {
 
     if let applicationUsername = InsertAffiliateSwift.returnInsertAffiliateIdentifier() {
       Purchases.shared.attribution.setAttributes(["insert_affiliate": applicationUsername])
+      Purchases.shared.syncAttributesAndOfferingsIfNeeded { offerings, error in
+        // Offerings are now synced with the latest attributes
+      }
     }
 
     return true
@@ -474,6 +477,7 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
 
         // If using RevenueCat, update attributes here
         // Purchases.shared.attribution.setAttributes(["insert_affiliate": identifier])
+        // Purchases.shared.syncAttributesAndOfferingsIfNeeded { offerings, error in }
 
         // If using Adapty, update attributes here
         // Task {
@@ -527,6 +531,7 @@ struct MyApp: App {
                         if let affiliateIdentifier = InsertAffiliateSwift.returnInsertAffiliateIdentifier() {
                             // If using RevenueCat:
                             // Purchases.shared.attribution.setAttributes(["insert_affiliate": affiliateIdentifier])
+                            // Purchases.shared.syncAttributesAndOfferingsIfNeeded { offerings, error in }
 
                             // If using Adapty:
                             // Task {
