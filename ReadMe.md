@@ -188,11 +188,18 @@ final class AppDelegate: UIResponder, UIApplicationDelegate {
     Purchases.configure(withAPIKey: "YOUR_REVENUE_CAT_API_KEY")
 
     // Set up callback to sync affiliate attributes to RevenueCat whenever they change
+    // Note: Use preventAffiliateTransfer in initialize() to block affiliate changes in the SDK
     InsertAffiliateSwift.setInsertAffiliateIdentifierChangeCallback { identifier, offerCode in
       guard let identifier = identifier else { return }
 
       // Ensure subscriber exists before setting attributes
       Purchases.shared.getCustomerInfo { customerInfo, error in
+        guard let customerInfo = customerInfo else { return }
+
+        // OPTIONAL: Prevent attribution for existing subscribers
+        // Uncomment to ensure affiliates only earn from users they actually brought:
+        // if !customerInfo.entitlements.active.isEmpty { return } // User already subscribed, don't attribute
+
         // Set attributes for tracking and targeting
         var attributes: [String: String] = [
           "insert_affiliate": identifier,
