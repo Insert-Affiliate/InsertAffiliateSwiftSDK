@@ -138,7 +138,8 @@ InsertAffiliateSwift.initialize(
     verboseLogging: true,                      // Enable verbose logging
     insertLinksEnabled: true,                  // Enable Insert Links
     insertLinksClipboardEnabled: true,         // Enable clipboard access (triggers permission prompt)
-    affiliateAttributionActiveTime: 604800     // Optional: 7 days attribution timeout (default: no timeout)
+    affiliateAttributionActiveTime: 604800,    // Optional: 7 days attribution timeout (default: no timeout)
+    preventAffiliateTransfer: true             // Optional: Protect original affiliate from being overwritten
 )
 ```
 
@@ -152,6 +153,7 @@ InsertAffiliateSwift.initialize(
   - **User experience**: iOS will show a one-time permission prompt: "[Your App] would like to paste from [App Name]"
   - **Recommendation**: Strongly recommended for maximum attribution accuracy, though users will see the clipboard permission prompt
 - `affiliateAttributionActiveTime`: How long affiliate attribution lasts in seconds (0 = never expires)
+- `preventAffiliateTransfer`: When `true`, protects the original affiliate from being overwritten by subsequent affiliate links. [Learn more](https://docs.insertaffiliate.com/prevent-affiliate-transfer)
 
 </details>
 
@@ -470,10 +472,13 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
       insertLinksClipboardEnabled: false // Set to true if attribution accuracy is most important (triggers clipboard permission prompt)
     )
 
-    // Set up callback for affiliate identifier changes
-    InsertAffiliateSwift.setInsertAffiliateIdentifierChangeCallback { identifier in
+    // Set up callback for affiliate identifier changes (receives identifier and optional offer code)
+    InsertAffiliateSwift.setInsertAffiliateIdentifierChangeCallback { identifier, offerCode in
       if let identifier = identifier {
         print("Affiliate identifier: \(identifier)")
+        if let offerCode = offerCode {
+          print("Offer code: \(offerCode)")
+        }
 
         // If using RevenueCat, update attributes here
         // Purchases.shared.attribution.setAttributes(["insert_affiliate": identifier])
@@ -776,6 +781,47 @@ if let storedDate = InsertAffiliateSwift.getAffiliateStoredDate() {
     print("Affiliate stored on: \(storedDate)")
 }
 ```
+
+**Get Expiry Timestamp:**
+
+```swift
+if let expiryTimestamp = InsertAffiliateSwift.getAffiliateExpiryTimestamp() {
+    print("Attribution expires at: \(expiryTimestamp) ms since epoch")
+    // Convert to Date if needed
+    let expiryDate = Date(timeIntervalSince1970: Double(expiryTimestamp) / 1000)
+    print("Expiry date: \(expiryDate)")
+}
+```
+
+</details>
+
+<details>
+<summary><h3>Prevent Affiliate Transfer</h3></summary>
+
+Protect the original affiliate's attribution from being overwritten when users click different affiliate links.
+
+**Enable During Initialization:**
+
+```swift
+InsertAffiliateSwift.initialize(
+    companyCode: "YOUR_COMPANY_CODE",
+    preventAffiliateTransfer: true
+)
+```
+
+**How It Works:**
+1. User clicks Affiliate A's link → Attribution stored
+2. `preventAffiliateTransfer: true` is set
+3. User clicks Affiliate B's link → SDK detects existing attribution
+4. Transfer blocked → Affiliate B's link is silently ignored
+5. User purchases → Affiliate A receives commission
+
+**Use Cases:**
+- Prevent "affiliate stealing" scenarios
+- Ensure the first affiliate to acquire a user always receives credit
+- Protect long-term affiliate relationships
+
+📖 **[Learn more about Prevent Affiliate Transfer →](https://docs.insertaffiliate.com/prevent-affiliate-transfer)**
 
 </details>
 
