@@ -187,11 +187,36 @@ final class AppDelegate: UIResponder, UIApplicationDelegate {
   func application(_ application: UIApplication, didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]? = nil) -> Bool {
     Purchases.configure(withAPIKey: "YOUR_REVENUE_CAT_API_KEY")
 
-    if let applicationUsername = InsertAffiliateSwift.returnInsertAffiliateIdentifier() {
-      Purchases.shared.attribution.setAttributes(["insert_affiliate": applicationUsername])
-      Purchases.shared.syncAttributesAndOfferingsIfNeeded { offerings, error in
-        // Offerings are now synced with the latest attributes
+    // Set up callback to sync affiliate attributes to RevenueCat whenever they change
+    InsertAffiliateSwift.setInsertAffiliateIdentifierChangeCallback { identifier, offerCode in
+      guard let identifier = identifier else { return }
+
+      // Ensure subscriber exists before setting attributes
+      Purchases.shared.getCustomerInfo { customerInfo, error in
+        // Set attributes for tracking and targeting
+        var attributes: [String: String] = [
+          "insert_affiliate": identifier,
+          "insert_timedout": ""  // Clear timeout flag
+        ]
+        if let offerCode = offerCode {
+          attributes["affiliateOfferCode"] = offerCode  // For RevenueCat targeting
+        }
+
+        Purchases.shared.attribution.setAttributes(attributes)
+
+        // Sync to enable targeting based on affiliateOfferCode
+        Purchases.shared.syncAttributesAndOfferingsIfNeeded { offerings, error in
+          print("Offerings synced, current: \(offerings?.current?.identifier ?? "none")")
+        }
       }
+    }
+
+    // Initialize Insert Affiliate SDK
+    InsertAffiliateSwift.initialize(companyCode: "YOUR_COMPANY_CODE", verboseLogging: true)
+
+    // Sync existing affiliate on app launch
+    if let existingAffiliate = InsertAffiliateSwift.returnInsertAffiliateIdentifier() {
+      Purchases.shared.attribution.setAttributes(["insert_affiliate": existingAffiliate])
     }
 
     return true
@@ -200,6 +225,14 @@ final class AppDelegate: UIResponder, UIApplicationDelegate {
 ```
 
 Replace `YOUR_REVENUE_CAT_API_KEY` with your **RevenueCat API Key** from [here](https://www.revenuecat.com/docs/welcome/authentication).
+
+**RevenueCat Targeting (Optional)**
+
+To show different offerings based on affiliate offer codes:
+
+1. In RevenueCat Dashboard, go to **Project Settings → Targeting**
+2. Create a rule: "When `affiliateOfferCode` equals `yourOfferCode`, show offering `your_special_offering`"
+3. The SDK automatically sets `affiliateOfferCode` when an affiliate has one configured
 
 **Step 2: Webhook Setup**
 
