@@ -138,7 +138,8 @@ InsertAffiliateSwift.initialize(
     verboseLogging: true,                      // Enable verbose logging
     insertLinksEnabled: true,                  // Enable Insert Links
     insertLinksClipboardEnabled: true,         // Enable clipboard access (triggers permission prompt)
-    affiliateAttributionActiveTime: 604800     // Optional: 7 days attribution timeout (default: no timeout)
+    affiliateAttributionActiveTime: 604800,    // Optional: 7 days attribution timeout (default: no timeout)
+    preventAffiliateTransfer: true             // Optional: Protect original affiliate from being overwritten
 )
 ```
 
@@ -152,6 +153,7 @@ InsertAffiliateSwift.initialize(
   - **User experience**: iOS will show a one-time permission prompt: "[Your App] would like to paste from [App Name]"
   - **Recommendation**: Strongly recommended for maximum attribution accuracy, though users will see the clipboard permission prompt
 - `affiliateAttributionActiveTime`: How long affiliate attribution lasts in seconds (0 = never expires)
+- `preventAffiliateTransfer`: When `true`, protects the original affiliate from being overwritten by subsequent affiliate links. [Learn more](https://docs.insertaffiliate.com/prevent-affiliate-transfer)
 
 </details>
 
@@ -185,11 +187,43 @@ final class AppDelegate: UIResponder, UIApplicationDelegate {
   func application(_ application: UIApplication, didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]? = nil) -> Bool {
     Purchases.configure(withAPIKey: "YOUR_REVENUE_CAT_API_KEY")
 
-    if let applicationUsername = InsertAffiliateSwift.returnInsertAffiliateIdentifier() {
-      Purchases.shared.attribution.setAttributes(["insert_affiliate": applicationUsername])
-      Purchases.shared.syncAttributesAndOfferingsIfNeeded { offerings, error in
-        // Offerings are now synced with the latest attributes
+    // Set up callback to sync affiliate attributes to RevenueCat whenever they change
+    // Note: Use preventAffiliateTransfer in initialize() to block affiliate changes in the SDK
+    InsertAffiliateSwift.setInsertAffiliateIdentifierChangeCallback { identifier, offerCode in
+      guard let identifier = identifier else { return }
+
+      // Ensure subscriber exists before setting attributes
+      Purchases.shared.getCustomerInfo { customerInfo, error in
+        guard let customerInfo = customerInfo else { return }
+
+        // OPTIONAL: Prevent attribution for existing subscribers
+        // Uncomment to ensure affiliates only earn from users they actually brought:
+        // if !customerInfo.entitlements.active.isEmpty { return } // User already subscribed, don't attribute
+
+        // Set attributes for tracking and targeting
+        var attributes: [String: String] = [
+          "insert_affiliate": identifier,
+          "insert_timedout": ""  // Clear timeout flag
+        ]
+        if let offerCode = offerCode {
+          attributes["affiliateOfferCode"] = offerCode  // For RevenueCat targeting
+        }
+
+        Purchases.shared.attribution.setAttributes(attributes)
+
+        // Sync to enable targeting based on affiliateOfferCode
+        Purchases.shared.syncAttributesAndOfferingsIfNeeded { offerings, error in
+          print("Offerings synced, current: \(offerings?.current?.identifier ?? "none")")
+        }
       }
+    }
+
+    // Initialize Insert Affiliate SDK
+    InsertAffiliateSwift.initialize(companyCode: "YOUR_COMPANY_CODE", verboseLogging: true)
+
+    // Sync existing affiliate on app launch
+    if let existingAffiliate = InsertAffiliateSwift.returnInsertAffiliateIdentifier() {
+      Purchases.shared.attribution.setAttributes(["insert_affiliate": existingAffiliate])
     }
 
     return true
@@ -198,6 +232,14 @@ final class AppDelegate: UIResponder, UIApplicationDelegate {
 ```
 
 Replace `YOUR_REVENUE_CAT_API_KEY` with your **RevenueCat API Key** from [here](https://www.revenuecat.com/docs/welcome/authentication).
+
+**RevenueCat Targeting (Optional)**
+
+To show different offerings based on affiliate offer codes:
+
+1. In RevenueCat Dashboard, go to **Project Settings → Targeting**
+2. Create a rule: "When `affiliateOfferCode` equals `yourOfferCode`, show offering `your_special_offering`"
+3. The SDK automatically sets `affiliateOfferCode` when an affiliate has one configured
 
 **Step 2: Webhook Setup**
 
@@ -470,10 +512,13 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
       insertLinksClipboardEnabled: false // Set to true if attribution accuracy is most important (triggers clipboard permission prompt)
     )
 
-    // Set up callback for affiliate identifier changes
-    InsertAffiliateSwift.setInsertAffiliateIdentifierChangeCallback { identifier in
+    // Set up callback for affiliate identifier changes (receives identifier and optional offer code)
+    InsertAffiliateSwift.setInsertAffiliateIdentifierChangeCallback { identifier, offerCode in
       if let identifier = identifier {
         print("Affiliate identifier: \(identifier)")
+        if let offerCode = offerCode {
+          print("Offer code: \(offerCode)")
+        }
 
         // If using RevenueCat, update attributes here
         // Purchases.shared.attribution.setAttributes(["insert_affiliate": identifier])
@@ -776,6 +821,47 @@ if let storedDate = InsertAffiliateSwift.getAffiliateStoredDate() {
     print("Affiliate stored on: \(storedDate)")
 }
 ```
+
+**Get Expiry Timestamp:**
+
+```swift
+if let expiryTimestamp = InsertAffiliateSwift.getAffiliateExpiryTimestamp() {
+    print("Attribution expires at: \(expiryTimestamp) ms since epoch")
+    // Convert to Date if needed
+    let expiryDate = Date(timeIntervalSince1970: Double(expiryTimestamp) / 1000)
+    print("Expiry date: \(expiryDate)")
+}
+```
+
+</details>
+
+<details>
+<summary><h3>Prevent Affiliate Transfer</h3></summary>
+
+Protect the original affiliate's attribution from being overwritten when users click different affiliate links.
+
+**Enable During Initialization:**
+
+```swift
+InsertAffiliateSwift.initialize(
+    companyCode: "YOUR_COMPANY_CODE",
+    preventAffiliateTransfer: true
+)
+```
+
+**How It Works:**
+1. User clicks Affiliate A's link → Attribution stored
+2. `preventAffiliateTransfer: true` is set
+3. User clicks Affiliate B's link → SDK detects existing attribution
+4. Transfer blocked → Affiliate B's link is silently ignored
+5. User purchases → Affiliate A receives commission
+
+**Use Cases:**
+- Prevent "affiliate stealing" scenarios
+- Ensure the first affiliate to acquire a user always receives credit
+- Protect long-term affiliate relationships
+
+📖 **[Learn more about Prevent Affiliate Transfer →](https://docs.insertaffiliate.com/prevent-affiliate-transfer)**
 
 </details>
 
