@@ -835,8 +835,7 @@ if let expiryTimestamp = InsertAffiliateSwift.getAffiliateExpiryTimestamp() {
 
 </details>
 
-<details>
-<summary><h3>Prevent Affiliate Transfer</h3></summary>
+### Prevent Affiliate Transfer
 
 Protect the original affiliate's attribution from being overwritten when users click different affiliate links.
 
@@ -861,9 +860,7 @@ InsertAffiliateSwift.initialize(
 - Ensure the first affiliate to acquire a user always receives credit
 - Protect long-term affiliate relationships
 
-📖 **[Learn more about Prevent Affiliate Transfer →](https://docs.insertaffiliate.com/prevent-affiliate-transfer)**
-
-</details>
+Learn more: [Prevent Affiliate Transfer Documentation](https://docs.insertaffiliate.com/prevent-affiliate-transfer)
 
 ---
 
