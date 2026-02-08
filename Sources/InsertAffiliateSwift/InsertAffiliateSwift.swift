@@ -366,7 +366,7 @@ public struct InsertAffiliateSwift {
         }
 
         // Validate that the short code exists in the system
-        guard let affiliateDetails = await getAffiliateDetails(affiliateCode: capitalisedShortCode) else {
+        guard let affiliateDetails = await getAffiliateDetails(affiliateCode: capitalisedShortCode, trackUsage: true) else {
             print("[Insert Affiliate] Error: Short code '\(capitalisedShortCode)' does not exist or validation failed.")
             return false
         }
@@ -1179,7 +1179,7 @@ public struct InsertAffiliateSwift {
     /// This method queries the API and does not store or set the affiliate identifier
     /// - Parameter affiliateCode: The short code or deep link to look up
     /// - Returns: AffiliateDetails if found, nil otherwise
-    public static func getAffiliateDetails(affiliateCode: String) async -> AffiliateDetails? {
+    public static func getAffiliateDetails(affiliateCode: String, trackUsage: Bool = false) async -> AffiliateDetails? {
         guard let companyCode = await state.getCompanyCode(), !companyCode.isEmpty else {
             print("[Insert Affiliate] Company code is not set. Please initialize the SDK with a valid company code.")
             return nil
@@ -1188,17 +1188,21 @@ public struct InsertAffiliateSwift {
         // Strip UUID from code if present (e.g., "ABC123-uuid" becomes "ABC123")
         let cleanCode = affiliateCode.components(separatedBy: "-").first ?? affiliateCode
 
-        let urlString = "https://api.insertaffiliate.com/V1/checkAffiliateExists"
+        let urlString = "https://5583-87-244-72-53.ngrok-free.app/V1/checkAffiliateExists"
 
         guard let url = URL(string: urlString) else {
             print("[Insert Affiliate] Invalid URL for getting affiliate details")
             return nil
         }
 
-        let payload: [String: Any] = [
+        var payload: [String: Any] = [
             "companyId": companyCode,
             "affiliateCode": cleanCode
         ]
+
+        if trackUsage {
+            payload["trackUsage"] = true
+        }
 
         guard let jsonData = try? JSONSerialization.data(withJSONObject: payload, options: []) else {
             print("[Insert Affiliate] Failed to encode affiliate details payload")
