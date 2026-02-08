@@ -1188,7 +1188,7 @@ public struct InsertAffiliateSwift {
         // Strip UUID from code if present (e.g., "ABC123-uuid" becomes "ABC123")
         let cleanCode = affiliateCode.components(separatedBy: "-").first ?? affiliateCode
 
-        let urlString = "https://5583-87-244-72-53.ngrok-free.app/V1/checkAffiliateExists"
+        let urlString = "https://api.insertaffiliate.com/V1/checkAffiliateExists"
 
         guard let url = URL(string: urlString) else {
             print("[Insert Affiliate] Invalid URL for getting affiliate details")
