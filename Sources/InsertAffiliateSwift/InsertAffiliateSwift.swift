@@ -96,6 +96,7 @@ public struct InsertAffiliateSwift {
     private static let affiliateAttributionActiveTimeKey = "InsertAffiliate_AttributionActiveTime"
     private static let preventAffiliateTransferKey = "InsertAffiliate_PreventAffiliateTransfer"
     private static let sdkInitReportedKey = "InsertAffiliate_SdkInitReported"
+    private static let systemInfoSentKey = "InsertAffiliate_SystemInfoSent"
     private static let reportedAffiliateAssociationsKey = "InsertAffiliate_ReportedAssociations"
 
     /// Source types for affiliate association tracking
@@ -288,10 +289,10 @@ public struct InsertAffiliateSwift {
                 )
                 let _ = getOrCreateUserAccountToken()
                 
-                // Collect system info on initialization
-                if insertLinksEnabled {
+                // Collect system info only on first launch after install (for deferred deep link matching)
+                if insertLinksEnabled && !UserDefaults.standard.bool(forKey: systemInfoSentKey) {
                     let systemInfo = await getEnhancedSystemInfo()
-                    await sendSystemInfoToBackend(systemInfo)    
+                    await sendSystemInfoToBackend(systemInfo)
                 }
                 
             } catch {
@@ -1668,6 +1669,7 @@ public struct InsertAffiliateSwift {
             
             // Check for a successful response
             if (200...299).contains(httpResponse.statusCode) {
+                UserDefaults.standard.set(true, forKey: systemInfoSentKey)
                 if verboseLogging {
                     print("[Insert Affiliate] System info sent successfully")
                 }
