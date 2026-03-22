@@ -880,7 +880,7 @@ public struct InsertAffiliateSwift {
             return handleCustomURLScheme(url)
         }
         
-        // Handle universal links (https://insertaffiliate.link/V1/companycode/shortcode)
+        // Handle universal links (https://7e43-87-244-125-42.ngrok-free.app/V1/companycode/shortcode)
         if url.scheme == "https" && url.host?.contains("insertaffiliate.link") == true {
             return handleUniversalLink(url)
         }
@@ -918,7 +918,7 @@ public struct InsertAffiliateSwift {
         return true
     }
 
-    /// Handle universal links like https://insertaffiliate.link/V1/companycode/shortcode
+    /// Handle universal links like https://7e43-87-244-125-42.ngrok-free.app/V1/companycode/shortcode
     private static func handleUniversalLink(_ url: URL) -> Bool {
         let pathComponents = url.pathComponents
         
@@ -1023,7 +1023,7 @@ public struct InsertAffiliateSwift {
             let shortCode = capturedShortCode
             let companyCode = capturedCompanyCode
             let source = capturedSource
-            let urlString = "https://insertaffiliate.link/V1/getDeepLinkData/\(companyCode)/\(shortCode)"
+            let urlString = "https://7e43-87-244-125-42.ngrok-free.app/V1/getDeepLinkData/\(companyCode)/\(shortCode)"
             print("[Insert Affiliate] Fetching deep link data from: \(urlString)")
             
             guard let url = URL(string: urlString) else {
@@ -1612,7 +1612,7 @@ public struct InsertAffiliateSwift {
             return
         }
         
-        let apiUrlString = "https://insertaffiliate.link/V1/appDeepLinkEvents"
+        let apiUrlString = "https://7e43-87-244-125-42.ngrok-free.app/V1/appDeepLinkEvents"
 
         guard let apiUrl = URL(string: apiUrlString) else {
             print("[Insert Affiliate] Invalid backend API URL")
