@@ -661,7 +661,7 @@ public struct InsertAffiliateSwift {
     // MARK: Offer Code
     internal static func removeSpecialCharacters(from string: String) -> String {
         var allowedCharacters = CharacterSet.alphanumerics
-        allowedCharacters.insert(charactersIn: "_")
+        allowedCharacters.insert(charactersIn: "_-")
         return string.unicodeScalars.filter { allowedCharacters.contains($0) }.map { Character($0) }.reduce("") { $0 + String($1) }
     }
     
@@ -701,16 +701,16 @@ public struct InsertAffiliateSwift {
             }
             
             if let rawOfferCode = String(data: data, encoding: .utf8) {
-                let offerCode = removeSpecialCharacters(from: rawOfferCode)
-                
-                if offerCode == "errorofferCodeNotFound" ||
-                    offerCode == "errorOffercodenotfound" ||
-                    offerCode == "errorAffiliateoffercodenotfoundinanycompany" ||
-                    offerCode == "errorAffiliateoffercodenotfoundinanycompanyAffiliatelinkwas" ||
-                    offerCode == "Routenotfound" {
+                // Check for specific error strings from API before cleaning
+                if rawOfferCode.contains("errorofferCodeNotFound") ||
+                    rawOfferCode.contains("errorOffercodenotfound") ||
+                    rawOfferCode.contains("errorAffiliateoffercodenotfoundinanycompany") ||
+                    rawOfferCode.contains("errorAffiliateoffercodenotfoundinanycompanyAffiliatelinkwas") ||
+                    rawOfferCode.contains("Routenotfound") {
                         print("[Insert Affiliate] Offer Code Not Found")
                         completion(nil)
                 } else {
+                    let offerCode = removeSpecialCharacters(from: rawOfferCode)
                     print("[Insert Affiliate] Offer Code received: \(offerCode)")
                     completion(offerCode)
                 }
