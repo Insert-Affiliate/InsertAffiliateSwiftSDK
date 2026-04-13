@@ -879,12 +879,19 @@ public struct InsertAffiliateSwift {
         if let scheme = url.scheme, scheme.starts(with: "ia-") {
             return handleCustomURLScheme(url)
         }
-        
-        // Handle universal links (https://insertaffiliate.link/V1/companycode/shortcode)
+
+        // Handle universal links from insertaffiliate.link (legacy format: /V1/companycode/shortcode)
         if url.scheme == "https" && url.host?.contains("insertaffiliate.link") == true {
             return handleUniversalLink(url)
         }
-        
+
+        // Handle universal links from any domain (custom domains, e.g. share.getavo.co/companyId/shortCode)
+        // iOS only delivers universal links if the domain is in the app's Associated Domains entitlement,
+        // so we don't need to validate the domain — just extract the short code from the path.
+        if url.scheme == "https" {
+            return handleCustomDomainUniversalLink(url)
+        }
+
         return false
     }
     
@@ -918,19 +925,26 @@ public struct InsertAffiliateSwift {
         return true
     }
 
-    /// Handle universal links like https://insertaffiliate.link/V1/companycode/shortcode
+    /// Handle universal links like https://insertaffiliate.link/companycode/shortcode
+    /// Also supports legacy format: https://insertaffiliate.link/V1/companycode/shortcode
     private static func handleUniversalLink(_ url: URL) -> Bool {
-        let pathComponents = url.pathComponents
-        
-        // Expected format: /V1/companycode/shortcode
-        guard pathComponents.count >= 4,
-              pathComponents[1] == "V1" else {
+        let pathComponents = url.pathComponents.filter { $0 != "/" }
+
+        let companyCode: String
+        let shortCode: String
+
+        if pathComponents.count >= 3 && pathComponents[0] == "V1" {
+            // Legacy format: /V1/companycode/shortcode
+            companyCode = pathComponents[1]
+            shortCode = pathComponents[2]
+        } else if pathComponents.count >= 2 {
+            // Current format: /companycode/shortcode
+            companyCode = pathComponents[0]
+            shortCode = pathComponents[1]
+        } else {
             print("[Insert Affiliate] Invalid universal link format: \(url.absoluteString)")
             return false
         }
-        
-        let companyCode = pathComponents[2]
-        let shortCode = pathComponents[3]
         
         print("[Insert Affiliate] Universal link detected - Company: \(companyCode), Short code: \(shortCode)")
         
@@ -945,6 +959,36 @@ public struct InsertAffiliateSwift {
         
         // Process the affiliate attribution
         processAffiliateAttribution(shortCode: shortCode, companyCode: companyCode, source: .universalLink)
+
+        return true
+    }
+
+    /// Handle universal links from custom domains (e.g. https://share.getavo.co/companyId/shortCode)
+    /// Since iOS only delivers universal links for domains in the app's Associated Domains entitlement,
+    /// we trust that the URL is valid and just extract the short code from the path.
+    private static func handleCustomDomainUniversalLink(_ url: URL) -> Bool {
+        let pathComponents = url.pathComponents.filter { $0 != "/" }
+
+        // Expected format: /companyId/shortCode (2 path components)
+        guard pathComponents.count >= 2 else {
+            return false
+        }
+
+        let urlCompanyCode = pathComponents[0]
+        let shortCode = pathComponents[1]
+
+        // Validate company code matches the initialized one
+        Task {
+            if let initializedCompanyCode = await state.getCompanyCode() {
+                if urlCompanyCode.lowercased() != initializedCompanyCode.lowercased() {
+                    print("[Insert Affiliate] Custom domain universal link company code (\(urlCompanyCode)) doesn't match initialized company code (\(initializedCompanyCode)), ignoring")
+                    return
+                }
+
+                print("[Insert Affiliate] Custom domain universal link detected - Short code: \(shortCode)")
+                processAffiliateAttribution(shortCode: shortCode, companyCode: initializedCompanyCode, source: .universalLink)
+            }
+        }
 
         return true
     }
