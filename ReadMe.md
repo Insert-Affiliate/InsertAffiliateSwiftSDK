@@ -604,6 +604,85 @@ xcrun simctl openurl booted "YOUR_IOS_URL_SCHEME://TEST_SHORT_CODE"
 
 ✅ **Insert Links setup complete!** Skip to [Verify Your Integration](#-verify-your-integration)
 
+#### Universal Links
+
+Universal Links provide a better user experience than custom URL schemes. When a user taps an Insert Link and already has your app installed, iOS opens the app directly — without loading the browser and without showing a "Safari cannot open the page" error. If the app is not installed, the link opens normally in Safari with no error.
+
+**Prerequisites:**
+- Complete the [Universal Links setup steps](https://docs.insertaffiliate.com/insert-links#23-universal-links-optional-recommended) in the Insert Affiliate documentation — this includes entering your **Apple Team ID** and **iOS Bundle Identifier** in the dashboard settings
+
+**Step 1: Add Associated Domains in Xcode**
+
+Go to your app target → **Signing & Capabilities** → **+ Capability** → **Associated Domains**.
+
+Add the following:
+
+```
+applinks:insertaffiliate.link
+```
+
+If you have a [custom domain](https://docs.insertaffiliate.com/custom-domains) set up (e.g. `links.yourcompany.com`), also add:
+
+```
+applinks:links.yourcompany.com
+```
+
+**Step 2: Handle Universal Links in your app**
+
+The `handleInsertLinks` method accepts both custom URL scheme URLs and Universal Link URLs.
+
+**UIKit (AppDelegate)**
+
+Make sure your `AppDelegate` includes the `continue userActivity` method:
+
+```swift
+func application(_ application: UIApplication,
+                 continue userActivity: NSUserActivity,
+                 restorationHandler: @escaping ([UIUserActivityRestoring]?) -> Void) -> Bool {
+    if let url = userActivity.webpageURL {
+        InsertAffiliateSwift.handleInsertLinks(url)
+    }
+    return true
+}
+```
+
+**SwiftUI**
+
+In SwiftUI apps, Universal Links are delivered via the **scene lifecycle**, not the AppDelegate. `.onOpenURL` only handles custom URL schemes — you must also add `.onContinueUserActivity` for Universal Links:
+
+```swift
+@main
+struct MyApp: App {
+    var body: some Scene {
+        WindowGroup {
+            ContentView()
+                .onOpenURL { url in
+                    // Handles custom URL scheme (ia-companycode://)
+                    InsertAffiliateSwift.handleInsertLinks(url)
+                }
+                .onContinueUserActivity(NSUserActivityTypeBrowsingWeb) { userActivity in
+                    // Handles Universal Links (https://insertaffiliate.link/...)
+                    if let url = userActivity.webpageURL {
+                        InsertAffiliateSwift.handleInsertLinks(url)
+                    }
+                }
+        }
+    }
+}
+```
+
+> **Note:** If you only add `.onOpenURL`, Universal Links will open the app but `handleInsertLinks` will never be called and attribution will not be tracked.
+
+**Testing Universal Links:**
+
+```bash
+# Test with your Insert Link URL
+xcrun simctl openurl booted "https://insertaffiliate.link/YOUR_COMPANY_CODE/TEST_SHORT_CODE"
+
+# Or with your custom domain
+xcrun simctl openurl booted "https://links.yourcompany.com/YOUR_COMPANY_CODE/TEST_SHORT_CODE"
+```
+
 </details>
 
 <details>
