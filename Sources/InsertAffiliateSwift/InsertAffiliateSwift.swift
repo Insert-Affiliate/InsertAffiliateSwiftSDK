@@ -95,6 +95,7 @@ public struct InsertAffiliateSwift {
     private static let insertLinksClipboardEnabledKey = "InsertLinks_InsertLinksClipboardEnabled"
     private static let affiliateAttributionActiveTimeKey = "InsertAffiliate_AttributionActiveTime"
     private static let preventAffiliateTransferKey = "InsertAffiliate_PreventAffiliateTransfer"
+    private static let companyCodeKey = "InsertAffiliate_CompanyCode"
     private static let sdkInitReportedKey = "InsertAffiliate_SdkInitReported"
     private static let systemInfoSentKey = "InsertAffiliate_SystemInfoSent"
     private static let reportedAffiliateAssociationsKey = "InsertAffiliate_ReportedAssociations"
@@ -135,6 +136,13 @@ public struct InsertAffiliateSwift {
     private static var preventAffiliateTransfer: Bool {
         get { UserDefaults.standard.bool(forKey: preventAffiliateTransferKey) }
         set { UserDefaults.standard.set(newValue, forKey: preventAffiliateTransferKey) }
+    }
+
+    // Mirrors the actor's companyCode synchronously — initialize() is fire-and-forget,
+    // so a caller right after it could otherwise race into a false .notConfigured.
+    private static var syncCompanyCode: String? {
+        get { UserDefaults.standard.string(forKey: companyCodeKey) }
+        set { UserDefaults.standard.set(newValue, forKey: companyCodeKey) }
     }
 
     /// Reports SDK initialization to the backend for onboarding verification.
@@ -273,6 +281,8 @@ public struct InsertAffiliateSwift {
         self.insertLinksClipboardEnabled = insertLinksClipboardEnabled
         self.affiliateAttributionActiveTime = affiliateAttributionActiveTime
         self.preventAffiliateTransfer = preventAffiliateTransfer
+        let previousSyncCompanyCode = self.syncCompanyCode
+        self.syncCompanyCode = companyCode
 
         // Report SDK initialization for onboarding verification (fire and forget)
         reportSdkInitIfNeeded(companyCode: companyCode, verboseLogging: verboseLogging)
@@ -288,14 +298,17 @@ public struct InsertAffiliateSwift {
                     preventAffiliateTransfer: preventAffiliateTransfer
                 )
                 let _ = getOrCreateUserAccountToken()
-                
+
                 // Collect system info only on first launch after install (for deferred deep link matching)
                 if insertLinksEnabled && !UserDefaults.standard.bool(forKey: systemInfoSentKey) {
                     let systemInfo = await getEnhancedSystemInfo()
                     await sendSystemInfoToBackend(systemInfo)
                 }
-                
+
             } catch {
+                // The actor rejected this re-init and kept its prior companyCode — undo the
+                // synchronous mirror write above so it doesn't diverge from actor state.
+                self.syncCompanyCode = previousSyncCompanyCode
                 print("[Insert Affiliate] Error initializing SDK: \(error.localizedDescription)")
             }
         }
@@ -1228,16 +1241,13 @@ public struct InsertAffiliateSwift {
         public let deeplinkUrl: String
     }
 
-    /// 'found' means an affiliate matches the code. 'notFound' means the backend confirmed
-    /// no affiliate matches. 'lookupFailed' means the check couldn't be completed — a
-    /// backend outage, timeout, or missing company code — the code itself may still be
-    /// valid. Callers that need to tell "definitely invalid" apart from "couldn't check"
-    /// (e.g. to retry instead of silently dropping attribution) should use
-    /// getAffiliateLookupResult instead of getAffiliateDetails.
+    /// .lookupFailed (outage, timeout) may be worth retrying. .notConfigured (no company
+    /// code set) never will be — it's always a bug in the calling app, not the code or backend.
     public enum AffiliateLookupStatus {
         case found
         case notFound
         case lookupFailed
+        case notConfigured
     }
 
     /// Full result of an affiliate lookup, including the reason for a miss.
@@ -1251,11 +1261,11 @@ public struct InsertAffiliateSwift {
     /// outage, timeout, missing company code). This method queries the API and does not
     /// store or set the affiliate identifier.
     /// - Parameter affiliateCode: The short code or deep link to look up
-    /// - Returns: an AffiliateLookupResult with a status of .found, .notFound, or .lookupFailed
+    /// - Returns: an AffiliateLookupResult with a status of .found, .notFound, .lookupFailed, or .notConfigured
     public static func getAffiliateLookupResult(affiliateCode: String, trackUsage: Bool = false) async -> AffiliateLookupResult {
-        guard let companyCode = await state.getCompanyCode(), !companyCode.isEmpty else {
+        guard let companyCode = syncCompanyCode, !companyCode.isEmpty else {
             print("[Insert Affiliate] Company code is not set. Please initialize the SDK with a valid company code.")
-            return AffiliateLookupResult(status: .lookupFailed, details: nil)
+            return AffiliateLookupResult(status: .notConfigured, details: nil)
         }
 
         // Strip UUID from code if present (e.g., "ABC123-uuid" becomes "ABC123")
@@ -1303,14 +1313,23 @@ public struct InsertAffiliateSwift {
             }
 
             guard let json = try JSONSerialization.jsonObject(with: data, options: []) as? [String: Any],
-                  let exists = json["exists"] as? Bool,
-                  exists == true,
-                  let affiliate = json["affiliate"] as? [String: Any],
+                  let exists = json["exists"] as? Bool else {
+                print("[Insert Affiliate] Failed to parse response for affiliate details")
+                return AffiliateLookupResult(status: .lookupFailed, details: nil)
+            }
+
+            guard exists else {
+                print("[Insert Affiliate] Affiliate does not exist")
+                return AffiliateLookupResult(status: .notFound, details: nil)
+            }
+
+            // Exists but the affiliate payload is missing — malformed, not a real not-found.
+            guard let affiliate = json["affiliate"] as? [String: Any],
                   let affiliateName = affiliate["affiliateName"] as? String,
                   let affiliateShortCode = affiliate["affiliateShortCode"] as? String,
                   let deeplinkUrl = affiliate["deeplinkurl"] as? String else {
-                print("[Insert Affiliate] Failed to parse affiliate details from response")
-                return AffiliateLookupResult(status: .notFound, details: nil)
+                print("[Insert Affiliate] Affiliate exists but response is missing affiliate details")
+                return AffiliateLookupResult(status: .lookupFailed, details: nil)
             }
 
             return AffiliateLookupResult(
