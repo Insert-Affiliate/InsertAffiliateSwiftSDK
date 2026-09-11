@@ -348,9 +348,13 @@ public struct InsertAffiliateSwift {
     }
 
     /// Validates and sets a short code for affiliate tracking
-    /// - Parameter shortCode: The short code to validate and set
+    /// - Parameters:
+    ///   - shortCode: The short code to validate and set
+    ///   - onLookupFailed: called (in addition to returning false) when validation couldn't
+    ///     be completed — a backend outage/timeout, not a bad code. Use this to keep the
+    ///     customer in a retry flow instead of silently proceeding unattributed.
     /// - Returns: true if the short code exists and was successfully validated and stored, false otherwise
-    public static func setShortCode(shortCode: String) async -> Bool {
+    public static func setShortCode(shortCode: String, onLookupFailed: (() -> Void)? = nil) async -> Bool {
         let capitalisedShortCode = shortCode.uppercased()
 
         guard capitalisedShortCode.count >= 3 && capitalisedShortCode.count <= 25 else {
@@ -367,8 +371,12 @@ public struct InsertAffiliateSwift {
         }
 
         // Validate that the short code exists in the system
-        guard let affiliateDetails = await getAffiliateDetails(affiliateCode: capitalisedShortCode, trackUsage: true) else {
+        let lookup = await getAffiliateLookupResult(affiliateCode: capitalisedShortCode, trackUsage: true)
+        guard let affiliateDetails = lookup.details else {
             print("[Insert Affiliate] Error: Short code '\(capitalisedShortCode)' does not exist or validation failed.")
+            if lookup.status == .lookupFailed {
+                onLookupFailed?()
+            }
             return false
         }
 
@@ -1220,14 +1228,34 @@ public struct InsertAffiliateSwift {
         public let deeplinkUrl: String
     }
 
-    /// Retrieves detailed information about an affiliate by their short code or deep link
-    /// This method queries the API and does not store or set the affiliate identifier
+    /// 'found' means an affiliate matches the code. 'notFound' means the backend confirmed
+    /// no affiliate matches. 'lookupFailed' means the check couldn't be completed — a
+    /// backend outage, timeout, or missing company code — the code itself may still be
+    /// valid. Callers that need to tell "definitely invalid" apart from "couldn't check"
+    /// (e.g. to retry instead of silently dropping attribution) should use
+    /// getAffiliateLookupResult instead of getAffiliateDetails.
+    public enum AffiliateLookupStatus {
+        case found
+        case notFound
+        case lookupFailed
+    }
+
+    /// Full result of an affiliate lookup, including the reason for a miss.
+    public struct AffiliateLookupResult {
+        public let status: AffiliateLookupStatus
+        public let details: AffiliateDetails? // non-nil only when status == .found
+    }
+
+    /// Retrieves detailed information about an affiliate by their short code or deep link,
+    /// distinguishing "no affiliate matches this code" from "couldn't check" (backend
+    /// outage, timeout, missing company code). This method queries the API and does not
+    /// store or set the affiliate identifier.
     /// - Parameter affiliateCode: The short code or deep link to look up
-    /// - Returns: AffiliateDetails if found, nil otherwise
-    public static func getAffiliateDetails(affiliateCode: String, trackUsage: Bool = false) async -> AffiliateDetails? {
+    /// - Returns: an AffiliateLookupResult with a status of .found, .notFound, or .lookupFailed
+    public static func getAffiliateLookupResult(affiliateCode: String, trackUsage: Bool = false) async -> AffiliateLookupResult {
         guard let companyCode = await state.getCompanyCode(), !companyCode.isEmpty else {
             print("[Insert Affiliate] Company code is not set. Please initialize the SDK with a valid company code.")
-            return nil
+            return AffiliateLookupResult(status: .lookupFailed, details: nil)
         }
 
         // Strip UUID from code if present (e.g., "ABC123-uuid" becomes "ABC123")
@@ -1237,7 +1265,7 @@ public struct InsertAffiliateSwift {
 
         guard let url = URL(string: urlString) else {
             print("[Insert Affiliate] Invalid URL for getting affiliate details")
-            return nil
+            return AffiliateLookupResult(status: .lookupFailed, details: nil)
         }
 
         var payload: [String: Any] = [
@@ -1251,7 +1279,7 @@ public struct InsertAffiliateSwift {
 
         guard let jsonData = try? JSONSerialization.data(withJSONObject: payload, options: []) else {
             print("[Insert Affiliate] Failed to encode affiliate details payload")
-            return nil
+            return AffiliateLookupResult(status: .lookupFailed, details: nil)
         }
 
         var request = URLRequest(url: url)
@@ -1264,14 +1292,14 @@ public struct InsertAffiliateSwift {
 
             guard let httpResponse = response as? HTTPURLResponse else {
                 print("[Insert Affiliate] No response received for affiliate details")
-                return nil
+                return AffiliateLookupResult(status: .lookupFailed, details: nil)
             }
 
             guard httpResponse.statusCode == 200 else {
                 if let errorResponse = String(data: data, encoding: .utf8) {
                     print("[Insert Affiliate] API Error (\(httpResponse.statusCode)): \(errorResponse)")
                 }
-                return nil
+                return AffiliateLookupResult(status: .lookupFailed, details: nil)
             }
 
             guard let json = try JSONSerialization.jsonObject(with: data, options: []) as? [String: Any],
@@ -1282,19 +1310,33 @@ public struct InsertAffiliateSwift {
                   let affiliateShortCode = affiliate["affiliateShortCode"] as? String,
                   let deeplinkUrl = affiliate["deeplinkurl"] as? String else {
                 print("[Insert Affiliate] Failed to parse affiliate details from response")
-                return nil
+                return AffiliateLookupResult(status: .notFound, details: nil)
             }
 
-            return AffiliateDetails(
-                affiliateName: affiliateName,
-                affiliateShortCode: affiliateShortCode,
-                deeplinkUrl: deeplinkUrl
+            return AffiliateLookupResult(
+                status: .found,
+                details: AffiliateDetails(
+                    affiliateName: affiliateName,
+                    affiliateShortCode: affiliateShortCode,
+                    deeplinkUrl: deeplinkUrl
+                )
             )
 
         } catch {
             print("[Insert Affiliate] Error fetching affiliate details: \(error.localizedDescription)")
-            return nil
+            return AffiliateLookupResult(status: .lookupFailed, details: nil)
         }
+    }
+
+    /// Retrieves detailed information about an affiliate by their short code or deep link.
+    /// Kept for backward compatibility: collapses .notFound and .lookupFailed into the same
+    /// nil result, exactly as before. Use getAffiliateLookupResult if you need to tell an
+    /// invalid code apart from a backend outage.
+    /// - Parameter affiliateCode: The short code or deep link to look up
+    /// - Returns: AffiliateDetails if found, nil otherwise
+    public static func getAffiliateDetails(affiliateCode: String, trackUsage: Bool = false) async -> AffiliateDetails? {
+        let result = await getAffiliateLookupResult(affiliateCode: affiliateCode, trackUsage: trackUsage)
+        return result.details
     }
 
     // MARK: - Deep Linking Utilities
