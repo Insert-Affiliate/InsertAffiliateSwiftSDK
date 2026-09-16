@@ -1161,11 +1161,6 @@ public struct InsertAffiliateSwift {
                             if let jsonData = try? JSONSerialization.data(withJSONObject: data, options: []) {
                                 UserDefaults.standard.set(jsonData, forKey: "deepLinkData")
                             }
-                            
-                            // Extract values before dispatching to main queue to avoid data races
-                            let affiliateEmail = deepLink["affiliateEmail"] as? String
-                            let companyName = (data["company"] as? [String: Any])?["companyName"] as? String
-                            
                         } else {
                             print("[Insert Affiliate] Could not extract userCode from response")
                             print("[Insert Affiliate] Available keys in response: \(json.keys)")
@@ -1205,9 +1200,13 @@ public struct InsertAffiliateSwift {
     
     // MARK: - Getter Methods
     
-    /// Get stored affiliate email from deep link data
+    /// Always returns nil. The affiliate's email address is personal data and is
+    /// no longer sent to devices, so there is nothing to read. Use
+    /// `getAffiliateDetails(affiliateCode:)` to show who referred a user: it
+    /// returns the affiliate's name.
+    @available(*, deprecated, message: "Affiliate email addresses are no longer returned to apps. Use getAffiliateDetails(affiliateCode:) for the affiliate's name.")
     public static func getAffiliateEmail() -> String? {
-        return UserDefaults.standard.string(forKey: "affiliateEmail")
+        return nil
     }
     
     /// Get stored affiliate ID from deep link data
