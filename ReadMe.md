@@ -914,6 +914,95 @@ if let expiryTimestamp = InsertAffiliateSwift.getAffiliateExpiryTimestamp() {
 
 </details>
 
+<details>
+<summary><h3>In-App Referrals (Refer a Friend)</h3></summary>
+
+Turn your own users into affiliates from inside your app, show them a ready-made "Refer a friend" screen, and read their referral stats so you can reward them.
+
+In-app referrers are normal affiliates: they take a seat, get the usual welcome email and can sign in to the affiliate dashboard. Switch the program on (and choose what counts as a referral: install, event or purchase) in your [Insert Affiliate dashboard](https://app.insertaffiliate.com) first.
+
+**Drop-in screen (iOS 15+):**
+
+```swift
+// UIKit
+InsertAffiliateSwift.showReferAFriend(
+    from: self,
+    options: ReferAFriendOptions(
+        email: currentUser.email,   // prefill with your signed-in user
+        name: currentUser.name
+    )
+)
+
+// SwiftUI
+.sheet(isPresented: $showReferrals) {
+    ReferAFriendView(options: ReferAFriendOptions(email: currentUser.email, name: currentUser.name))
+}
+```
+
+The screen handles everything: the "Get my link" step, the 6-digit email code for users who are already affiliates, then their code and link with Copy and Share buttons, their referral count and earnings, and an "Open my dashboard" link.
+
+`ReferAFriendOptions` fields (all optional):
+
+| Option | Description |
+|---|---|
+| `email`, `name` | Prefill the form, usually with your signed-in user |
+| `shareMessage` | Share sheet text. May use `{link}` and `{code}` placeholders |
+| `primaryColor` | `#RRGGBB`. Overrides the colour set in the dashboard (default `#6A0DAD`) |
+| `headline`, `rewardText` | Override the copy set in the dashboard (default headline "Refer a friend") |
+| `fontName` | A custom font name. Uses the system font when not set |
+| `cornerRadius` | Corner radius of buttons and fields (default `12`) |
+| `onClose` | Called when the screen is closed |
+
+Headline, reward text and colour set in the dashboard apply without an app release.
+
+**Headless methods (build your own UI):**
+
+```swift
+// Make the signed-in user a referrer
+let result = await InsertAffiliateSwift.createAffiliateForUser(email: user.email, name: user.name)
+switch result.status {
+case .created, .connected:
+    print("Referral code: \(result.affiliate?.affiliateShortCode ?? "")")
+case .verificationRequired:
+    // Already an affiliate (e.g. reinstall or new phone): we emailed them a 6-digit code
+    let verified = await InsertAffiliateSwift.verifyAffiliateCode(email: user.email, code: enteredCode)
+case .error:
+    print("Error: \(result.errorCode ?? "") \(result.errorMessage ?? "")")
+}
+
+// Their stats (nil when this device is not connected)
+if let me = await InsertAffiliateSwift.getMyAffiliateDetails() {
+    print("\(me.referralCount) referrals, earned \(me.totalEarned) \(me.currency)")
+}
+
+InsertAffiliateSwift.isUserAnAffiliate()   // true when this device is connected (no network call)
+InsertAffiliateSwift.signOutAffiliate()    // call on app logout
+await InsertAffiliateSwift.getReferralProgramConfig()   // program on/off, headline, reward text, colour
+await InsertAffiliateSwift.shareReferralLink(message: "Join me on MyApp! {link}")   // system share sheet
+```
+
+| Method | Returns |
+|---|---|
+| `createAffiliateForUser(email:name:)` | `ReferralEnrolmentResult` with `status` (`.created`, `.verificationRequired`, `.error`), `affiliate`, `errorCode`, `errorMessage` |
+| `verifyAffiliateCode(email:code:name:)` | `ReferralEnrolmentResult` with `status` (`.connected`, `.created`, `.error`) |
+| `getMyAffiliateDetails()` | `MyAffiliateDetails?`: code, link, `referralCount` (the count for your chosen trigger), `installCount`, `eventCount`, `purchaseCount`, `totalEarned`, `totalPaid`, `totalUnpaid`, `currency`, `dashboardUrl` |
+| `isUserAnAffiliate()` | `Bool` |
+| `signOutAffiliate()` | Clears this device's connection. The affiliate account is untouched |
+| `getReferralProgramConfig()` | `ReferralProgramConfig?` |
+| `shareReferralLink(message:from:)` | `Bool`: false when this device is not connected |
+
+Error codes include `PROGRAM_DISABLED`, `AFFILIATE_LIMIT_REACHED`, `INVALID_EMAIL`, `INVALID_CODE`, `TOO_MANY_CODES`, `RATE_LIMITED`, `NETWORK_ERROR` and `NOT_INITIALIZED`.
+
+The connection is stored in the Keychain, so it usually survives deleting and reinstalling the app. If it is lost, calling `createAffiliateForUser` again emails the user a code to reconnect; their affiliate account and earnings are untouched.
+
+**Rewarding referrers:**
+
+`referralCount` only goes up, so you can compare it with what you have already rewarded and grant the difference. Values read on the device are for display only, because a modified device can fake them. Grant anything valuable (credits, premium time) from your server, using the `referral.created` webhook or the Public API.
+
+**App Store rules:** the screen uses the system share sheet only, never asks for Contacts access, and nothing in your app should be locked behind sharing. For free premium time, use App Store offer codes or RevenueCat promotional entitlements.
+
+</details>
+
 ### Prevent Affiliate Transfer
 
 Protect the original affiliate's attribution from being overwritten when users click different affiliate links.
