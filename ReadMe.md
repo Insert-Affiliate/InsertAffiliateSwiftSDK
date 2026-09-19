@@ -972,7 +972,7 @@ switch result.status {
 case .created, .connected:
     print("Referral code: \(result.affiliate?.affiliateShortCode ?? "")")
 case .verificationRequired:
-    // Already an affiliate (e.g. reinstall or new phone): we emailed them a 6-digit code
+    // Already an affiliate but this device isn't connected: we emailed them a 6-digit code
     let verified = await InsertAffiliateSwift.verifyAffiliateCode(
         email: user.email, code: enteredCode, options: ReferrerAccountOptions(appUserId: Purchases.shared.appUserID))
 case .error:
@@ -1013,7 +1013,9 @@ await InsertAffiliateSwift.shareReferralLink(message: "Join me on MyApp! {link}"
 
 Error codes include `PROGRAM_DISABLED`, `AFFILIATE_LIMIT_REACHED`, `INVALID_EMAIL`, `INVALID_CODE`, `TOO_MANY_CODES`, `RATE_LIMITED`, `NETWORK_ERROR` and `NOT_INITIALIZED`.
 
-The connection is stored in the Keychain, so it usually survives deleting and reinstalling the app. If it is lost, calling `createAffiliateForUser` again emails the user a code to reconnect; their affiliate account and earnings are untouched.
+The connection is stored in the Keychain, so it usually survives deleting and reinstalling the app, and moves to a new iPhone restored from an encrypted backup. When the device has no connection (a new phone set up without a backup, or after `signOutAffiliate()`), calling `createAffiliateForUser` again emails the user a code to reconnect; their affiliate account and earnings are untouched.
+
+The SDK removes the connection itself only when the server says it is no longer valid: the device was disconnected from the affiliate dashboard, or the referral account was deleted. Network and server errors keep it, so a referrer is never signed out by an outage.
 
 **Rewarding referrers:**
 
