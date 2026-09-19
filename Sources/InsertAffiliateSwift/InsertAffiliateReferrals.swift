@@ -242,13 +242,9 @@ extension InsertAffiliateSwift {
         request.httpBody = try? JSONSerialization.data(withJSONObject: body, options: [])
 
         do {
-            let (_, response) = try await URLSession.shared.data(for: request)
+            let (data, response) = try await URLSession.shared.data(for: request)
             let statusCode = (response as? HTTPURLResponse)?.statusCode ?? -1
-            if statusCode == 401 || statusCode == 404 {
-                if verboseLogging {
-                    print("[Insert Affiliate] Referrer token rejected (\(statusCode)); clearing it")
-                }
-                ReferrerTokenStore.clear(companyId: stored.companyCode)
+            if clearReferrerTokenIfRejected(statusCode: statusCode, data: data, stored: stored, verboseLogging: verboseLogging) {
                 return false
             }
             guard (200..<300).contains(statusCode) else {
@@ -282,11 +278,7 @@ extension InsertAffiliateSwift {
         do {
             let (data, response) = try await URLSession.shared.data(for: request)
             let statusCode = (response as? HTTPURLResponse)?.statusCode ?? -1
-            if statusCode == 401 || statusCode == 404 {
-                if verboseLogging {
-                    print("[Insert Affiliate] Referrer token rejected (\(statusCode)); clearing it")
-                }
-                ReferrerTokenStore.clear(companyId: stored.companyCode)
+            if clearReferrerTokenIfRejected(statusCode: statusCode, data: data, stored: stored, verboseLogging: verboseLogging) {
                 return nil
             }
             guard statusCode == 200 else {
@@ -420,6 +412,33 @@ extension InsertAffiliateSwift {
             return nil
         }
         return (companyCode, token)
+    }
+
+    /// True when the server says the token itself is no longer valid: 401 `INVALID_TOKEN`
+    /// or 404 `AFFILIATE_NOT_FOUND`. Any other 401/404 (a proxy, an older API) is a
+    /// server error and the token is kept.
+    static func isReferrerTokenRejected(statusCode: Int, data: Data) -> Bool {
+        guard statusCode == 401 || statusCode == 404 else { return false }
+        let json = (try? JSONSerialization.jsonObject(with: data, options: [])) as? [String: Any]
+        let code = json?["code"] as? String
+        return (statusCode == 401 && code == "INVALID_TOKEN") || (statusCode == 404 && code == "AFFILIATE_NOT_FOUND")
+    }
+
+    /// Clears the stored token when the server rejected it, but only if it is still the
+    /// token that was sent, so a slow request with an old token can't remove a newer one.
+    /// Returns true when the token was rejected.
+    private static func clearReferrerTokenIfRejected(
+        statusCode: Int,
+        data: Data,
+        stored: (companyCode: String, token: String),
+        verboseLogging: Bool
+    ) -> Bool {
+        guard isReferrerTokenRejected(statusCode: statusCode, data: data) else { return false }
+        if verboseLogging {
+            print("[Insert Affiliate] Referrer token rejected (\(statusCode)); clearing it")
+        }
+        ReferrerTokenStore.clear(companyId: stored.companyCode, ifToken: stored.token)
+        return true
     }
 
     /// Turns an enrol/verify HTTP response into the public result. The token is
@@ -624,5 +643,11 @@ enum ReferrerTokenStore {
 
     static func clear(companyId: String) {
         SecItemDelete(baseQuery(companyId: companyId) as CFDictionary)
+    }
+
+    /// Clears the token only while it is still `token`.
+    static func clear(companyId: String, ifToken token: String) {
+        guard read(companyId: companyId) == token else { return }
+        clear(companyId: companyId)
     }
 }

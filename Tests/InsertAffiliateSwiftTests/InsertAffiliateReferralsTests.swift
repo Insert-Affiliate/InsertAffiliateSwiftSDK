@@ -304,8 +304,26 @@ final class InsertAffiliateReferralsTests: XCTestCase {
         XCTAssertEqual(ReferrerTokenStore.read(companyId: companyId), "second")
         XCTAssertNil(ReferrerTokenStore.read(companyId: companyId + "-other"))
 
+        ReferrerTokenStore.clear(companyId: companyId, ifToken: "first")
+        XCTAssertEqual(ReferrerTokenStore.read(companyId: companyId), "second")
+        ReferrerTokenStore.clear(companyId: companyId, ifToken: "second")
+        XCTAssertNil(ReferrerTokenStore.read(companyId: companyId))
+
+        XCTAssertTrue(ReferrerTokenStore.save("third", companyId: companyId))
         ReferrerTokenStore.clear(companyId: companyId)
         XCTAssertNil(ReferrerTokenStore.read(companyId: companyId))
+    }
+
+    func testTokenIsRejectedOnlyForTheServerTokenCodes() {
+        func body(_ code: String) -> Data { Data(#"{"error":"x","code":"\#(code)"}"#.utf8) }
+        XCTAssertTrue(InsertAffiliateSwift.isReferrerTokenRejected(statusCode: 401, data: body("INVALID_TOKEN")))
+        XCTAssertTrue(InsertAffiliateSwift.isReferrerTokenRejected(statusCode: 404, data: body("AFFILIATE_NOT_FOUND")))
+        // A proxy or an API without the route: not the token's fault.
+        XCTAssertFalse(InsertAffiliateSwift.isReferrerTokenRejected(statusCode: 404, data: Data("Cannot GET /V1/sdk/affiliate/me".utf8)))
+        XCTAssertFalse(InsertAffiliateSwift.isReferrerTokenRejected(statusCode: 401, data: Data()))
+        XCTAssertFalse(InsertAffiliateSwift.isReferrerTokenRejected(statusCode: 404, data: body("INVALID_TOKEN")))
+        XCTAssertFalse(InsertAffiliateSwift.isReferrerTokenRejected(statusCode: 401, data: body("AFFILIATE_NOT_FOUND")))
+        XCTAssertFalse(InsertAffiliateSwift.isReferrerTokenRejected(statusCode: 500, data: body("INVALID_TOKEN")))
     }
 
     // MARK: - Drop-in screen helpers
