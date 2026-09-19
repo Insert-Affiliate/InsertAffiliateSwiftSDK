@@ -939,7 +939,7 @@ InsertAffiliateSwift.showReferAFriend(
 }
 ```
 
-The screen handles everything: the "Get my link" step, the 6-digit email code for users who are already affiliates, then their code and link with Copy and Share buttons, their referral count and earnings, and an "Open my dashboard" link.
+The screen handles everything: the "Get my link" step, the 6-digit email code for users who are already affiliates, then their code and link with Copy and Share buttons, their referral count and earnings, and an "Open my dashboard" link. When the referrer has earned rewards it also shows "Free premium until {date}" and a "Your rewards" list of App Store offer codes, each with a Redeem button.
 
 `ReferAFriendOptions` fields (all optional):
 
@@ -958,14 +958,20 @@ Headline, reward text and colour set in the dashboard apply without an app relea
 **Headless methods (build your own UI):**
 
 ```swift
-// Make the signed-in user a referrer
-let result = await InsertAffiliateSwift.createAffiliateForUser(email: user.email, name: user.name)
+// Make the signed-in user a referrer. Pass their RevenueCat app user id (or Adapty
+// customer user id) so rewards can be given automatically.
+let result = await InsertAffiliateSwift.createAffiliateForUser(
+    email: user.email,
+    name: user.name,
+    options: ReferrerAccountOptions(appUserId: Purchases.shared.appUserID)
+)
 switch result.status {
 case .created, .connected:
     print("Referral code: \(result.affiliate?.affiliateShortCode ?? "")")
 case .verificationRequired:
     // Already an affiliate (e.g. reinstall or new phone): we emailed them a 6-digit code
-    let verified = await InsertAffiliateSwift.verifyAffiliateCode(email: user.email, code: enteredCode)
+    let verified = await InsertAffiliateSwift.verifyAffiliateCode(
+        email: user.email, code: enteredCode, options: ReferrerAccountOptions(appUserId: Purchases.shared.appUserID))
 case .error:
     print("Error: \(result.errorCode ?? "") \(result.errorMessage ?? "")")
 }
@@ -973,7 +979,15 @@ case .error:
 // Their stats (nil when this device is not connected)
 if let me = await InsertAffiliateSwift.getMyAffiliateDetails() {
     print("\(me.referralCount) referrals, earned \(me.totalEarned) \(me.currency)")
+    print("Rewards: \(me.rewardsGranted), premium until: \(String(describing: me.premiumUntil))")
+    for reward in me.rewardCodes {
+        print("Offer code \(reward.code): \(reward.redeemUrl)")
+    }
 }
+
+// The user subscribed or signed in after joining: save their account so any
+// rewards that were waiting are given
+await InsertAffiliateSwift.setReferrerAccount(appUserId: Purchases.shared.appUserID)
 
 InsertAffiliateSwift.isUserAnAffiliate()   // true when this device is connected (no network call)
 InsertAffiliateSwift.signOutAffiliate()    // call on app logout
@@ -983,13 +997,16 @@ await InsertAffiliateSwift.shareReferralLink(message: "Join me on MyApp! {link}"
 
 | Method | Returns |
 |---|---|
-| `createAffiliateForUser(email:name:)` | `ReferralEnrolmentResult` with `status` (`.created`, `.verificationRequired`, `.error`), `affiliate`, `errorCode`, `errorMessage` |
-| `verifyAffiliateCode(email:code:name:)` | `ReferralEnrolmentResult` with `status` (`.connected`, `.created`, `.error`) |
-| `getMyAffiliateDetails()` | `MyAffiliateDetails?`: code, link, `referralCount` (the count for your chosen trigger), `installCount`, `eventCount`, `purchaseCount`, `totalEarned`, `totalPaid`, `totalUnpaid`, `currency`, `dashboardUrl` |
+| `createAffiliateForUser(email:name:options:)` | `ReferralEnrolmentResult` with `status` (`.created`, `.verificationRequired`, `.error`), `affiliate`, `errorCode`, `errorMessage` |
+| `verifyAffiliateCode(email:code:name:options:)` | `ReferralEnrolmentResult` with `status` (`.connected`, `.created`, `.error`) |
+| `setReferrerAccount(appUserId:playPurchaseToken:)` | `Bool`: true when saved. Use it when the user subscribes or signs in after joining |
+| `getMyAffiliateDetails()` | `MyAffiliateDetails?`: code, link, `referralCount` (the count for your chosen trigger), `installCount`, `eventCount`, `purchaseCount`, `totalEarned`, `totalPaid`, `totalUnpaid`, `currency`, `dashboardUrl`, `rewardsGranted`, `premiumUntil` (`Date?`), `rewardCodes` (`[ReferralRewardCode]` with `code`, `redeemUrl`, `grantedAt`, newest first) |
 | `isUserAnAffiliate()` | `Bool` |
 | `signOutAffiliate()` | Clears this device's connection. The affiliate account is untouched |
 | `getReferralProgramConfig()` | `ReferralProgramConfig?` |
 | `shareReferralLink(message:from:)` | `Bool`: false when this device is not connected |
+
+`ReferrerAccountOptions` fields (both optional): `appUserId` is the user's RevenueCat app user id or Adapty customer user id; `playPurchaseToken` is the user's own Google Play purchase token (Android apps only). The SDK also sends this device's id automatically, so a referrer can't count as their own referral.
 
 Error codes include `PROGRAM_DISABLED`, `AFFILIATE_LIMIT_REACHED`, `INVALID_EMAIL`, `INVALID_CODE`, `TOO_MANY_CODES`, `RATE_LIMITED`, `NETWORK_ERROR` and `NOT_INITIALIZED`.
 
@@ -997,7 +1014,7 @@ The connection is stored in the Keychain, so it usually survives deleting and re
 
 **Rewarding referrers:**
 
-`referralCount` only goes up, so you can compare it with what you have already rewarded and grant the difference. Values read on the device are for display only, because a modified device can fake them. Grant anything valuable (credits, premium time) from your server, using the `referral.created` webhook or the Public API.
+If you set up automatic referrer rewards in the dashboard (RevenueCat, Adapty or App Store offer codes), pass the user's `appUserId` as above and Insert Affiliate gives the rewards for you; `rewardsGranted`, `premiumUntil` and `rewardCodes` show what they have received. Otherwise, `referralCount` only goes up, so you can compare it with what you have already rewarded and grant the difference. Values read on the device are for display only, because a modified device can fake them. Grant anything valuable (credits, premium time) from your server, using the `referral.created` webhook or the Public API.
 
 **App Store rules:** the screen uses the system share sheet only, never asks for Contacts access, and nothing in your app should be locked behind sharing. For free premium time, use App Store offer codes or RevenueCat promotional entitlements.
 
