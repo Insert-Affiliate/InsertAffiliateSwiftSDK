@@ -286,7 +286,8 @@ public struct ReferAFriendView: View {
                     .foregroundColor(theme)
             }
 
-            if let codes = model.stats?.rewardCodes, !codes.isEmpty {
+            // Google Play codes (from an Android phone) can't be redeemed here.
+            if let codes = model.stats?.rewardCodes.filter(\.isAppStore), !codes.isEmpty {
                 rewardsList(codes)
             }
 

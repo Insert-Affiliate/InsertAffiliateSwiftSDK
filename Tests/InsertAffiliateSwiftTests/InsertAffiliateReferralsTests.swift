@@ -81,6 +81,23 @@ final class InsertAffiliateReferralsTests: XCTestCase {
         XCTAssertEqual(details.rewardCodes[1].grantedAt, Date(timeIntervalSince1970: 1_788_249_600))
     }
 
+    func testRewardCodeStore() throws {
+        let json = """
+        {
+          "rewardCodes": [
+            { "code": "PLAYCODE1", "redeemUrl": "https://play.google.com/redeem?code=PLAYCODE1", "store": "google_play" },
+            { "code": "OFFER1", "redeemUrl": "https://apps.apple.com/redeem?ctx=offercodes&id=1&code=OFFER1", "store": "app_store" },
+            { "code": "OLDCODE", "redeemUrl": "https://apps.apple.com/redeem?ctx=offercodes&id=1&code=OLDCODE" }
+          ]
+        }
+        """
+        let codes = try JSONDecoder().decode(InsertAffiliateSwift.MyAffiliateDetails.self, from: Data(json.utf8)).rewardCodes
+
+        XCTAssertEqual(codes.map(\.store), ["google_play", "app_store", "app_store"])
+        // The referral screen on iPhone only shows codes it can redeem.
+        XCTAssertEqual(codes.filter(\.isAppStore).map(\.code), ["OFFER1", "OLDCODE"])
+    }
+
     func testRewardFieldsDefaultWhenMissingOrUnreadable() throws {
         let missing = try JSONDecoder().decode(InsertAffiliateSwift.MyAffiliateDetails.self, from: Data("{}".utf8))
         XCTAssertEqual(missing.rewardsGranted, 0)

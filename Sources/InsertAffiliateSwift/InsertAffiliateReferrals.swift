@@ -103,20 +103,31 @@ extension InsertAffiliateSwift {
         }
     }
 
-    /// An App Store one-time offer code given to the referrer as a reward.
+    /// A reward code given to the referrer: an App Store one-time offer code,
+    /// or a Google Play promo code if they were rewarded on an Android phone.
     public struct ReferralRewardCode: Sendable, Equatable, Decodable {
+        public static let appStore = "app_store"
+        public static let googlePlay = "google_play"
+
         public let code: String
-        /// Opens the App Store to redeem the code.
+        /// Opens the store to redeem the code.
         public let redeemUrl: URL
+        /// Which store the code is for: `appStore` or `googlePlay`. Older servers
+        /// don't send it; those codes are App Store codes.
+        public let store: String
         public let grantedAt: Date?
 
+        /// Whether the code can be redeemed on this iPhone.
+        public var isAppStore: Bool { store == Self.appStore }
+
         enum CodingKeys: String, CodingKey {
-            case code, redeemUrl, grantedAt
+            case code, redeemUrl, store, grantedAt
         }
 
-        public init(code: String, redeemUrl: URL, grantedAt: Date? = nil) {
+        public init(code: String, redeemUrl: URL, store: String = ReferralRewardCode.appStore, grantedAt: Date? = nil) {
             self.code = code
             self.redeemUrl = redeemUrl
+            self.store = store
             self.grantedAt = grantedAt
         }
 
@@ -128,6 +139,8 @@ extension InsertAffiliateSwift {
             }
             code = codeValue
             redeemUrl = url
+            let storeValue = c.lenientString(.store)
+            store = storeValue.isEmpty ? Self.appStore : storeValue
             grantedAt = referralDate(c.lenientString(.grantedAt))
         }
     }

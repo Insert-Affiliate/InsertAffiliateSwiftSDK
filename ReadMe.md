@@ -941,7 +941,7 @@ InsertAffiliateSwift.showReferAFriend(
 }
 ```
 
-The screen handles everything: the "Get my link" step, the 6-digit email code for users who are already affiliates, then their code and link with Copy and Share buttons, their referral count and earnings, and an "Open my dashboard" link. When the referrer has earned rewards it also shows "Free premium until {date}" and a "Your rewards" list of App Store offer codes, each with a Redeem button.
+The screen handles everything: the "Get my link" step, the 6-digit email code for users who are already affiliates, then their code and link with Copy and Share buttons, their referral count and earnings, and an "Open my dashboard" link. When the referrer has earned rewards it also shows "Free premium until {date}" and a "Your rewards" list of App Store offer codes, each with a Redeem button. Google Play promo codes the referrer earned on an Android phone aren't shown on iPhone.
 
 `ReferAFriendOptions` fields (all optional):
 
@@ -983,7 +983,7 @@ case .error:
 if let me = await InsertAffiliateSwift.getMyAffiliateDetails() {
     print("\(me.referralCount) referrals, earned \(me.totalEarned) \(me.currency)")
     print("Rewards: \(me.rewardsGranted), premium until: \(String(describing: me.premiumUntil))")
-    for reward in me.rewardCodes {
+    for reward in me.rewardCodes where reward.isAppStore {
         print("Offer code \(reward.code): \(reward.redeemUrl)")
     }
 }
@@ -1003,7 +1003,7 @@ await InsertAffiliateSwift.shareReferralLink(message: "Join me on MyApp! {link}"
 | `createAffiliateForUser(email:name:options:)` | `ReferralEnrolmentResult` with `status` (`.created`, `.verificationRequired`, `.error`), `affiliate`, `errorCode`, `errorMessage` |
 | `verifyAffiliateCode(email:code:name:options:)` | `ReferralEnrolmentResult` with `status` (`.connected`, `.created`, `.error`) |
 | `setReferrerAccount(appUserId:playPurchaseToken:)` | `Bool`: true when saved. Use it when the user subscribes or signs in after joining |
-| `getMyAffiliateDetails()` | `MyAffiliateDetails?`: code, link, `referralCount` (the count for your chosen trigger), `installCount`, `eventCount`, `purchaseCount`, `totalEarned`, `totalPaid`, `totalUnpaid`, `currency`, `dashboardUrl`, `rewardsGranted`, `premiumUntil` (`Date?`), `rewardCodes` (`[ReferralRewardCode]` with `code`, `redeemUrl`, `grantedAt`, newest first) |
+| `getMyAffiliateDetails()` | `MyAffiliateDetails?`: code, link, `referralCount` (the count for your chosen trigger), `installCount`, `eventCount`, `purchaseCount`, `totalEarned`, `totalPaid`, `totalUnpaid`, `currency`, `dashboardUrl`, `rewardsGranted`, `premiumUntil` (`Date?`), `rewardCodes` (`[ReferralRewardCode]` with `code`, `redeemUrl`, `store` (`app_store` or `google_play`), `isAppStore`, `grantedAt`, newest first) |
 | `isUserAnAffiliate()` | `Bool` |
 | `signOutAffiliate()` | Clears this device's connection. The affiliate account is untouched |
 | `getReferralProgramConfig()` | `ReferralProgramConfig?` |
