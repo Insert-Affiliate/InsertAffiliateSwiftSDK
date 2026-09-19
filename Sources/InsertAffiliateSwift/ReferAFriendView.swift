@@ -485,6 +485,12 @@ final class ReferAFriendModel: ObservableObject {
     func load() async {
         step = .loading
         errorMessage = nil
+        guard let companyCode = InsertAffiliateSwift.syncCompanyCode, !companyCode.isEmpty else {
+            print("[Insert Affiliate] Refer a friend needs the SDK initialized with your company code before it is shown.")
+            errorMessage = Self.message(for: "NOT_INITIALIZED", fallback: nil)
+            step = .unavailable
+            return
+        }
         async let configRequest = InsertAffiliateSwift.getReferralProgramConfig()
         async let detailsRequest = InsertAffiliateSwift.loadMyAffiliateDetails()
         let (loadedConfig, details) = await (configRequest, detailsRequest)
@@ -625,7 +631,7 @@ final class ReferAFriendModel: ObservableObject {
 
     static func message(for errorCode: String?, fallback: String?) -> String {
         switch errorCode {
-        case "PROGRAM_DISABLED":
+        case "PROGRAM_DISABLED", "NOT_INITIALIZED":
             return "Referrals are not available in this app right now."
         case "AFFILIATE_LIMIT_REACHED":
             return "The referral program is full right now. Please try again later."

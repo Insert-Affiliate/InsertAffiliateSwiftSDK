@@ -438,6 +438,9 @@ final class InsertAffiliateReferralsTests: XCTestCase {
         XCTAssertEqual(ReferAFriendModel.message(for: "INVALID_CODE", fallback: nil),
                        "That code is wrong or has expired. Check your email or send a new code.")
         XCTAssertEqual(ReferAFriendModel.message(for: "SOMETHING_NEW", fallback: "Server says no."), "Server says no.")
+        // The SDK's developer message is logged, never shown.
+        XCTAssertEqual(ReferAFriendModel.message(for: "NOT_INITIALIZED", fallback: "Call initialize with your company code first."),
+                       "Referrals are not available in this app right now.")
         XCTAssertEqual(ReferAFriendModel.message(for: nil, fallback: nil), "Something went wrong. Please try again.")
 
         XCTAssertNotNil(ReferAFriendModel.color(hex: "#6A0DAD"))
