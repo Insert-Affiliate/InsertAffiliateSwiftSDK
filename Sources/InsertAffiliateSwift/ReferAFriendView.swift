@@ -233,7 +233,7 @@ public struct ReferAFriendView: View {
                 .textContentType(.oneTimeCode)
                 .keyboardType(.numberPad)
             primaryButton("Verify") { await model.verify() }
-                .disabled(model.code.filter(\.isNumber).count != 6)
+                .disabled(!model.hasCompleteCode)
             Button("Send a new code") {
                 Task { await model.resendCode() }
             }
@@ -441,6 +441,11 @@ final class ReferAFriendModel: ObservableObject {
         formatter.dateStyle = .medium
         formatter.timeStyle = .none
         return "Free premium until \(formatter.string(from: premiumUntil))"
+    }
+
+    /// True once the code field holds exactly six digits.
+    var hasCompleteCode: Bool {
+        InsertAffiliateSwift.normalizedVerificationCode(code).count == 6
     }
 
     /// The referrer's accounts from the screen options, sent on enrol and verify.

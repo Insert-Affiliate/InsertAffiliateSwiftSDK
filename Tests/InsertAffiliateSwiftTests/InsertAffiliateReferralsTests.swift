@@ -331,6 +331,31 @@ final class InsertAffiliateReferralsTests: XCTestCase {
         XCTAssertNil(ReferrerTokenStore.registeredDeviceId(companyId: companyId))
     }
 
+    func testVerificationCodeIsNormalizedToAsciiDigits() {
+        XCTAssertEqual(InsertAffiliateSwift.normalizedVerificationCode("123456"), "123456")
+        XCTAssertEqual(InsertAffiliateSwift.normalizedVerificationCode(" 123 456\n"), "123456")
+        XCTAssertEqual(InsertAffiliateSwift.normalizedVerificationCode("123-456"), "123456")
+        XCTAssertEqual(InsertAffiliateSwift.normalizedVerificationCode("\u{0661}\u{0662}\u{0663}\u{0664}\u{0665}\u{0666}"), "123456")
+        XCTAssertEqual(InsertAffiliateSwift.normalizedVerificationCode("\u{06F7}\u{0968}\u{FF19}"), "729")
+        // Numbers that aren't decimal digits are dropped.
+        XCTAssertEqual(InsertAffiliateSwift.normalizedVerificationCode("\u{00BD}\u{2464}\u{00B2}1"), "1")
+        XCTAssertEqual(InsertAffiliateSwift.normalizedVerificationCode("abc"), "")
+    }
+
+    @available(iOS 15.0, *)
+    @MainActor
+    func testVerifyNeedsExactlySixDigits() {
+        let model = ReferAFriendModel(options: ReferAFriendOptions())
+        model.code = "12345"
+        XCTAssertFalse(model.hasCompleteCode)
+        model.code = "123-456"
+        XCTAssertTrue(model.hasCompleteCode)
+        model.code = "\u{0661}\u{0662}\u{0663}\u{0664}\u{0665}\u{0666}"
+        XCTAssertTrue(model.hasCompleteCode)
+        model.code = "1234567"
+        XCTAssertFalse(model.hasCompleteCode)
+    }
+
     func testTokenIsRejectedOnlyForTheServerTokenCodes() {
         func body(_ code: String) -> Data { Data(#"{"error":"x","code":"\#(code)"}"#.utf8) }
         XCTAssertTrue(InsertAffiliateSwift.isReferrerTokenRejected(statusCode: 401, data: body("INVALID_TOKEN")))

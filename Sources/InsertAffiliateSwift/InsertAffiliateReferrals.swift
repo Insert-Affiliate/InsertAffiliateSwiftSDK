@@ -214,7 +214,7 @@ extension InsertAffiliateSwift {
     ) async -> ReferralEnrolmentResult {
         return await postReferralEnrolment(path: "verify", body: [
             "email": email.trimmingCharacters(in: .whitespacesAndNewlines),
-            "code": code.filter { !$0.isWhitespace },
+            "code": normalizedVerificationCode(code),
             "name": name,
         ], options: options)
     }
@@ -384,6 +384,20 @@ extension InsertAffiliateSwift {
             return "Try \(appName): \(link)"
         }
         return "Use my code \(code) in \(appName)"
+    }
+
+    /// The emailed code as ASCII digits. Digits from any script (e.g. Arabic-Indic, which a
+    /// number pad can type) become 0-9 and everything else (spaces, dashes) is dropped,
+    /// because the server only accepts six ASCII digits.
+    static func normalizedVerificationCode(_ code: String) -> String {
+        return String(code.compactMap { character -> Character? in
+            guard character.unicodeScalars.count == 1,
+                  character.unicodeScalars.first?.properties.generalCategory == .decimalNumber,
+                  let value = character.wholeNumberValue, (0...9).contains(value) else {
+                return nil
+            }
+            return Character(String(value))
+        })
     }
 
     /// The app-supplied account ids that are set, plus this device's id. The device id is
