@@ -56,6 +56,61 @@ final class InsertAffiliateReferralsTests: XCTestCase {
         XCTAssertEqual(details.currency, "USD")
     }
 
+    func testDecodesRewardFields() throws {
+        let json = """
+        {
+          "affiliateShortCode": "CODE1",
+          "rewardsGranted": 3,
+          "premiumUntil": "2030-01-15T10:30:00.000Z",
+          "rewardCodes": [
+            { "code": "OFFER2", "redeemUrl": "https://apps.apple.com/redeem?ctx=offercodes&id=1&code=OFFER2",
+              "grantedAt": "2026-09-10T08:00:00.123Z" },
+            { "code": "OFFER1", "redeemUrl": "https://apps.apple.com/redeem?ctx=offercodes&id=1&code=OFFER1",
+              "grantedAt": "2026-09-01T08:00:00Z" }
+          ]
+        }
+        """
+        let details = try JSONDecoder().decode(InsertAffiliateSwift.MyAffiliateDetails.self, from: Data(json.utf8))
+
+        XCTAssertEqual(details.rewardsGranted, 3)
+        XCTAssertEqual(details.premiumUntil, Date(timeIntervalSince1970: 1_894_703_400))
+        XCTAssertEqual(details.rewardCodes.map(\.code), ["OFFER2", "OFFER1"])
+        XCTAssertEqual(details.rewardCodes[0].redeemUrl.absoluteString,
+                       "https://apps.apple.com/redeem?ctx=offercodes&id=1&code=OFFER2")
+        XCTAssertEqual(details.rewardCodes[0].grantedAt?.timeIntervalSince1970 ?? 0, 1_789_027_200.123, accuracy: 0.001)
+        XCTAssertEqual(details.rewardCodes[1].grantedAt, Date(timeIntervalSince1970: 1_788_249_600))
+    }
+
+    func testRewardFieldsDefaultWhenMissingOrUnreadable() throws {
+        let missing = try JSONDecoder().decode(InsertAffiliateSwift.MyAffiliateDetails.self, from: Data("{}".utf8))
+        XCTAssertEqual(missing.rewardsGranted, 0)
+        XCTAssertNil(missing.premiumUntil)
+        XCTAssertEqual(missing.rewardCodes, [])
+
+        let json = """
+        {
+          "rewardsGranted": "2",
+          "premiumUntil": null,
+          "rewardCodes": [
+            { "code": "GOOD", "redeemUrl": "https://apps.apple.com/redeem?code=GOOD", "grantedAt": "not a date" },
+            { "code": "", "redeemUrl": "https://apps.apple.com/redeem?code=x" },
+            { "code": "NOLINK" },
+            "junk"
+          ]
+        }
+        """
+        let details = try JSONDecoder().decode(InsertAffiliateSwift.MyAffiliateDetails.self, from: Data(json.utf8))
+        XCTAssertEqual(details.rewardsGranted, 2)
+        XCTAssertNil(details.premiumUntil)
+        XCTAssertEqual(details.rewardCodes.map(\.code), ["GOOD"])
+        XCTAssertNil(details.rewardCodes[0].grantedAt)
+
+        let notAList = try JSONDecoder().decode(InsertAffiliateSwift.MyAffiliateDetails.self,
+                                                from: Data(#"{ "rewardCodes": "nope", "premiumUntil": 5 }"#.utf8))
+        XCTAssertEqual(notAList.rewardCodes, [])
+        XCTAssertNil(notAList.premiumUntil)
+    }
+
     func testDecodesReferralProgramConfig() throws {
         let json = """
         {
@@ -147,6 +202,29 @@ final class InsertAffiliateReferralsTests: XCTestCase {
         XCTAssertNil(token)
     }
 
+    // MARK: - Referrer account (identity) body
+
+    func testIdentityBodyIncludesSetFieldsAndDeviceId() {
+        let body = InsertAffiliateSwift.buildReferrerIdentityBody(
+            options: .init(appUserId: " rc_user_1 ", playPurchaseToken: "play.token-123"), deviceId: "A1B2C3")
+
+        XCTAssertEqual(body, ["deviceId": "A1B2C3", "appUserId": "rc_user_1", "playPurchaseToken": "play.token-123"])
+    }
+
+    func testIdentityBodyLeavesOutUnsetAndEmptyFields() {
+        XCTAssertEqual(InsertAffiliateSwift.buildReferrerIdentityBody(options: .init(), deviceId: "A1B2C3"),
+                       ["deviceId": "A1B2C3"])
+        XCTAssertEqual(InsertAffiliateSwift.buildReferrerIdentityBody(options: .init(appUserId: "  ", playPurchaseToken: ""), deviceId: ""),
+                       [:])
+    }
+
+    func testIdentityDeviceIdMatchesInsertAffiliateIdentifier() {
+        // Same id as the "{shortCode}-{deviceId}" identifier, so self-referral checks match.
+        let deviceId = InsertAffiliateSwift.returnShortUniqueDeviceID()
+        XCTAssertEqual(InsertAffiliateSwift.returnShortUniqueDeviceID(), deviceId)
+        XCTAssertEqual(UserDefaults.standard.string(forKey: "shortUniqueDeviceID"), deviceId)
+    }
+
     // MARK: - Share text
 
     private let linkAffiliate = InsertAffiliateSwift.AffiliateDetails(
@@ -227,5 +305,19 @@ final class InsertAffiliateReferralsTests: XCTestCase {
         XCTAssertNil(ReferAFriendModel.color(hex: "6A0DAD"))
         XCTAssertNil(ReferAFriendModel.color(hex: "#GGGGGG"))
         XCTAssertNil(ReferAFriendModel.color(hex: ""))
+    }
+
+    @available(iOS 15.0, *)
+    @MainActor
+    func testPremiumUntilTextOnlyWhenInTheFuture() {
+        let now = Date(timeIntervalSince1970: 1_788_249_600)
+        let locale = Locale(identifier: "en_US")
+        XCTAssertNil(ReferAFriendModel.premiumUntilText(nil, now: now, locale: locale))
+        XCTAssertNil(ReferAFriendModel.premiumUntilText(now.addingTimeInterval(-60), now: now, locale: locale))
+
+        let text = ReferAFriendModel.premiumUntilText(now.addingTimeInterval(86_400 * 10), now: now, locale: locale)
+        XCTAssertNotNil(text)
+        XCTAssertTrue(text?.hasPrefix("Free premium until ") == true)
+        XCTAssertTrue(text?.contains("2026") == true)
     }
 }

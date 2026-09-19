@@ -28,7 +28,7 @@ extension InsertAffiliateSwift {
         case error
     }
 
-    /// Result of `createAffiliateForUser(email:name:)` and `verifyAffiliateCode(email:code:name:)`.
+    /// Result of `createAffiliateForUser(email:name:options:)` and `verifyAffiliateCode(email:code:name:options:)`.
     public struct ReferralEnrolmentResult: Sendable, Equatable {
         public let status: ReferralEnrolmentStatus
         /// The user's affiliate, present when status is `.created` or `.connected`.
@@ -60,6 +60,12 @@ extension InsertAffiliateSwift {
         public let currency: String
         /// Where the referrer signs in to their full affiliate dashboard.
         public let dashboardUrl: String
+        /// How many rewards the referrer has been given for their referrals.
+        public let rewardsGranted: Int
+        /// When the referrer's free premium from rewards ends, or nil when they have none.
+        public let premiumUntil: Date?
+        /// App Store one-time offer codes given as rewards, newest first.
+        public let rewardCodes: [ReferralRewardCode]
 
         /// The code and link part of these details.
         public var affiliate: AffiliateDetails {
@@ -68,7 +74,8 @@ extension InsertAffiliateSwift {
 
         enum CodingKeys: String, CodingKey {
             case affiliateName, affiliateShortCode, referralTrigger, referralCount, installCount, eventCount,
-                 purchaseCount, totalEarned, totalPaid, totalUnpaid, currency, dashboardUrl
+                 purchaseCount, totalEarned, totalPaid, totalUnpaid, currency, dashboardUrl,
+                 rewardsGranted, premiumUntil, rewardCodes
             case deeplinkUrl = "deeplinkurl"
         }
 
@@ -88,6 +95,54 @@ extension InsertAffiliateSwift {
             let currencyValue = c.lenientString(.currency)
             currency = currencyValue.isEmpty ? "USD" : currencyValue
             dashboardUrl = c.lenientString(.dashboardUrl)
+            rewardsGranted = Int(c.lenientDouble(.rewardsGranted))
+            premiumUntil = referralDate(c.lenientString(.premiumUntil))
+            // Codes that can't be read (no code or no valid link) are left out.
+            let codes = (try? c.decodeIfPresent([LenientElement<ReferralRewardCode>].self, forKey: .rewardCodes)) ?? nil
+            rewardCodes = codes?.compactMap { $0.value } ?? []
+        }
+    }
+
+    /// An App Store one-time offer code given to the referrer as a reward.
+    public struct ReferralRewardCode: Sendable, Equatable, Decodable {
+        public let code: String
+        /// Opens the App Store to redeem the code.
+        public let redeemUrl: URL
+        public let grantedAt: Date?
+
+        enum CodingKeys: String, CodingKey {
+            case code, redeemUrl, grantedAt
+        }
+
+        public init(code: String, redeemUrl: URL, grantedAt: Date? = nil) {
+            self.code = code
+            self.redeemUrl = redeemUrl
+            self.grantedAt = grantedAt
+        }
+
+        public init(from decoder: Decoder) throws {
+            let c = try decoder.container(keyedBy: CodingKeys.self)
+            let codeValue = c.lenientString(.code)
+            guard !codeValue.isEmpty, let url = URL(string: c.lenientString(.redeemUrl)), url.scheme != nil else {
+                throw DecodingError.dataCorrupted(.init(codingPath: decoder.codingPath, debugDescription: "Reward code without a code or redeem link"))
+            }
+            code = codeValue
+            redeemUrl = url
+            grantedAt = referralDate(c.lenientString(.grantedAt))
+        }
+    }
+
+    /// The referrer's own accounts, so the server can give them rewards and stop
+    /// them counting as their own referral. Leave out what your app doesn't use.
+    public struct ReferrerAccountOptions: Sendable, Equatable {
+        /// The user's RevenueCat app user id or Adapty customer user id.
+        public var appUserId: String?
+        /// The user's own Google Play subscription purchase token (Android only).
+        public var playPurchaseToken: String?
+
+        public init(appUserId: String? = nil, playPurchaseToken: String? = nil) {
+            self.appUserId = appUserId
+            self.playPurchaseToken = playPurchaseToken
         }
     }
 
@@ -124,21 +179,77 @@ extension InsertAffiliateSwift {
     /// - New email: creates the affiliate, stores this device's token and returns `.created`.
     /// - Existing affiliate (reinstall, new phone): emails a 6-digit code and returns
     ///   `.verificationRequired`. Collect the code and call `verifyAffiliateCode(email:code:name:)`.
-    public static func createAffiliateForUser(email: String, name: String = "") async -> ReferralEnrolmentResult {
+    /// - Parameter options: the user's RevenueCat / Adapty user id, so rewards can be given automatically.
+    public static func createAffiliateForUser(
+        email: String,
+        name: String = "",
+        options: ReferrerAccountOptions = ReferrerAccountOptions()
+    ) async -> ReferralEnrolmentResult {
         return await postReferralEnrolment(path: "enrol", body: [
             "email": email.trimmingCharacters(in: .whitespacesAndNewlines),
             "name": name,
-        ])
+        ], options: options)
     }
 
     /// Finishes connecting an existing affiliate with the 6-digit code emailed by
     /// `createAffiliateForUser(email:name:)`. On success stores this device's token.
-    public static func verifyAffiliateCode(email: String, code: String, name: String = "") async -> ReferralEnrolmentResult {
+    public static func verifyAffiliateCode(
+        email: String,
+        code: String,
+        name: String = "",
+        options: ReferrerAccountOptions = ReferrerAccountOptions()
+    ) async -> ReferralEnrolmentResult {
         return await postReferralEnrolment(path: "verify", body: [
             "email": email.trimmingCharacters(in: .whitespacesAndNewlines),
             "code": code.filter { !$0.isWhitespace },
             "name": name,
-        ])
+        ], options: options)
+    }
+
+    /// Saves the referrer's accounts for a user who subscribes or signs in after joining.
+    /// The server then gives them any rewards that were waiting.
+    /// - Returns: false when this device is not connected or the request fails. If the
+    ///   server no longer accepts the stored token, it is cleared.
+    @discardableResult
+    public static func setReferrerAccount(appUserId: String? = nil, playPurchaseToken: String? = nil) async -> Bool {
+        let verboseLogging = await state.getVerboseLogging()
+        guard let stored = storedReferrerToken(verboseLogging: verboseLogging),
+              let url = URL(string: "\(referralsApiBase)/me/identity") else {
+            return false
+        }
+
+        let body = buildReferrerIdentityBody(
+            options: ReferrerAccountOptions(appUserId: appUserId, playPurchaseToken: playPurchaseToken),
+            deviceId: returnShortUniqueDeviceID()
+        )
+        var request = URLRequest(url: url)
+        request.httpMethod = "POST"
+        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        request.setValue(stored.token, forHTTPHeaderField: "X-Insert-Affiliate-Token")
+        request.httpBody = try? JSONSerialization.data(withJSONObject: body, options: [])
+
+        do {
+            let (_, response) = try await URLSession.shared.data(for: request)
+            let statusCode = (response as? HTTPURLResponse)?.statusCode ?? -1
+            if statusCode == 401 || statusCode == 404 {
+                if verboseLogging {
+                    print("[Insert Affiliate] Referrer token rejected (\(statusCode)); clearing it")
+                }
+                ReferrerTokenStore.clear(companyId: stored.companyCode)
+                return false
+            }
+            guard (200..<300).contains(statusCode) else {
+                print("[Insert Affiliate] Saving referrer account failed with status: \(statusCode)")
+                return false
+            }
+            if verboseLogging {
+                print("[Insert Affiliate] Referrer account saved")
+            }
+            return true
+        } catch {
+            print("[Insert Affiliate] Error saving referrer account: \(error.localizedDescription)")
+            return false
+        }
     }
 
     /// The referrer's affiliate details and referral stats. Returns nil when this device
@@ -146,23 +257,14 @@ extension InsertAffiliateSwift {
     /// accepts the stored token, it is cleared.
     public static func getMyAffiliateDetails() async -> MyAffiliateDetails? {
         let verboseLogging = await state.getVerboseLogging()
-        guard let companyCode = syncCompanyCode, !companyCode.isEmpty else {
-            print("[Insert Affiliate] Company code is not set. Please initialize the SDK with a valid company code.")
-            return nil
-        }
-        guard let token = ReferrerTokenStore.read(companyId: companyCode) else {
-            if verboseLogging {
-                print("[Insert Affiliate] No referrer token stored; user is not an affiliate on this device")
-            }
-            return nil
-        }
-        guard let url = URL(string: "\(referralsApiBase)/me") else {
+        guard let stored = storedReferrerToken(verboseLogging: verboseLogging),
+              let url = URL(string: "\(referralsApiBase)/me") else {
             return nil
         }
 
         var request = URLRequest(url: url)
         request.httpMethod = "GET"
-        request.setValue(token, forHTTPHeaderField: "X-Insert-Affiliate-Token")
+        request.setValue(stored.token, forHTTPHeaderField: "X-Insert-Affiliate-Token")
 
         do {
             let (data, response) = try await URLSession.shared.data(for: request)
@@ -171,7 +273,7 @@ extension InsertAffiliateSwift {
                 if verboseLogging {
                     print("[Insert Affiliate] Referrer token rejected (\(statusCode)); clearing it")
                 }
-                ReferrerTokenStore.clear(companyId: companyCode)
+                ReferrerTokenStore.clear(companyId: stored.companyCode)
                 return nil
             }
             guard statusCode == 200 else {
@@ -275,6 +377,38 @@ extension InsertAffiliateSwift {
         return "Use my code \(code) in \(appName)"
     }
 
+    /// The app-supplied account ids that are set, plus this device's id. The device id is
+    /// the one in the insert affiliate identifier ("{shortCode}-{deviceId}"), so the server
+    /// can tell when a "friend" is really the referrer.
+    static func buildReferrerIdentityBody(options: ReferrerAccountOptions, deviceId: String) -> [String: String] {
+        var body: [String: String] = [:]
+        if !deviceId.isEmpty {
+            body["deviceId"] = deviceId
+        }
+        if let appUserId = options.appUserId?.trimmingCharacters(in: .whitespacesAndNewlines), !appUserId.isEmpty {
+            body["appUserId"] = appUserId
+        }
+        if let purchaseToken = options.playPurchaseToken?.trimmingCharacters(in: .whitespacesAndNewlines), !purchaseToken.isEmpty {
+            body["playPurchaseToken"] = purchaseToken
+        }
+        return body
+    }
+
+    /// The company code and this device's referrer token, or nil (logged) when either is missing.
+    private static func storedReferrerToken(verboseLogging: Bool) -> (companyCode: String, token: String)? {
+        guard let companyCode = syncCompanyCode, !companyCode.isEmpty else {
+            print("[Insert Affiliate] Company code is not set. Please initialize the SDK with a valid company code.")
+            return nil
+        }
+        guard let token = ReferrerTokenStore.read(companyId: companyCode) else {
+            if verboseLogging {
+                print("[Insert Affiliate] No referrer token stored; user is not an affiliate on this device")
+            }
+            return nil
+        }
+        return (companyCode, token)
+    }
+
     /// Turns an enrol/verify HTTP response into the public result. The token is
     /// returned separately so it is stored without ever reaching the result.
     static func parseReferralEnrolmentResponse(statusCode: Int, data: Data) -> (result: ReferralEnrolmentResult, token: String?) {
@@ -310,7 +444,7 @@ extension InsertAffiliateSwift {
         ), nil)
     }
 
-    private static func postReferralEnrolment(path: String, body: [String: String]) async -> ReferralEnrolmentResult {
+    private static func postReferralEnrolment(path: String, body: [String: String], options: ReferrerAccountOptions) async -> ReferralEnrolmentResult {
         let verboseLogging = await state.getVerboseLogging()
         guard let companyCode = syncCompanyCode, !companyCode.isEmpty else {
             print("[Insert Affiliate] Company code is not set. Please initialize the SDK with a valid company code.")
@@ -323,6 +457,7 @@ extension InsertAffiliateSwift {
         }
 
         var payload = body
+        payload.merge(buildReferrerIdentityBody(options: options, deviceId: returnShortUniqueDeviceID())) { current, _ in current }
         payload["companyId"] = companyCode
         payload["platform"] = "ios"
 
@@ -385,6 +520,27 @@ extension InsertAffiliateSwift {
 // The server only sends these three; anything else falls back to its default.
 private func referralTriggerValue(_ value: String) -> String {
     return ["install", "event", "purchase"].contains(value) ? value : "purchase"
+}
+
+// Server dates are ISO 8601, with or without fractional seconds.
+func referralDate(_ text: String) -> Date? {
+    guard !text.isEmpty else { return nil }
+    let formatter = ISO8601DateFormatter()
+    formatter.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
+    if let date = formatter.date(from: text) {
+        return date
+    }
+    formatter.formatOptions = [.withInternetDateTime]
+    return formatter.date(from: text)
+}
+
+// Decodes one array element, or nil when it can't be read, so one bad item doesn't fail the list.
+private struct LenientElement<Element: Decodable>: Decodable {
+    let value: Element?
+
+    init(from decoder: Decoder) {
+        value = try? Element(from: decoder)
+    }
 }
 
 private extension KeyedDecodingContainer {

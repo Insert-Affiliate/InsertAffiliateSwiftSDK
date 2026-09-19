@@ -272,10 +272,43 @@ public struct ReferAFriendView: View {
                 }
             }
 
+            if let premiumText = model.premiumUntilText {
+                Text(premiumText)
+                    .font(font(.callout, size: 16).weight(.semibold))
+                    .foregroundColor(theme)
+            }
+
+            if let codes = model.stats?.rewardCodes, !codes.isEmpty {
+                rewardsList(codes)
+            }
+
             if let url = model.dashboardURL {
                 Link("Open my dashboard", destination: url)
                     .font(font(.callout, size: 16))
                     .foregroundColor(theme)
+            }
+        }
+    }
+
+    private func rewardsList(_ codes: [InsertAffiliateSwift.ReferralRewardCode]) -> some View {
+        VStack(alignment: .leading, spacing: 8) {
+            Text("Your rewards")
+                .font(font(.caption, size: 12))
+                .foregroundColor(.secondary)
+            ForEach(codes, id: \.code) { reward in
+                HStack {
+                    Text(reward.code)
+                        .font(font(.body, size: 17).weight(.semibold).monospaced())
+                        .textSelection(.enabled)
+                    Spacer()
+                    Button("Redeem") { UIApplication.shared.open(reward.redeemUrl) }
+                        .foregroundColor(theme)
+                }
+                .padding(12)
+                .background(
+                    RoundedRectangle(cornerRadius: options.cornerRadius)
+                        .stroke(Color.secondary.opacity(0.3))
+                )
             }
         }
     }
@@ -383,6 +416,20 @@ final class ReferAFriendModel: ObservableObject {
     var dashboardURL: URL? {
         guard let text = stats?.dashboardUrl, !text.isEmpty else { return nil }
         return URL(string: text)
+    }
+
+    /// "Free premium until {date}" while the referrer's reward premium is running.
+    var premiumUntilText: String? {
+        Self.premiumUntilText(stats?.premiumUntil, now: Date())
+    }
+
+    static func premiumUntilText(_ premiumUntil: Date?, now: Date, locale: Locale = .current) -> String? {
+        guard let premiumUntil = premiumUntil, premiumUntil > now else { return nil }
+        let formatter = DateFormatter()
+        formatter.locale = locale
+        formatter.dateStyle = .medium
+        formatter.timeStyle = .none
+        return "Free premium until \(formatter.string(from: premiumUntil))"
     }
 
     func load() async {
