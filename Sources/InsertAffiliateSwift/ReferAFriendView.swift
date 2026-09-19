@@ -486,11 +486,17 @@ final class ReferAFriendModel: ObservableObject {
         step = .loading
         errorMessage = nil
         async let configRequest = InsertAffiliateSwift.getReferralProgramConfig()
-        async let detailsRequest = InsertAffiliateSwift.getMyAffiliateDetails()
+        async let detailsRequest = InsertAffiliateSwift.loadMyAffiliateDetails()
         let (loadedConfig, details) = await (configRequest, detailsRequest)
+        apply(details, config: loadedConfig)
+    }
+
+    /// Moves the screen to the step for a loaded (or failed) details request.
+    func apply(_ details: InsertAffiliateSwift.MyAffiliateDetailsLoad, config loadedConfig: InsertAffiliateSwift.ReferralProgramConfig?) {
         config = loadedConfig
 
-        if let details = details {
+        switch details {
+        case .loaded(let details):
             stats = details
             step = .enrolled(details.affiliate)
             // Already a referrer: save their account so any waiting rewards are given.
@@ -501,11 +507,21 @@ final class ReferAFriendModel: ObservableObject {
                     await InsertAffiliateSwift.setReferrerAccount(appUserId: account.appUserId, playPurchaseToken: account.playPurchaseToken)
                 }
             }
-        } else if InsertAffiliateSwift.isUserAnAffiliate() {
-            // Still holding a token, so this was a network or server failure, not a sign-out.
+            return
+        case .networkError:
+            // Still connected; the stats just couldn't be loaded.
             errorMessage = Self.message(for: "NETWORK_ERROR", fallback: nil)
             step = .loadFailed
-        } else if loadedConfig?.enabled == false {
+            return
+        case .serverError:
+            errorMessage = Self.message(for: nil, fallback: nil)
+            step = .loadFailed
+            return
+        case .notConnected:
+            break
+        }
+
+        if loadedConfig?.enabled == false {
             errorMessage = Self.message(for: "PROGRAM_DISABLED", fallback: nil)
             step = .unavailable
         } else {

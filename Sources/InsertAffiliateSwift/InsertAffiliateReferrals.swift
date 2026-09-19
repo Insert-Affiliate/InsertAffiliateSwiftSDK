@@ -267,33 +267,58 @@ extension InsertAffiliateSwift {
     /// is not connected, or when the details could not be loaded. If the server no longer
     /// accepts the stored token, it is cleared.
     public static func getMyAffiliateDetails() async -> MyAffiliateDetails? {
+        if case .loaded(let details) = await loadMyAffiliateDetails() {
+            return details
+        }
+        return nil
+    }
+
+    /// The outcome of loading the referrer's details, for callers that report why it failed.
+    enum MyAffiliateDetailsLoad: Equatable {
+        case loaded(MyAffiliateDetails)
+        /// No token on this device, or the server rejected it (it is then cleared).
+        case notConnected
+        /// The request could not reach the server.
+        case networkError
+        /// The server answered with an error or an unreadable response. The token is kept.
+        case serverError
+    }
+
+    static func loadMyAffiliateDetails() async -> MyAffiliateDetailsLoad {
         let verboseLogging = await state.getVerboseLogging()
         guard let stored = storedReferrerToken(verboseLogging: verboseLogging),
               let url = URL(string: "\(referralsApiBase)/me") else {
-            return nil
+            return .notConnected
         }
 
         var request = URLRequest(url: url)
         request.httpMethod = "GET"
         request.setValue(stored.token, forHTTPHeaderField: "X-Insert-Affiliate-Token")
 
+        let data: Data
+        let statusCode: Int
         do {
-            let (data, response) = try await URLSession.shared.data(for: request)
-            let statusCode = (response as? HTTPURLResponse)?.statusCode ?? -1
-            if clearReferrerTokenIfRejected(statusCode: statusCode, data: data, stored: stored, verboseLogging: verboseLogging) {
-                return nil
-            }
-            guard statusCode == 200 else {
-                print("[Insert Affiliate] Referrer details request failed with status: \(statusCode)")
-                return nil
-            }
-            let details = try JSONDecoder().decode(MyAffiliateDetails.self, from: data)
-            registerReferrerDeviceIfNeeded(companyCode: stored.companyCode)
-            return details
+            let (responseData, response) = try await URLSession.shared.data(for: request)
+            data = responseData
+            statusCode = (response as? HTTPURLResponse)?.statusCode ?? -1
         } catch {
             print("[Insert Affiliate] Error getting referrer details: \(error.localizedDescription)")
-            return nil
+            return .networkError
         }
+
+        if clearReferrerTokenIfRejected(statusCode: statusCode, data: data, stored: stored, verboseLogging: verboseLogging) {
+            return .notConnected
+        }
+        guard statusCode == 200 else {
+            print("[Insert Affiliate] Referrer details request failed with status: \(statusCode)")
+            return .serverError
+        }
+        guard let details = try? JSONDecoder().decode(MyAffiliateDetails.self, from: data) else {
+            print("[Insert Affiliate] Referrer details response could not be read")
+            return .serverError
+        }
+        registerReferrerDeviceIfNeeded(companyCode: stored.companyCode)
+        return .loaded(details)
     }
 
     /// True when this device holds a referrer token for this app. Local only, no network.

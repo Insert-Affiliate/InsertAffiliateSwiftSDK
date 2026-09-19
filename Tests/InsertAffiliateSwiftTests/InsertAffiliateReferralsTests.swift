@@ -387,6 +387,37 @@ final class InsertAffiliateReferralsTests: XCTestCase {
         XCTAssertEqual(model.email, "typo@example.com")
     }
 
+    @available(iOS 15.0, *)
+    @MainActor
+    func testLoadFailuresShowTheRightStep() throws {
+        let disabled = try JSONDecoder().decode(InsertAffiliateSwift.ReferralProgramConfig.self,
+                                                from: Data(#"{ "enabled": false }"#.utf8))
+        let details = try JSONDecoder().decode(InsertAffiliateSwift.MyAffiliateDetails.self,
+                                               from: Data(#"{ "affiliateShortCode": "ABC123" }"#.utf8))
+        let model = ReferAFriendModel(options: ReferAFriendOptions())
+
+        model.apply(.serverError, config: nil)
+        XCTAssertEqual(model.step, .loadFailed)
+        XCTAssertEqual(model.errorMessage, "Something went wrong. Please try again.")
+
+        model.errorMessage = nil
+        model.apply(.networkError, config: nil)
+        XCTAssertEqual(model.step, .loadFailed)
+        XCTAssertEqual(model.errorMessage, ReferAFriendModel.message(for: "NETWORK_ERROR", fallback: nil))
+
+        model.errorMessage = nil
+        model.apply(.notConnected, config: disabled)
+        XCTAssertEqual(model.step, .unavailable)
+
+        model.errorMessage = nil
+        model.apply(.notConnected, config: nil)
+        XCTAssertEqual(model.step, .notEnrolled)
+        XCTAssertNil(model.errorMessage)
+
+        model.apply(.loaded(details), config: nil)
+        XCTAssertEqual(model.step, .enrolled(details.affiliate))
+    }
+
     func testTokenIsRejectedOnlyForTheServerTokenCodes() {
         func body(_ code: String) -> Data { Data(#"{"error":"x","code":"\#(code)"}"#.utf8) }
         XCTAssertTrue(InsertAffiliateSwift.isReferrerTokenRejected(statusCode: 401, data: body("INVALID_TOKEN")))
