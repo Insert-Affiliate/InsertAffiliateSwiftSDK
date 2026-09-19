@@ -243,6 +243,10 @@ public struct ReferAFriendView: View {
             .font(font(.callout, size: 16))
             .foregroundColor(theme)
             .disabled(model.isBusy)
+            Button("Use a different email") { model.useDifferentEmail() }
+                .font(font(.callout, size: 16))
+                .foregroundColor(theme)
+                .disabled(model.isBusy)
         }
     }
 
@@ -521,6 +525,15 @@ final class ReferAFriendModel: ObservableObject {
             let result = await InsertAffiliateSwift.verifyAffiliateCode(email: self.email, code: self.code, name: self.name, options: self.accountOptions)
             await self.handle(result)
         }
+    }
+
+    /// Back from the code step to the email form.
+    func useDifferentEmail() {
+        guard !isBusy, step == .verifyCode else { return }
+        code = ""
+        errorMessage = nil
+        noticeMessage = nil
+        step = .notEnrolled
     }
 
     func resendCode() async {

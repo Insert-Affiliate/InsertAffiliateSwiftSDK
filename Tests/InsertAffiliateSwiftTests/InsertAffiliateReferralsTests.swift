@@ -373,6 +373,20 @@ final class InsertAffiliateReferralsTests: XCTestCase {
         XCTAssertEqual(closes, 2)
     }
 
+    @available(iOS 15.0, *)
+    @MainActor
+    func testUseADifferentEmailGoesBackToTheForm() {
+        let model = ReferAFriendModel(options: ReferAFriendOptions(email: "typo@example.com"))
+        model.step = .verifyCode
+        model.code = "123"
+        model.errorMessage = "That code is wrong or has expired."
+        model.useDifferentEmail()
+        XCTAssertEqual(model.step, .notEnrolled)
+        XCTAssertEqual(model.code, "")
+        XCTAssertNil(model.errorMessage)
+        XCTAssertEqual(model.email, "typo@example.com")
+    }
+
     func testTokenIsRejectedOnlyForTheServerTokenCodes() {
         func body(_ code: String) -> Data { Data(#"{"error":"x","code":"\#(code)"}"#.utf8) }
         XCTAssertTrue(InsertAffiliateSwift.isReferrerTokenRejected(statusCode: 401, data: body("INVALID_TOKEN")))
