@@ -309,6 +309,25 @@ final class InsertAffiliateReferralsTests: XCTestCase {
 
     @available(iOS 15.0, *)
     @MainActor
+    func testScreenPassesReferrerAccountOptionsThrough() {
+        let model = ReferAFriendModel(options: ReferAFriendOptions(
+            email: "jane@example.com", appUserId: "rc_user_1", playPurchaseToken: "play.token-123"))
+        XCTAssertEqual(model.accountOptions,
+                       InsertAffiliateSwift.ReferrerAccountOptions(appUserId: "rc_user_1", playPurchaseToken: "play.token-123"))
+        XCTAssertTrue(model.needsAccountSave)
+
+        let noAccount = ReferAFriendModel(options: ReferAFriendOptions(appUserId: "  "))
+        XCTAssertEqual(noAccount.accountOptions.playPurchaseToken, nil)
+        XCTAssertFalse(noAccount.needsAccountSave)
+
+        // The existing init still compiles without the new fields.
+        let existing = ReferAFriendOptions(email: "a@b.com", name: "A", shareMessage: "Hi {link}", cornerRadius: 8) {}
+        XCTAssertNil(existing.appUserId)
+        XCTAssertNil(existing.playPurchaseToken)
+    }
+
+    @available(iOS 15.0, *)
+    @MainActor
     func testPremiumUntilTextOnlyWhenInTheFuture() {
         let now = Date(timeIntervalSince1970: 1_788_249_600)
         let locale = Locale(identifier: "en_US")

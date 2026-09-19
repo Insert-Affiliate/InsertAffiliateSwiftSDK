@@ -929,13 +929,15 @@ InsertAffiliateSwift.showReferAFriend(
     from: self,
     options: ReferAFriendOptions(
         email: currentUser.email,   // prefill with your signed-in user
-        name: currentUser.name
+        name: currentUser.name,
+        appUserId: Purchases.shared.appUserID   // RevenueCat / Adapty user id, for automatic rewards
     )
 )
 
 // SwiftUI
 .sheet(isPresented: $showReferrals) {
-    ReferAFriendView(options: ReferAFriendOptions(email: currentUser.email, name: currentUser.name))
+    ReferAFriendView(options: ReferAFriendOptions(
+        email: currentUser.email, name: currentUser.name, appUserId: Purchases.shared.appUserID))
 }
 ```
 
@@ -946,6 +948,7 @@ The screen handles everything: the "Get my link" step, the 6-digit email code fo
 | Option | Description |
 |---|---|
 | `email`, `name` | Prefill the form, usually with your signed-in user |
+| `appUserId`, `playPurchaseToken` | The referrer's accounts (see `ReferrerAccountOptions` below). Sent when the user joins, and saved when the screen opens for an existing referrer, so waiting rewards are given without a separate `setReferrerAccount` call |
 | `shareMessage` | Share sheet text. May use `{link}` and `{code}` placeholders |
 | `primaryColor` | `#RRGGBB`. Overrides the colour set in the dashboard (default `#6A0DAD`) |
 | `headline`, `rewardText` | Override the copy set in the dashboard (default headline "Refer a friend") |

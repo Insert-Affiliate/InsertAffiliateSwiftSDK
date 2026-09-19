@@ -12,6 +12,10 @@ public struct ReferAFriendOptions {
     public var email: String?
     /// Prefills the name field.
     public var name: String?
+    /// The user's RevenueCat app user id or Adapty customer user id, so rewards can be given automatically.
+    public var appUserId: String?
+    /// The user's own Google Play subscription purchase token (Android only).
+    public var playPurchaseToken: String?
     /// Share sheet message. May use `{link}` and `{code}` placeholders.
     public var shareMessage: String?
     /// `#RRGGBB`. Overrides the portal colour.
@@ -30,6 +34,8 @@ public struct ReferAFriendOptions {
     public init(
         email: String? = nil,
         name: String? = nil,
+        appUserId: String? = nil,
+        playPurchaseToken: String? = nil,
         shareMessage: String? = nil,
         primaryColor: String? = nil,
         headline: String? = nil,
@@ -40,6 +46,8 @@ public struct ReferAFriendOptions {
     ) {
         self.email = email
         self.name = name
+        self.appUserId = appUserId
+        self.playPurchaseToken = playPurchaseToken
         self.shareMessage = shareMessage
         self.primaryColor = primaryColor
         self.headline = headline
@@ -389,6 +397,8 @@ final class ReferAFriendModel: ObservableObject {
     @Published private var config: InsertAffiliateSwift.ReferralProgramConfig?
 
     private let options: ReferAFriendOptions
+    // Set once the referrer's account has been sent, so it's saved at most once per screen.
+    private var accountSaved = false
 
     init(options: ReferAFriendOptions) {
         self.options = options
@@ -432,6 +442,19 @@ final class ReferAFriendModel: ObservableObject {
         return "Free premium until \(formatter.string(from: premiumUntil))"
     }
 
+    /// The referrer's accounts from the screen options, sent on enrol and verify.
+    var accountOptions: InsertAffiliateSwift.ReferrerAccountOptions {
+        InsertAffiliateSwift.ReferrerAccountOptions(appUserId: options.appUserId, playPurchaseToken: options.playPurchaseToken)
+    }
+
+    /// True when the app passed an account id that hasn't been saved yet on this screen.
+    var needsAccountSave: Bool {
+        guard !accountSaved else { return false }
+        return [options.appUserId, options.playPurchaseToken].contains {
+            !($0?.trimmingCharacters(in: .whitespacesAndNewlines) ?? "").isEmpty
+        }
+    }
+
     func load() async {
         step = .loading
         errorMessage = nil
@@ -443,6 +466,14 @@ final class ReferAFriendModel: ObservableObject {
         if let details = details {
             stats = details
             step = .enrolled(details.affiliate)
+            // Already a referrer: save their account so any waiting rewards are given.
+            if needsAccountSave {
+                accountSaved = true
+                let account = accountOptions
+                Task {
+                    await InsertAffiliateSwift.setReferrerAccount(appUserId: account.appUserId, playPurchaseToken: account.playPurchaseToken)
+                }
+            }
         } else if InsertAffiliateSwift.isUserAnAffiliate() {
             // Still holding a token, so this was a network or server failure, not a sign-out.
             errorMessage = Self.message(for: "NETWORK_ERROR", fallback: nil)
@@ -457,21 +488,21 @@ final class ReferAFriendModel: ObservableObject {
 
     func enrol() async {
         await run {
-            let result = await InsertAffiliateSwift.createAffiliateForUser(email: self.email, name: self.name)
+            let result = await InsertAffiliateSwift.createAffiliateForUser(email: self.email, name: self.name, options: self.accountOptions)
             await self.handle(result)
         }
     }
 
     func verify() async {
         await run {
-            let result = await InsertAffiliateSwift.verifyAffiliateCode(email: self.email, code: self.code, name: self.name)
+            let result = await InsertAffiliateSwift.verifyAffiliateCode(email: self.email, code: self.code, name: self.name, options: self.accountOptions)
             await self.handle(result)
         }
     }
 
     func resendCode() async {
         await run {
-            let result = await InsertAffiliateSwift.createAffiliateForUser(email: self.email, name: self.name)
+            let result = await InsertAffiliateSwift.createAffiliateForUser(email: self.email, name: self.name, options: self.accountOptions)
             if result.status == .verificationRequired {
                 self.code = ""
                 self.noticeMessage = "We sent a new code. Check your email."
@@ -515,6 +546,8 @@ final class ReferAFriendModel: ObservableObject {
             step = .verifyCode
         case .created, .connected:
             code = ""
+            // Enrol and verify already sent the account.
+            accountSaved = true
             let details = await InsertAffiliateSwift.getMyAffiliateDetails()
             stats = details
             if let affiliate = details?.affiliate ?? result.affiliate {
