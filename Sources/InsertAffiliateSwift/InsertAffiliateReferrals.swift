@@ -231,9 +231,10 @@ extension InsertAffiliateSwift {
             return false
         }
 
+        let deviceId = returnShortUniqueDeviceID()
         let body = buildReferrerIdentityBody(
             options: ReferrerAccountOptions(appUserId: appUserId, playPurchaseToken: playPurchaseToken),
-            deviceId: returnShortUniqueDeviceID()
+            deviceId: deviceId
         )
         var request = URLRequest(url: url)
         request.httpMethod = "POST"
@@ -251,6 +252,7 @@ extension InsertAffiliateSwift {
                 print("[Insert Affiliate] Saving referrer account failed with status: \(statusCode)")
                 return false
             }
+            ReferrerTokenStore.markDeviceRegistered(deviceId, companyId: stored.companyCode)
             if verboseLogging {
                 print("[Insert Affiliate] Referrer account saved")
             }
@@ -285,7 +287,9 @@ extension InsertAffiliateSwift {
                 print("[Insert Affiliate] Referrer details request failed with status: \(statusCode)")
                 return nil
             }
-            return try JSONDecoder().decode(MyAffiliateDetails.self, from: data)
+            let details = try JSONDecoder().decode(MyAffiliateDetails.self, from: data)
+            registerReferrerDeviceIfNeeded(companyCode: stored.companyCode)
+            return details
         } catch {
             print("[Insert Affiliate] Error getting referrer details: \(error.localizedDescription)")
             return nil
@@ -441,6 +445,18 @@ extension InsertAffiliateSwift {
         return true
     }
 
+    /// The Keychain token survives a reinstall but the device id does not, so a connected
+    /// referrer's new device id is sent once (in the background) for the self-referral check.
+    private static func registerReferrerDeviceIfNeeded(companyCode: String) {
+        let deviceId = returnShortUniqueDeviceID()
+        guard !deviceId.isEmpty, ReferrerTokenStore.registeredDeviceId(companyId: companyCode) != deviceId else {
+            return
+        }
+        Task {
+            await setReferrerAccount()
+        }
+    }
+
     /// Turns an enrol/verify HTTP response into the public result. The token is
     /// returned separately so it is stored without ever reaching the result.
     static func parseReferralEnrolmentResponse(statusCode: Int, data: Data) -> (result: ReferralEnrolmentResult, token: String?) {
@@ -502,8 +518,15 @@ extension InsertAffiliateSwift {
             let (data, response) = try await URLSession.shared.data(for: request)
             let statusCode = (response as? HTTPURLResponse)?.statusCode ?? -1
             let (result, token) = parseReferralEnrolmentResponse(statusCode: statusCode, data: data)
-            if let token = token, !ReferrerTokenStore.save(token, companyId: companyCode) {
-                print("[Insert Affiliate] Failed to store the referrer token in the Keychain")
+            if let token = token {
+                if ReferrerTokenStore.save(token, companyId: companyCode) {
+                    // Enrol and verify send this device's id with the request.
+                    if let deviceId = payload["deviceId"] {
+                        ReferrerTokenStore.markDeviceRegistered(deviceId, companyId: companyCode)
+                    }
+                } else {
+                    print("[Insert Affiliate] Failed to store the referrer token in the Keychain")
+                }
             }
             if verboseLogging {
                 print("[Insert Affiliate] Referrer \(path) result: \(result.status.rawValue)\(result.errorCode.map { " (\($0))" } ?? "")")
@@ -593,9 +616,26 @@ private extension KeyedDecodingContainer {
 }
 
 /// The referrer's device token, one per company ID, in the Keychain so it survives
-/// delete and reinstall. Never log the token.
+/// delete and reinstall. Never log the token. The device id last sent to the server
+/// for that token is kept in UserDefaults, so it is forgotten on reinstall.
 enum ReferrerTokenStore {
     private static let service = "com.insertaffiliate.referrer"
+
+    private static func registeredDeviceKey(companyId: String) -> String {
+        return "InsertAffiliate_ReferrerDeviceId_\(companyId)"
+    }
+
+    static func registeredDeviceId(companyId: String) -> String? {
+        return UserDefaults.standard.string(forKey: registeredDeviceKey(companyId: companyId))
+    }
+
+    static func markDeviceRegistered(_ deviceId: String, companyId: String) {
+        UserDefaults.standard.set(deviceId, forKey: registeredDeviceKey(companyId: companyId))
+    }
+
+    static func forgetRegisteredDevice(companyId: String) {
+        UserDefaults.standard.removeObject(forKey: registeredDeviceKey(companyId: companyId))
+    }
 
     private static func baseQuery(companyId: String) -> [String: Any] {
         return [
@@ -629,6 +669,7 @@ enum ReferrerTokenStore {
             kSecAttrAccessible as String: kSecAttrAccessibleAfterFirstUnlock,
         ]
 
+        forgetRegisteredDevice(companyId: companyId)
         let updateStatus = SecItemUpdate(query as CFDictionary, attributes as CFDictionary)
         if updateStatus == errSecSuccess {
             return true
@@ -642,6 +683,7 @@ enum ReferrerTokenStore {
     }
 
     static func clear(companyId: String) {
+        forgetRegisteredDevice(companyId: companyId)
         SecItemDelete(baseQuery(companyId: companyId) as CFDictionary)
     }
 

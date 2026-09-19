@@ -314,6 +314,23 @@ final class InsertAffiliateReferralsTests: XCTestCase {
         XCTAssertNil(ReferrerTokenStore.read(companyId: companyId))
     }
 
+    func testRegisteredDeviceIdIsForgottenWhenTheTokenChanges() {
+        let companyId = "referrals-test-\(UUID().uuidString)"
+        defer { ReferrerTokenStore.clear(companyId: companyId) }
+
+        XCTAssertNil(ReferrerTokenStore.registeredDeviceId(companyId: companyId))
+        ReferrerTokenStore.markDeviceRegistered("ABC123", companyId: companyId)
+        XCTAssertEqual(ReferrerTokenStore.registeredDeviceId(companyId: companyId), "ABC123")
+        XCTAssertNil(ReferrerTokenStore.registeredDeviceId(companyId: companyId + "-other"))
+
+        ReferrerTokenStore.save("new-token", companyId: companyId)
+        XCTAssertNil(ReferrerTokenStore.registeredDeviceId(companyId: companyId))
+
+        ReferrerTokenStore.markDeviceRegistered("ABC123", companyId: companyId)
+        ReferrerTokenStore.clear(companyId: companyId)
+        XCTAssertNil(ReferrerTokenStore.registeredDeviceId(companyId: companyId))
+    }
+
     func testTokenIsRejectedOnlyForTheServerTokenCodes() {
         func body(_ code: String) -> Data { Data(#"{"error":"x","code":"\#(code)"}"#.utf8) }
         XCTAssertTrue(InsertAffiliateSwift.isReferrerTokenRejected(statusCode: 401, data: body("INVALID_TOKEN")))
