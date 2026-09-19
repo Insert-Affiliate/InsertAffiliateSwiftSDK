@@ -941,7 +941,7 @@ InsertAffiliateSwift.showReferAFriend(
 }
 ```
 
-The screen handles everything: the "Get my link" step, the 6-digit email code for users who are already affiliates, then their code and link with Copy and Share buttons, their referral count and earnings, and an "Open my dashboard" link. When the referrer has earned rewards it also shows "Free premium until {date}" and a "Your rewards" list of App Store offer codes, each with a Redeem button. Google Play promo codes the referrer earned on an Android phone aren't shown on iPhone.
+The screen handles everything: the "Get my link" step, the 6-digit email code for users who are already affiliates (with a "Use a different email" way back), then their code and link with Copy and Share buttons, their referral count and earnings, and an "Open my dashboard" link. When the referrer has earned rewards it also shows "Free premium until {date}" and a "Your rewards" list of App Store offer codes, each with a Redeem button. Google Play promo codes the referrer earned on an Android phone aren't shown on iPhone.
 
 `ReferAFriendOptions` fields (all optional):
 
