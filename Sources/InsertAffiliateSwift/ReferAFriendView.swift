@@ -163,10 +163,13 @@ public struct ReferAFriendView: View {
         .navigationViewStyle(.stack)
         .tint(theme)
         .task { await model.load() }
+        .onAppear { model.screenAppeared() }
+        // A swipe-down dismiss of a SwiftUI sheet only shows up here.
+        .onDisappear { model.reportClose() }
     }
 
     private func close() {
-        options.onClose?()
+        model.reportClose()
         if let dismissAction = dismissAction {
             dismissAction()
         } else {
@@ -400,6 +403,9 @@ final class ReferAFriendModel: ObservableObject {
     private let options: ReferAFriendOptions
     // Set once the referrer's account has been sent, so it's saved at most once per screen.
     private var accountSaved = false
+    // Set once onClose has fired, so the Close button and the disappear that follows
+    // report a single close.
+    private var closeReported = false
 
     init(options: ReferAFriendOptions) {
         self.options = options
@@ -459,6 +465,17 @@ final class ReferAFriendModel: ObservableObject {
         return [options.appUserId, options.playPurchaseToken].contains {
             !($0?.trimmingCharacters(in: .whitespacesAndNewlines) ?? "").isEmpty
         }
+    }
+
+    func screenAppeared() {
+        closeReported = false
+    }
+
+    /// Calls `onClose` once per time the screen is shown.
+    func reportClose() {
+        guard !closeReported else { return }
+        closeReported = true
+        options.onClose?()
     }
 
     func load() async {

@@ -356,6 +356,23 @@ final class InsertAffiliateReferralsTests: XCTestCase {
         XCTAssertFalse(model.hasCompleteCode)
     }
 
+    @available(iOS 15.0, *)
+    @MainActor
+    func testOnCloseFiresOncePerShowing() {
+        var closes = 0
+        let model = ReferAFriendModel(options: ReferAFriendOptions(onClose: { closes += 1 }))
+        model.screenAppeared()
+        // Close button, then the disappear that follows it.
+        model.reportClose()
+        model.reportClose()
+        XCTAssertEqual(closes, 1)
+
+        // Shown again, then swiped down.
+        model.screenAppeared()
+        model.reportClose()
+        XCTAssertEqual(closes, 2)
+    }
+
     func testTokenIsRejectedOnlyForTheServerTokenCodes() {
         func body(_ code: String) -> Data { Data(#"{"error":"x","code":"\#(code)"}"#.utf8) }
         XCTAssertTrue(InsertAffiliateSwift.isReferrerTokenRejected(statusCode: 401, data: body("INVALID_TOKEN")))
