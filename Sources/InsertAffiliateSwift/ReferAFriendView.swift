@@ -6,6 +6,153 @@ import UIKit
 // the portal settings, then the defaults below. Store rules: share sheet only,
 // no Contacts access, and nothing in the app is gated behind sharing.
 
+/// Every label on the drop-in "Refer a friend" screen, so an app can translate or
+/// reword it. Leave a field nil (or blank) to keep the English default. Keep the
+/// placeholders: `{email}` in `codeSentNotice` and `{date}` in `premiumUntil`.
+/// `headline` and `rewardText` are not here: they come from the portal and from
+/// `ReferAFriendOptions`.
+public struct ReferralStrings: Sendable, Equatable {
+    // Joining
+    public var emailLabel: String?
+    public var nameLabel: String?
+    public var joinButton: String?
+    // Email code step
+    public var codeLabel: String?
+    public var codeSentNotice: String?
+    public var verifyButton: String?
+    public var resendButton: String?
+    public var codeResentNotice: String?
+    public var differentEmailButton: String?
+    // Joined
+    public var codeLabelTitle: String?
+    public var copyButton: String?
+    public var copiedNotice: String?
+    public var shareButton: String?
+    public var referralsLabel: String?
+    public var earnedLabel: String?
+    public var premiumUntil: String?
+    public var rewardsHeading: String?
+    public var redeemButton: String?
+    public var dashboardLink: String?
+    // Frame and states
+    public var closeButton: String?
+    /// Read out while the screen loads; the screen itself shows a spinner.
+    public var loading: String?
+    public var tryAgainButton: String?
+    // Errors, by the server's error code
+    public var errorProgramDisabled: String?
+    public var errorAffiliateLimitReached: String?
+    public var errorInvalidCode: String?
+    public var errorTooManyCodes: String?
+    public var errorRateLimited: String?
+    public var errorInvalidEmail: String?
+    public var errorNetwork: String?
+    public var errorServer: String?
+
+    public init(
+        emailLabel: String? = nil,
+        nameLabel: String? = nil,
+        joinButton: String? = nil,
+        codeLabel: String? = nil,
+        codeSentNotice: String? = nil,
+        verifyButton: String? = nil,
+        resendButton: String? = nil,
+        codeResentNotice: String? = nil,
+        differentEmailButton: String? = nil,
+        codeLabelTitle: String? = nil,
+        copyButton: String? = nil,
+        copiedNotice: String? = nil,
+        shareButton: String? = nil,
+        referralsLabel: String? = nil,
+        earnedLabel: String? = nil,
+        premiumUntil: String? = nil,
+        rewardsHeading: String? = nil,
+        redeemButton: String? = nil,
+        dashboardLink: String? = nil,
+        closeButton: String? = nil,
+        loading: String? = nil,
+        tryAgainButton: String? = nil,
+        errorProgramDisabled: String? = nil,
+        errorAffiliateLimitReached: String? = nil,
+        errorInvalidCode: String? = nil,
+        errorTooManyCodes: String? = nil,
+        errorRateLimited: String? = nil,
+        errorInvalidEmail: String? = nil,
+        errorNetwork: String? = nil,
+        errorServer: String? = nil
+    ) {
+        self.emailLabel = emailLabel
+        self.nameLabel = nameLabel
+        self.joinButton = joinButton
+        self.codeLabel = codeLabel
+        self.codeSentNotice = codeSentNotice
+        self.verifyButton = verifyButton
+        self.resendButton = resendButton
+        self.codeResentNotice = codeResentNotice
+        self.differentEmailButton = differentEmailButton
+        self.codeLabelTitle = codeLabelTitle
+        self.copyButton = copyButton
+        self.copiedNotice = copiedNotice
+        self.shareButton = shareButton
+        self.referralsLabel = referralsLabel
+        self.earnedLabel = earnedLabel
+        self.premiumUntil = premiumUntil
+        self.rewardsHeading = rewardsHeading
+        self.redeemButton = redeemButton
+        self.dashboardLink = dashboardLink
+        self.closeButton = closeButton
+        self.loading = loading
+        self.tryAgainButton = tryAgainButton
+        self.errorProgramDisabled = errorProgramDisabled
+        self.errorAffiliateLimitReached = errorAffiliateLimitReached
+        self.errorInvalidCode = errorInvalidCode
+        self.errorTooManyCodes = errorTooManyCodes
+        self.errorRateLimited = errorRateLimited
+        self.errorInvalidEmail = errorInvalidEmail
+        self.errorNetwork = errorNetwork
+        self.errorServer = errorServer
+    }
+
+    /// The English text the screen shows for every label.
+    public static let defaults = ReferralStrings(
+        emailLabel: "Email",
+        nameLabel: "Name",
+        joinButton: "Get my link",
+        codeLabel: "6-digit code",
+        codeSentNotice: "You already have an account. We emailed a 6-digit code to {email}.",
+        verifyButton: "Verify",
+        resendButton: "Send a new code",
+        codeResentNotice: "We sent a new code. Check your email.",
+        differentEmailButton: "Use a different email",
+        codeLabelTitle: "Your code",
+        copyButton: "Copy",
+        copiedNotice: "Copied",
+        shareButton: "Share",
+        referralsLabel: "Referrals",
+        earnedLabel: "Earned",
+        premiumUntil: "Free premium until {date}",
+        rewardsHeading: "Your rewards",
+        redeemButton: "Redeem",
+        dashboardLink: "Open my dashboard",
+        closeButton: "Close",
+        loading: "Loading...",
+        tryAgainButton: "Try again",
+        errorProgramDisabled: "Referrals are not available in this app right now.",
+        errorAffiliateLimitReached: "The referral program is full right now. Please try again later.",
+        errorInvalidCode: "That code is wrong or has expired. Check your email or send a new code.",
+        errorTooManyCodes: "Too many attempts. Please wait a while and try again.",
+        errorRateLimited: "Too many attempts. Please wait a while and try again.",
+        errorInvalidEmail: "Please enter a valid email address.",
+        errorNetwork: "Could not connect. Check your internet connection and try again.",
+        errorServer: "Something went wrong. Please try again."
+    )
+
+    /// The English default for one label.
+    public static func defaultText(_ key: KeyPath<ReferralStrings, String?>) -> String {
+        return defaults[keyPath: key] ?? ""
+    }
+}
+
 /// Options for the drop-in "Refer a friend" screen.
 public struct ReferAFriendOptions {
     /// Prefills the email field (usually the app's signed-in user).
@@ -26,6 +173,8 @@ public struct ReferAFriendOptions {
     public var rewardText: String?
     /// A custom font name (e.g. one bundled with your app). Uses the system font when nil.
     public var fontName: String?
+    /// The screen's labels. Every field is optional and falls back to the English default.
+    public var strings: ReferralStrings?
     /// Corner radius of buttons and fields.
     public var cornerRadius: CGFloat
     /// Called when the screen is closed.
@@ -41,6 +190,7 @@ public struct ReferAFriendOptions {
         headline: String? = nil,
         rewardText: String? = nil,
         fontName: String? = nil,
+        strings: ReferralStrings? = nil,
         cornerRadius: CGFloat = 12,
         onClose: (() -> Void)? = nil
     ) {
@@ -53,6 +203,7 @@ public struct ReferAFriendOptions {
         self.headline = headline
         self.rewardText = rewardText
         self.fontName = fontName
+        self.strings = strings
         self.cornerRadius = cornerRadius
         self.onClose = onClose
     }
@@ -155,7 +306,7 @@ public struct ReferAFriendView: View {
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
-                    Button("Close") { close() }
+                    Button(model.text(\.closeButton)) { close() }
                         .foregroundColor(theme)
                 }
             }
@@ -197,13 +348,14 @@ public struct ReferAFriendView: View {
             HStack {
                 Spacer()
                 ProgressView()
+                    .accessibilityLabel(Text(model.text(\.loading)))
                 Spacer()
             }
             .padding(.vertical, 40)
         case .unavailable:
             EmptyView()
         case .loadFailed:
-            primaryButton("Try again") { await model.load() }
+            primaryButton(model.text(\.tryAgainButton)) { await model.load() }
         case .notEnrolled:
             enrolForm
         case .verifyCode:
@@ -215,35 +367,35 @@ public struct ReferAFriendView: View {
 
     private var enrolForm: some View {
         VStack(alignment: .leading, spacing: 12) {
-            field("Name", text: $model.name)
+            field(model.text(\.nameLabel), text: $model.name)
                 .textContentType(.name)
-            field("Email", text: $model.email)
+            field(model.text(\.emailLabel), text: $model.email)
                 .textContentType(.emailAddress)
                 .keyboardType(.emailAddress)
                 .textInputAutocapitalization(.never)
                 .disableAutocorrection(true)
-            primaryButton("Get my link") { await model.enrol() }
+            primaryButton(model.text(\.joinButton)) { await model.enrol() }
                 .disabled(model.email.trimmingCharacters(in: .whitespaces).isEmpty)
         }
     }
 
     private var codeForm: some View {
         VStack(alignment: .leading, spacing: 12) {
-            Text("You already have an account. We emailed a 6-digit code to \(model.email).")
+            Text(model.codeSentNotice)
                 .font(font(.callout, size: 16))
                 .fixedSize(horizontal: false, vertical: true)
-            field("6-digit code", text: $model.code)
+            field(model.text(\.codeLabel), text: $model.code)
                 .textContentType(.oneTimeCode)
                 .keyboardType(.numberPad)
-            primaryButton("Verify") { await model.verify() }
+            primaryButton(model.text(\.verifyButton)) { await model.verify() }
                 .disabled(!model.hasCompleteCode)
-            Button("Send a new code") {
+            Button(model.text(\.resendButton)) {
                 Task { await model.resendCode() }
             }
             .font(font(.callout, size: 16))
             .foregroundColor(theme)
             .disabled(model.isBusy)
-            Button("Use a different email") { model.useDifferentEmail() }
+            Button(model.text(\.differentEmailButton)) { model.useDifferentEmail() }
                 .font(font(.callout, size: 16))
                 .foregroundColor(theme)
                 .disabled(model.isBusy)
@@ -253,7 +405,7 @@ public struct ReferAFriendView: View {
     private func enrolledView(_ affiliate: InsertAffiliateSwift.AffiliateDetails) -> some View {
         VStack(alignment: .leading, spacing: 16) {
             VStack(alignment: .leading, spacing: 8) {
-                Text("Your code")
+                Text(model.text(\.codeLabelTitle))
                     .font(font(.caption, size: 12))
                     .foregroundColor(.secondary)
                 HStack {
@@ -261,7 +413,7 @@ public struct ReferAFriendView: View {
                         .font(font(.title3, size: 20).weight(.semibold).monospaced())
                         .textSelection(.enabled)
                     Spacer()
-                    Button(model.copied ? "Copied" : "Copy") { model.copyCode() }
+                    Button(model.text(model.copied ? \.copiedNotice : \.copyButton)) { model.copyCode() }
                         .foregroundColor(theme)
                 }
                 if model.hasLink {
@@ -278,12 +430,12 @@ public struct ReferAFriendView: View {
                     .fill(theme.opacity(0.08))
             )
 
-            primaryButton("Share") { model.share() }
+            primaryButton(model.text(\.shareButton)) { model.share() }
 
             if let stats = model.stats {
                 HStack(spacing: 12) {
-                    statTile(title: "Referrals", value: "\(stats.referralCount)")
-                    statTile(title: "Earned", value: model.formattedEarned(stats))
+                    statTile(title: model.text(\.referralsLabel), value: "\(stats.referralCount)")
+                    statTile(title: model.text(\.earnedLabel), value: model.formattedEarned(stats))
                 }
             }
 
@@ -299,7 +451,7 @@ public struct ReferAFriendView: View {
             }
 
             if let url = model.dashboardURL {
-                Link("Open my dashboard", destination: url)
+                Link(model.text(\.dashboardLink), destination: url)
                     .font(font(.callout, size: 16))
                     .foregroundColor(theme)
             }
@@ -308,7 +460,7 @@ public struct ReferAFriendView: View {
 
     private func rewardsList(_ codes: [InsertAffiliateSwift.ReferralRewardCode]) -> some View {
         VStack(alignment: .leading, spacing: 8) {
-            Text("Your rewards")
+            Text(model.text(\.rewardsHeading))
                 .font(font(.caption, size: 12))
                 .foregroundColor(.secondary)
             ForEach(codes, id: \.code) { reward in
@@ -317,7 +469,7 @@ public struct ReferAFriendView: View {
                         .font(font(.body, size: 17).weight(.semibold).monospaced())
                         .textSelection(.enabled)
                     Spacer()
-                    Button("Redeem") { UIApplication.shared.open(reward.redeemUrl) }
+                    Button(model.text(\.redeemButton)) { UIApplication.shared.open(reward.redeemUrl) }
                         .foregroundColor(theme)
                 }
                 .padding(12)
@@ -417,6 +569,16 @@ final class ReferAFriendModel: ObservableObject {
         self.email = options.email ?? ""
     }
 
+    /// The app's wording for a label, or the English default.
+    func text(_ key: KeyPath<ReferralStrings, String?>) -> String {
+        return firstNonEmpty(options.strings?[keyPath: key]) ?? ReferralStrings.defaultText(key)
+    }
+
+    /// "We emailed a 6-digit code to {email}." for the address the code went to.
+    var codeSentNotice: String {
+        text(\.codeSentNotice).replacingOccurrences(of: "{email}", with: email)
+    }
+
     var headline: String {
         firstNonEmpty(options.headline, config?.headline) ?? Self.defaultHeadline
     }
@@ -441,16 +603,21 @@ final class ReferAFriendModel: ObservableObject {
 
     /// "Free premium until {date}" while the referrer's reward premium is running.
     var premiumUntilText: String? {
-        Self.premiumUntilText(stats?.premiumUntil, now: Date())
+        Self.premiumUntilText(stats?.premiumUntil, now: Date(), template: text(\.premiumUntil))
     }
 
-    static func premiumUntilText(_ premiumUntil: Date?, now: Date, locale: Locale = .current) -> String? {
+    static func premiumUntilText(
+        _ premiumUntil: Date?,
+        now: Date,
+        template: String = ReferralStrings.defaultText(\.premiumUntil),
+        locale: Locale = .current
+    ) -> String? {
         guard let premiumUntil = premiumUntil, premiumUntil > now else { return nil }
         let formatter = DateFormatter()
         formatter.locale = locale
         formatter.dateStyle = .medium
         formatter.timeStyle = .none
-        return "Free premium until \(formatter.string(from: premiumUntil))"
+        return template.replacingOccurrences(of: "{date}", with: formatter.string(from: premiumUntil))
     }
 
     /// True once the code field holds exactly six digits.
@@ -487,7 +654,7 @@ final class ReferAFriendModel: ObservableObject {
         errorMessage = nil
         guard let companyCode = InsertAffiliateSwift.syncCompanyCode, !companyCode.isEmpty else {
             print("[Insert Affiliate] Refer a friend needs the SDK initialized with your company code before it is shown.")
-            errorMessage = Self.message(for: "NOT_INITIALIZED", fallback: nil)
+            errorMessage = message(for: "NOT_INITIALIZED", fallback: nil)
             step = .unavailable
             return
         }
@@ -516,11 +683,11 @@ final class ReferAFriendModel: ObservableObject {
             return
         case .networkError:
             // Still connected; the stats just couldn't be loaded.
-            errorMessage = Self.message(for: "NETWORK_ERROR", fallback: nil)
+            errorMessage = message(for: "NETWORK_ERROR", fallback: nil)
             step = .loadFailed
             return
         case .serverError:
-            errorMessage = Self.message(for: nil, fallback: nil)
+            errorMessage = message(for: nil, fallback: nil)
             step = .loadFailed
             return
         case .notConnected:
@@ -528,7 +695,7 @@ final class ReferAFriendModel: ObservableObject {
         }
 
         if loadedConfig?.enabled == false {
-            errorMessage = Self.message(for: "PROGRAM_DISABLED", fallback: nil)
+            errorMessage = message(for: "PROGRAM_DISABLED", fallback: nil)
             step = .unavailable
         } else {
             step = .notEnrolled
@@ -563,7 +730,7 @@ final class ReferAFriendModel: ObservableObject {
             let result = await InsertAffiliateSwift.createAffiliateForUser(email: self.email, name: self.name, options: self.accountOptions)
             if result.status == .verificationRequired {
                 self.code = ""
-                self.noticeMessage = "We sent a new code. Check your email."
+                self.noticeMessage = self.text(\.codeResentNotice)
             } else {
                 await self.handle(result)
             }
@@ -612,7 +779,7 @@ final class ReferAFriendModel: ObservableObject {
                 step = .enrolled(affiliate)
             }
         case .error:
-            errorMessage = Self.message(for: result.errorCode, fallback: result.errorMessage)
+            errorMessage = message(for: result.errorCode, fallback: result.errorMessage)
         }
     }
 
@@ -629,25 +796,29 @@ final class ReferAFriendModel: ObservableObject {
         values.compactMap { $0?.trimmingCharacters(in: .whitespacesAndNewlines) }.first { !$0.isEmpty }
     }
 
-    static func message(for errorCode: String?, fallback: String?) -> String {
+    // NOT_INITIALIZED is a mistake in the app, so the user sees the same wording as
+    // a switched-off program while the developer message goes to the log.
+    func message(for errorCode: String?, fallback: String?) -> String {
         switch errorCode {
         case "PROGRAM_DISABLED", "NOT_INITIALIZED":
-            return "Referrals are not available in this app right now."
+            return text(\.errorProgramDisabled)
         case "AFFILIATE_LIMIT_REACHED":
-            return "The referral program is full right now. Please try again later."
+            return text(\.errorAffiliateLimitReached)
         case "INVALID_CODE":
-            return "That code is wrong or has expired. Check your email or send a new code."
-        case "TOO_MANY_CODES", "RATE_LIMITED":
-            return "Too many attempts. Please wait a while and try again."
+            return text(\.errorInvalidCode)
+        case "TOO_MANY_CODES":
+            return text(\.errorTooManyCodes)
+        case "RATE_LIMITED":
+            return text(\.errorRateLimited)
         case "INVALID_EMAIL":
-            return "Please enter a valid email address."
+            return text(\.errorInvalidEmail)
         case "NETWORK_ERROR":
-            return "Could not connect. Check your internet connection and try again."
+            return text(\.errorNetwork)
         default:
             if let fallback = fallback, !fallback.isEmpty {
                 return fallback
             }
-            return "Something went wrong. Please try again."
+            return text(\.errorServer)
         }
     }
 

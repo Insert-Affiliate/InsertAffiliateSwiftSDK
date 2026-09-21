@@ -403,7 +403,7 @@ final class InsertAffiliateReferralsTests: XCTestCase {
         model.errorMessage = nil
         model.apply(.networkError, config: nil)
         XCTAssertEqual(model.step, .loadFailed)
-        XCTAssertEqual(model.errorMessage, ReferAFriendModel.message(for: "NETWORK_ERROR", fallback: nil))
+        XCTAssertEqual(model.errorMessage, model.message(for: "NETWORK_ERROR", fallback: nil))
 
         model.errorMessage = nil
         model.apply(.notConnected, config: disabled)
@@ -435,13 +435,14 @@ final class InsertAffiliateReferralsTests: XCTestCase {
     @available(iOS 15.0, *)
     @MainActor
     func testErrorMessagesAndColorParsing() {
-        XCTAssertEqual(ReferAFriendModel.message(for: "INVALID_CODE", fallback: nil),
+        let model = ReferAFriendModel(options: ReferAFriendOptions())
+        XCTAssertEqual(model.message(for: "INVALID_CODE", fallback: nil),
                        "That code is wrong or has expired. Check your email or send a new code.")
-        XCTAssertEqual(ReferAFriendModel.message(for: "SOMETHING_NEW", fallback: "Server says no."), "Server says no.")
+        XCTAssertEqual(model.message(for: "SOMETHING_NEW", fallback: "Server says no."), "Server says no.")
         // The SDK's developer message is logged, never shown.
-        XCTAssertEqual(ReferAFriendModel.message(for: "NOT_INITIALIZED", fallback: "Call initialize with your company code first."),
+        XCTAssertEqual(model.message(for: "NOT_INITIALIZED", fallback: "Call initialize with your company code first."),
                        "Referrals are not available in this app right now.")
-        XCTAssertEqual(ReferAFriendModel.message(for: nil, fallback: nil), "Something went wrong. Please try again.")
+        XCTAssertEqual(model.message(for: nil, fallback: nil), "Something went wrong. Please try again.")
 
         XCTAssertNotNil(ReferAFriendModel.color(hex: "#6A0DAD"))
         XCTAssertNil(ReferAFriendModel.color(hex: "6A0DAD"))
@@ -480,5 +481,78 @@ final class InsertAffiliateReferralsTests: XCTestCase {
         XCTAssertNotNil(text)
         XCTAssertTrue(text?.hasPrefix("Free premium until ") == true)
         XCTAssertTrue(text?.contains("2026") == true)
+    }
+
+    // MARK: - Screen labels
+
+    @available(iOS 15.0, *)
+    @MainActor
+    func testLabelsUseTheEnglishDefaultsWhenNothingIsPassed() {
+        let model = ReferAFriendModel(options: ReferAFriendOptions())
+        XCTAssertEqual(model.text(\.emailLabel), "Email")
+        XCTAssertEqual(model.text(\.nameLabel), "Name")
+        XCTAssertEqual(model.text(\.joinButton), "Get my link")
+        XCTAssertEqual(model.text(\.codeLabel), "6-digit code")
+        XCTAssertEqual(model.text(\.verifyButton), "Verify")
+        XCTAssertEqual(model.text(\.resendButton), "Send a new code")
+        XCTAssertEqual(model.text(\.codeResentNotice), "We sent a new code. Check your email.")
+        XCTAssertEqual(model.text(\.differentEmailButton), "Use a different email")
+        XCTAssertEqual(model.text(\.codeLabelTitle), "Your code")
+        XCTAssertEqual(model.text(\.copyButton), "Copy")
+        XCTAssertEqual(model.text(\.copiedNotice), "Copied")
+        XCTAssertEqual(model.text(\.shareButton), "Share")
+        XCTAssertEqual(model.text(\.referralsLabel), "Referrals")
+        XCTAssertEqual(model.text(\.earnedLabel), "Earned")
+        XCTAssertEqual(model.text(\.rewardsHeading), "Your rewards")
+        XCTAssertEqual(model.text(\.redeemButton), "Redeem")
+        XCTAssertEqual(model.text(\.dashboardLink), "Open my dashboard")
+        XCTAssertEqual(model.text(\.closeButton), "Close")
+        XCTAssertEqual(model.text(\.loading), "Loading...")
+        XCTAssertEqual(model.text(\.tryAgainButton), "Try again")
+        XCTAssertEqual(model.message(for: "AFFILIATE_LIMIT_REACHED", fallback: nil),
+                       "The referral program is full right now. Please try again later.")
+        XCTAssertEqual(model.message(for: "TOO_MANY_CODES", fallback: nil), model.message(for: "RATE_LIMITED", fallback: nil))
+        XCTAssertEqual(model.message(for: "INVALID_EMAIL", fallback: nil), "Please enter a valid email address.")
+    }
+
+    @available(iOS 15.0, *)
+    @MainActor
+    func testOneOverriddenLabelLeavesTheRestAsDefaults() {
+        let model = ReferAFriendModel(options: ReferAFriendOptions(strings: ReferralStrings(joinButton: "Obtener mi enlace")))
+        XCTAssertEqual(model.text(\.joinButton), "Obtener mi enlace")
+        XCTAssertEqual(model.text(\.emailLabel), "Email")
+        XCTAssertEqual(model.text(\.shareButton), "Share")
+        XCTAssertEqual(model.message(for: "INVALID_CODE", fallback: nil), ReferralStrings.defaultText(\.errorInvalidCode))
+    }
+
+    @available(iOS 15.0, *)
+    @MainActor
+    func testBlankOverridesFallBackToTheDefault() {
+        let model = ReferAFriendModel(options: ReferAFriendOptions(
+            strings: ReferralStrings(emailLabel: "", nameLabel: "   ", errorServer: "")))
+        XCTAssertEqual(model.text(\.emailLabel), "Email")
+        XCTAssertEqual(model.text(\.nameLabel), "Name")
+        XCTAssertEqual(model.message(for: nil, fallback: nil), "Something went wrong. Please try again.")
+    }
+
+    @available(iOS 15.0, *)
+    @MainActor
+    func testPlaceholdersSurviveATranslation() {
+        let model = ReferAFriendModel(options: ReferAFriendOptions(
+            email: "jane@example.com",
+            strings: ReferralStrings(
+                codeSentNotice: "Ya tienes una cuenta. Enviamos un codigo de 6 digitos a {email}.",
+                premiumUntil: "Premium gratis hasta {date}")))
+        XCTAssertEqual(model.codeSentNotice, "Ya tienes una cuenta. Enviamos un codigo de 6 digitos a jane@example.com.")
+
+        let now = Date(timeIntervalSince1970: 1_788_249_600)
+        let text = ReferAFriendModel.premiumUntilText(now.addingTimeInterval(86_400 * 10), now: now,
+                                                      template: model.text(\.premiumUntil), locale: Locale(identifier: "en_US"))
+        XCTAssertTrue(text?.hasPrefix("Premium gratis hasta ") == true)
+        XCTAssertFalse(text?.contains("{date}") == true)
+
+        // The default notice keeps its placeholder for the address the code went to.
+        let english = ReferAFriendModel(options: ReferAFriendOptions(email: "jane@example.com"))
+        XCTAssertEqual(english.codeSentNotice, "You already have an account. We emailed a 6-digit code to jane@example.com.")
     }
 }
