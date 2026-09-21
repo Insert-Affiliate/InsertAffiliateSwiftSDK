@@ -1068,6 +1068,21 @@ await InsertAffiliateSwift.shareReferralLink(message: "Join me on MyApp! {link}"
 
 Error codes include `PROGRAM_DISABLED`, `AFFILIATE_LIMIT_REACHED`, `INVALID_EMAIL`, `INVALID_CODE`, `TOO_MANY_CODES`, `RATE_LIMITED`, `NETWORK_ERROR` and `NOT_INITIALIZED`.
 
+**Build your own screen:**
+
+The methods above are everything the drop-in screen uses, so you can ignore it and build your own with your own wording and design. Call them in this order:
+
+1. `getReferralProgramConfig()` when the screen opens. `enabled == false` means the program is off, so don't show the screen. It also carries the dashboard's `headline`, `rewardText` and `primaryColor` if you want them.
+2. `getMyAffiliateDetails()` at the same time. Details mean this device is connected, so show the joined state. `nil` means either no connection or a failed request; `isUserAnAffiliate()` tells you which, since it is true only while a connection is stored.
+3. **Not enrolled**: collect an email (and optionally a name) and call `createAffiliateForUser(email:name:options:)`. `.created` or `.connected` goes straight to the joined state; `.verificationRequired` moves to the code step; `.error` gives you `errorCode` and `errorMessage`.
+4. **Code needed**: collect the 6-digit code and call `verifyAffiliateCode(email:code:name:options:)`. Whitespace, dashes and digits from any script are handled for you. Calling `createAffiliateForUser` again sends a new code. Going back to the email step is just showing your form again.
+5. **Enrolled**: show `affiliateShortCode` and `deeplinkUrl` from `getMyAffiliateDetails()`, plus `referralCount`, `totalEarned` and `currency`. `shareReferralLink(message:from:)` opens the system share sheet, or build your own text from the code and link.
+6. **Rewards**: `rewardsGranted` and `premiumUntil` show free premium time. `rewardCodes` holds store codes; show only the ones where `isAppStore` is true, because Google Play codes can't be redeemed on iPhone. Each has `code` and `redeemUrl`.
+7. **Errors**: map `errorCode` to your own wording. `ReferralStrings.defaultText(\.errorInvalidCode)` gives ours if you want to start from it.
+8. `setReferrerAccount(appUserId:playPurchaseToken:)` when the user subscribes or signs in later, and `signOutAffiliate()` when they log out of your app.
+
+One thing the drop-in screen can do that these methods can't: it separates "the request could not be sent" from "the server answered with an error" when loading the stats, and shows a different message for each. `getMyAffiliateDetails()` returns `nil` for both.
+
 The connection is stored in the Keychain, so it usually survives deleting and reinstalling the app, and moves to a new iPhone restored from an encrypted backup. When the device has no connection (a new phone set up without a backup, or after `signOutAffiliate()`), calling `createAffiliateForUser` again emails the user a code to reconnect; their affiliate account and earnings are untouched.
 
 The SDK removes the connection itself only when the server says it is no longer valid: the device was disconnected from the affiliate dashboard, or the referral account was deleted. Network and server errors keep it, so a referrer is never signed out by an outage.
