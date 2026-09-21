@@ -953,10 +953,65 @@ The screen handles everything: the "Get my link" step, the 6-digit email code fo
 | `primaryColor` | `#RRGGBB`. Overrides the colour set in the dashboard (default `#6A0DAD`) |
 | `headline`, `rewardText` | Override the copy set in the dashboard (default headline "Refer a friend") |
 | `fontName` | A custom font name. Uses the system font when not set |
+| `strings` | Your wording for the screen's labels (see below) |
 | `cornerRadius` | Corner radius of buttons and fields (default `12`) |
 | `onClose` | Called when the screen is closed |
 
 Headline, reward text and colour set in the dashboard apply without an app release.
+
+**Translating the screen:**
+
+Pass a `ReferralStrings` with only the labels you want to change. Anything you leave out, leave `nil` or set to a blank string keeps the English default, so the screen is unchanged for apps that pass nothing.
+
+```swift
+InsertAffiliateSwift.showReferAFriend(options: ReferAFriendOptions(
+    headline: "Invita a un amigo",
+    strings: ReferralStrings(
+        emailLabel: "Correo electronico",
+        joinButton: "Obtener mi enlace",
+        codeSentNotice: "Ya tienes una cuenta. Enviamos un codigo de 6 digitos a {email}.",
+        shareButton: "Compartir",
+        premiumUntil: "Premium gratis hasta {date}"
+    )
+))
+```
+
+Keep the placeholders: `{email}` in `codeSentNotice` and `{date}` in `premiumUntil`. `ReferralStrings.defaultText(\.joinButton)` gives the English default for any label.
+
+| Key | Default |
+|---|---|
+| `emailLabel` | Email |
+| `nameLabel` | Name |
+| `joinButton` | Get my link |
+| `codeLabel` | 6-digit code |
+| `codeSentNotice` | You already have an account. We emailed a 6-digit code to {email}. |
+| `verifyButton` | Verify |
+| `resendButton` | Send a new code |
+| `codeResentNotice` | We sent a new code. Check your email. |
+| `differentEmailButton` | Use a different email |
+| `codeLabelTitle` | Your code |
+| `copyButton` | Copy |
+| `copiedNotice` | Copied |
+| `shareButton` | Share |
+| `referralsLabel` | Referrals |
+| `earnedLabel` | Earned |
+| `premiumUntil` | Free premium until {date} |
+| `rewardsHeading` | Your rewards |
+| `redeemButton` | Redeem |
+| `dashboardLink` | Open my dashboard |
+| `closeButton` | Close |
+| `loading` | Loading... (read out by VoiceOver while the screen loads) |
+| `tryAgainButton` | Try again |
+| `errorProgramDisabled` | Referrals are not available in this app right now. |
+| `errorAffiliateLimitReached` | The referral program is full right now. Please try again later. |
+| `errorInvalidCode` | That code is wrong or has expired. Check your email or send a new code. |
+| `errorTooManyCodes` | Too many attempts. Please wait a while and try again. |
+| `errorRateLimited` | Too many attempts. Please wait a while and try again. |
+| `errorInvalidEmail` | Please enter a valid email address. |
+| `errorNetwork` | Could not connect. Check your internet connection and try again. |
+| `errorServer` | Something went wrong. Please try again. |
+
+`headline` and `rewardText` are not in `strings`: they come from the dashboard and are overridden with the options above. The share sheet text is `shareMessage`.
 
 **Headless methods (build your own UI):**
 
