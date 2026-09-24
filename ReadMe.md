@@ -271,22 +271,24 @@ import InsertAffiliateSwift
 
 final class AppDelegate: UIResponder, UIApplicationDelegate {
   func application(_ application: UIApplication, didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]? = nil) -> Bool {
-    // Initialize Adapty
-    Adapty.activate("YOUR_ADAPTY_PUBLIC_SDK_KEY")
-
     // Initialize Insert Affiliate
     InsertAffiliateSwift.initialize(companyCode: "YOUR_COMPANY_CODE", verboseLogging: true)
 
-    // Set Insert Affiliate identifier as Adapty custom attribute
-    if let applicationUsername = InsertAffiliateSwift.returnInsertAffiliateIdentifier() {
-      Task {
-        do {
+    Task {
+      do {
+        // Adapty.activate is async and throws, so it needs try await
+        try await Adapty.activate("YOUR_ADAPTY_PUBLIC_SDK_KEY")
+
+        // Set the Insert Affiliate identifier as an Adapty custom attribute.
+        // This has to come after activate: updating the profile before Adapty
+        // has finished activating fails.
+        if let applicationUsername = InsertAffiliateSwift.returnInsertAffiliateIdentifier() {
           var builder = AdaptyProfileParameters.Builder()
           builder = try builder.with(customAttribute: applicationUsername, forKey: "insert_affiliate")
           try await Adapty.updateProfile(params: builder.build())
-        } catch {
-          print("Failed to set Adapty attribution: \(error.localizedDescription)")
         }
+      } catch {
+        print("Failed to set up Adapty: \(error.localizedDescription)")
       }
     }
 

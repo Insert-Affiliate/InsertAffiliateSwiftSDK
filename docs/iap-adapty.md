@@ -29,26 +29,28 @@ final class AppDelegate: UIResponder, UIApplicationDelegate {
         _ application: UIApplication,
         didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]?
     ) -> Bool {
-        // Initialize Adapty
-        Adapty.activate("YOUR_ADAPTY_PUBLIC_SDK_KEY")
-
         // Initialize Insert Affiliate
         InsertAffiliateSwift.initialize(
             companyCode: "YOUR_COMPANY_CODE",
             verboseLogging: true  // Disable in production
         )
 
-        // Set existing affiliate identifier if available
-        if let affiliateId = InsertAffiliateSwift.returnInsertAffiliateIdentifier() {
-            Task {
-                do {
+        Task {
+            do {
+                // Adapty.activate is async and throws, so it needs try await
+                try await Adapty.activate("YOUR_ADAPTY_PUBLIC_SDK_KEY")
+
+                // Set the existing affiliate identifier, if there is one. This has
+                // to come after activate: updating the profile before Adapty has
+                // finished activating fails.
+                if let affiliateId = InsertAffiliateSwift.returnInsertAffiliateIdentifier() {
                     var builder = AdaptyProfileParameters.Builder()
                     builder = try builder.with(customAttribute: affiliateId, forKey: "insert_affiliate")
                     try await Adapty.updateProfile(params: builder.build())
                     print("[Adapty] Set insert_affiliate attribute: \(affiliateId)")
-                } catch {
-                    print("[Adapty] Failed to set attribution: \(error.localizedDescription)")
                 }
+            } catch {
+                print("[Adapty] Setup failed: \(error.localizedDescription)")
             }
         }
 
@@ -580,7 +582,7 @@ If the attribute is missing or incorrect, check the solutions below.
 
 ## Best Practices
 
-1. **Initialize Early**: Call `Adapty.activate()` and `InsertAffiliateSwift.initialize()` in `application(_:didFinishLaunchingWithOptions:)`
+1. **Initialize Early**: Call `Adapty.activate()` and `InsertAffiliateSwift.initialize()` in `application(_:didFinishLaunchingWithOptions:)`. `Adapty.activate` is async and throws, so it needs `try await` inside a `Task`, and anything that touches the Adapty profile has to wait until it has finished.
 
 2. **Handle Errors Gracefully**: Always handle Adapty errors, especially `paymentCancelled`
 
