@@ -88,7 +88,7 @@ public struct InsertAffiliateSwift {
     }
 
     @available(iOS 13.0.0, *)
-    private static let state = InsertAffiliateState()
+    static let state = InsertAffiliateState()
     
     // Thread-safe storage for settings using UserDefaults
     private static let insertLinksEnabledKey = "InsertLinks_InsertLinksEnabled"
@@ -140,7 +140,7 @@ public struct InsertAffiliateSwift {
 
     // Mirrors the actor's companyCode synchronously — initialize() is fire-and-forget,
     // so a caller right after it could otherwise race into a false .notConfigured.
-    private static var syncCompanyCode: String? {
+    static var syncCompanyCode: String? {
         get { UserDefaults.standard.string(forKey: companyCodeKey) }
         set { UserDefaults.standard.set(newValue, forKey: companyCodeKey) }
     }
@@ -1234,7 +1234,7 @@ public struct InsertAffiliateSwift {
     }
 
     /// Affiliate details returned from the API
-    public struct AffiliateDetails {
+    public struct AffiliateDetails: Sendable, Equatable {
         public let affiliateName: String
         public let affiliateShortCode: String
         public let deeplinkUrl: String

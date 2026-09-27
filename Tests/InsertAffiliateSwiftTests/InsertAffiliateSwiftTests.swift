@@ -1,7 +1,6 @@
 import Testing
 import XCTest
 @testable import InsertAffiliateSwift
-import InAppPurchaseLib
 
 final class InsertAffiliateSwiftTests: XCTestCase {
     override func setUp() {
@@ -33,7 +32,7 @@ final class InsertAffiliateSwiftTests: XCTestCase {
     
     func testSetInsertAffiliateIdentifier() {
         let referringLink = "https://example.com"
-        InsertAffiliateSwift.setInsertAffiliateIdentifier(referringLink: referringLink)
+        InsertAffiliateSwift.setInsertAffiliateIdentifier(referringLink: referringLink) { _ in }
         
         let result = UserDefaults.standard.string(forKey: "insertAffiliateIdentifier")
         XCTAssertNotNil(result, "insertAffiliateIdentifier should be stored.")

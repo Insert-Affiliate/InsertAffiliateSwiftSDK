@@ -916,6 +916,187 @@ if let expiryTimestamp = InsertAffiliateSwift.getAffiliateExpiryTimestamp() {
 
 </details>
 
+<details>
+<summary><h3>In-App Referrals (Refer a Friend)</h3></summary>
+
+Turn your own users into affiliates from inside your app, show them a ready-made "Refer a friend" screen, and read their referral stats so you can reward them.
+
+In-app referrers are normal affiliates: they take a seat, get the usual welcome email and can sign in to the affiliate dashboard. Switch the program on (and choose what counts as a referral: install, event or purchase) in your [Insert Affiliate dashboard](https://app.insertaffiliate.com) first.
+
+**Drop-in screen (iOS 15+):**
+
+```swift
+// UIKit
+InsertAffiliateSwift.showReferAFriend(
+    from: self,
+    options: ReferAFriendOptions(
+        email: currentUser.email,   // prefill with your signed-in user
+        name: currentUser.name,
+        appUserId: Purchases.shared.appUserID   // RevenueCat / Adapty user id, for automatic rewards
+    )
+)
+
+// SwiftUI
+.sheet(isPresented: $showReferrals) {
+    ReferAFriendView(options: ReferAFriendOptions(
+        email: currentUser.email, name: currentUser.name, appUserId: Purchases.shared.appUserID))
+}
+```
+
+The screen handles everything: the "Get my link" step, the 6-digit email code for users who are already affiliates (with a "Use a different email" way back), then their code and link with Copy and Share buttons, their referral count and earnings, and an "Open my dashboard" link. When the referrer has earned rewards it also shows "Free premium until {date}" and a "Your rewards" list of App Store offer codes, each with a Redeem button. Google Play promo codes the referrer earned on an Android phone aren't shown on iPhone.
+
+`ReferAFriendOptions` fields (all optional):
+
+| Option | Description |
+|---|---|
+| `email`, `name` | Prefill the form, usually with your signed-in user |
+| `appUserId`, `playPurchaseToken` | The referrer's accounts (see `ReferrerAccountOptions` below). Sent when the user joins, and saved when the screen opens for an existing referrer, so waiting rewards are given without a separate `setReferrerAccount` call |
+| `shareMessage` | Share sheet text. May use `{link}` and `{code}` placeholders |
+| `primaryColor` | `#RRGGBB`. Overrides the colour set in the dashboard (default `#6A0DAD`) |
+| `headline`, `rewardText` | Override the copy set in the dashboard (default headline "Refer a friend") |
+| `fontName` | A custom font name. Uses the system font when not set |
+| `strings` | Your wording for the screen's labels (see below) |
+| `cornerRadius` | Corner radius of buttons and fields (default `12`) |
+| `onClose` | Called when the screen is closed |
+
+Headline, reward text and colour set in the dashboard apply without an app release.
+
+**Translating the screen:**
+
+Pass a `ReferralStrings` with only the labels you want to change. Anything you leave out, leave `nil` or set to a blank string keeps the English default, so the screen is unchanged for apps that pass nothing.
+
+```swift
+InsertAffiliateSwift.showReferAFriend(options: ReferAFriendOptions(
+    headline: "Invita a un amigo",
+    strings: ReferralStrings(
+        emailLabel: "Correo electronico",
+        joinButton: "Obtener mi enlace",
+        codeSentNotice: "Ya tienes una cuenta. Enviamos un codigo de 6 digitos a {email}.",
+        shareButton: "Compartir",
+        premiumUntil: "Premium gratis hasta {date}"
+    )
+))
+```
+
+Keep the placeholders: `{email}` in `codeSentNotice` and `{date}` in `premiumUntil`. `ReferralStrings.defaultText(\.joinButton)` gives the English default for any label.
+
+| Key | Default |
+|---|---|
+| `emailLabel` | Email |
+| `nameLabel` | Name |
+| `joinButton` | Get my link |
+| `codeLabel` | 6-digit code |
+| `codeSentNotice` | You already have an account. We emailed a 6-digit code to {email}. |
+| `verifyButton` | Verify |
+| `resendButton` | Send a new code |
+| `codeResentNotice` | We sent a new code. Check your email. |
+| `differentEmailButton` | Use a different email |
+| `codeLabelTitle` | Your code |
+| `copyButton` | Copy |
+| `copiedNotice` | Copied |
+| `shareButton` | Share |
+| `referralsLabel` | Referrals |
+| `earnedLabel` | Earned |
+| `premiumUntil` | Free premium until {date} |
+| `rewardsHeading` | Your rewards |
+| `redeemButton` | Redeem |
+| `dashboardLink` | Open my dashboard |
+| `closeButton` | Close |
+| `loading` | Loading... (read out by VoiceOver while the screen loads) |
+| `tryAgainButton` | Try again |
+| `errorProgramDisabled` | Referrals are not available in this app right now. |
+| `errorAffiliateLimitReached` | The referral program is full right now. Please try again later. |
+| `errorInvalidCode` | That code is wrong or has expired. Check your email or send a new code. |
+| `errorTooManyCodes` | Too many attempts. Please wait a while and try again. |
+| `errorRateLimited` | Too many attempts. Please wait a while and try again. |
+| `errorInvalidEmail` | Please enter a valid email address. |
+| `errorNetwork` | Could not connect. Check your internet connection and try again. |
+| `errorServer` | Something went wrong. Please try again. |
+
+`headline` and `rewardText` are not in `strings`: they come from the dashboard and are overridden with the options above. The share sheet text is `shareMessage`.
+
+**Headless methods (build your own UI):**
+
+```swift
+// Make the signed-in user a referrer. Pass their RevenueCat app user id (or Adapty
+// customer user id) so rewards can be given automatically.
+let result = await InsertAffiliateSwift.createAffiliateForUser(
+    email: user.email,
+    name: user.name,
+    options: ReferrerAccountOptions(appUserId: Purchases.shared.appUserID)
+)
+switch result.status {
+case .created, .connected:
+    print("Referral code: \(result.affiliate?.affiliateShortCode ?? "")")
+case .verificationRequired:
+    // Already an affiliate but this device isn't connected: we emailed them a 6-digit code
+    let verified = await InsertAffiliateSwift.verifyAffiliateCode(
+        email: user.email, code: enteredCode, options: ReferrerAccountOptions(appUserId: Purchases.shared.appUserID))
+case .error:
+    print("Error: \(result.errorCode ?? "") \(result.errorMessage ?? "")")
+}
+
+// Their stats (nil when this device is not connected)
+if let me = await InsertAffiliateSwift.getMyAffiliateDetails() {
+    print("\(me.referralCount) referrals, earned \(me.totalEarned) \(me.currency)")
+    print("Rewards: \(me.rewardsGranted), premium until: \(String(describing: me.premiumUntil))")
+    for reward in me.rewardCodes where reward.isAppStore {
+        print("Offer code \(reward.code): \(reward.redeemUrl)")
+    }
+}
+
+// The user subscribed or signed in after joining: save their account so any
+// rewards that were waiting are given
+await InsertAffiliateSwift.setReferrerAccount(appUserId: Purchases.shared.appUserID)
+
+InsertAffiliateSwift.isUserAnAffiliate()   // true when this device is connected (no network call)
+InsertAffiliateSwift.signOutAffiliate()    // call on app logout
+await InsertAffiliateSwift.getReferralProgramConfig()   // program on/off, headline, reward text, colour
+await InsertAffiliateSwift.shareReferralLink(message: "Join me on MyApp! {link}")   // system share sheet
+```
+
+| Method | Returns |
+|---|---|
+| `createAffiliateForUser(email:name:options:)` | `ReferralEnrolmentResult` with `status` (`.created`, `.verificationRequired`, `.error`), `affiliate`, `errorCode`, `errorMessage` |
+| `verifyAffiliateCode(email:code:name:options:)` | `ReferralEnrolmentResult` with `status` (`.connected`, `.created`, `.error`) |
+| `setReferrerAccount(appUserId:playPurchaseToken:)` | `Bool`: true when saved. Use it when the user subscribes or signs in after joining |
+| `getMyAffiliateDetails()` | `MyAffiliateDetails?`: code, link, `referralCount` (the count for your chosen trigger), `installCount`, `eventCount`, `purchaseCount`, `totalEarned`, `totalPaid`, `totalUnpaid`, `currency`, `dashboardUrl`, `rewardsGranted`, `premiumUntil` (`Date?`), `rewardCodes` (`[ReferralRewardCode]` with `code`, `redeemUrl`, `store` (`app_store` or `google_play`), `isAppStore`, `grantedAt`, newest first) |
+| `isUserAnAffiliate()` | `Bool` |
+| `signOutAffiliate()` | Clears this device's connection. The affiliate account is untouched |
+| `getReferralProgramConfig()` | `ReferralProgramConfig?` |
+| `shareReferralLink(message:from:)` | `Bool`: false when this device is not connected |
+
+`ReferrerAccountOptions` fields (both optional): `appUserId` is the user's RevenueCat app user id or Adapty customer user id; `playPurchaseToken` is the user's own Google Play purchase token (Android apps only). The SDK also sends this device's id automatically, so a referrer can't count as their own referral.
+
+Error codes include `PROGRAM_DISABLED`, `AFFILIATE_LIMIT_REACHED`, `INVALID_EMAIL`, `INVALID_CODE`, `TOO_MANY_CODES`, `RATE_LIMITED`, `NETWORK_ERROR` and `NOT_INITIALIZED`.
+
+**Build your own screen:**
+
+The methods above are everything the drop-in screen uses, so you can ignore it and build your own with your own wording and design. Call them in this order:
+
+1. `getReferralProgramConfig()` when the screen opens. `enabled == false` means the program is off, so don't show the screen. It also carries the dashboard's `headline`, `rewardText` and `primaryColor` if you want them.
+2. `getMyAffiliateDetails()` at the same time. Details mean this device is connected, so show the joined state. `nil` means either no connection or a failed request; `isUserAnAffiliate()` tells you which, since it is true only while a connection is stored.
+3. **Not enrolled**: collect an email (and optionally a name) and call `createAffiliateForUser(email:name:options:)`. `.created` or `.connected` goes straight to the joined state; `.verificationRequired` moves to the code step; `.error` gives you `errorCode` and `errorMessage`.
+4. **Code needed**: collect the 6-digit code and call `verifyAffiliateCode(email:code:name:options:)`. Whitespace, dashes and digits from any script are handled for you. Calling `createAffiliateForUser` again sends a new code. Going back to the email step is just showing your form again.
+5. **Enrolled**: show `affiliateShortCode` and `deeplinkUrl` from `getMyAffiliateDetails()`, plus `referralCount`, `totalEarned` and `currency`. `shareReferralLink(message:from:)` opens the system share sheet, or build your own text from the code and link.
+6. **Rewards**: `rewardsGranted` and `premiumUntil` show free premium time. `rewardCodes` holds store codes; show only the ones where `isAppStore` is true, because Google Play codes can't be redeemed on iPhone. Each has `code` and `redeemUrl`.
+7. **Errors**: map `errorCode` to your own wording. `ReferralStrings.defaultText(\.errorInvalidCode)` gives ours if you want to start from it.
+8. `setReferrerAccount(appUserId:playPurchaseToken:)` when the user subscribes or signs in later, and `signOutAffiliate()` when they log out of your app.
+
+One thing the drop-in screen can do that these methods can't: it separates "the request could not be sent" from "the server answered with an error" when loading the stats, and shows a different message for each. `getMyAffiliateDetails()` returns `nil` for both.
+
+The connection is stored in the Keychain, so it usually survives deleting and reinstalling the app, and moves to a new iPhone restored from an encrypted backup. When the device has no connection (a new phone set up without a backup, or after `signOutAffiliate()`), calling `createAffiliateForUser` again emails the user a code to reconnect; their affiliate account and earnings are untouched.
+
+The SDK removes the connection itself only when the server says it is no longer valid: the device was disconnected from the affiliate dashboard, or the referral account was deleted. Network and server errors keep it, so a referrer is never signed out by an outage.
+
+**Rewarding referrers:**
+
+If you set up automatic referrer rewards in the dashboard (RevenueCat, Adapty or App Store offer codes), pass the user's `appUserId` as above and Insert Affiliate gives the rewards for you; `rewardsGranted`, `premiumUntil` and `rewardCodes` show what they have received. Otherwise, `referralCount` only goes up, so you can compare it with what you have already rewarded and grant the difference. Values read on the device are for display only, because a modified device can fake them. Grant anything valuable (credits, premium time) from your server, using the `referral.created` webhook or the Public API.
+
+**App Store rules:** the screen uses the system share sheet only, never asks for Contacts access, and nothing in your app should be locked behind sharing. For free premium time, use App Store offer codes or RevenueCat promotional entitlements.
+
+</details>
+
 ### Prevent Affiliate Transfer
 
 Protect the original affiliate's attribution from being overwritten when users click different affiliate links.
