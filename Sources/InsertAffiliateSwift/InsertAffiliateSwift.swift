@@ -1019,6 +1019,13 @@ public struct InsertAffiliateSwift {
         // Ensure the short code is uppercase
         let uppercasedShortCode = shortCode.uppercased()
 
+        // Storing the same identifier is a no-op, so skip the call (it counts as a click)
+        let alreadyStored = "\(uppercasedShortCode)-\(returnShortUniqueDeviceID())".uppercased()
+        if UserDefaults.standard.string(forKey: "insertAffiliateIdentifier")?.uppercased() == alreadyStored {
+            print("[Insert Affiliate] Short code '\(uppercasedShortCode)' is already stored, skipping lookup")
+            return
+        }
+
         // Fetch additional affiliate data
         fetchDeepLinkData(shortCode: uppercasedShortCode, companyCode: companyCode, source: source)
     }
@@ -1097,10 +1104,19 @@ public struct InsertAffiliateSwift {
             var request = URLRequest(url: url)
             request.httpMethod = "GET"
             request.setValue("application/json", forHTTPHeaderField: "Content-Type")
-            
+
+            // When the server can't confirm or reject the code (network failure, server error, unreadable
+            // response), keep the code from the link rather than lose the attribution. Only an explicit
+            // "not found" from the server (404, or an error in the body) discards it.
+            let storeUnverified: @Sendable (String) -> Void = { reason in
+                print("[Insert Affiliate] \(reason). Storing short code '\(shortCode)' from the link without server confirmation.")
+                storeInsertAffiliateIdentifier(referringLink: shortCode, source: source)
+            }
+
             let task = URLSession.shared.dataTask(with: request) { data, response, error in
                 if let error = error {
                     print("[Insert Affiliate] Error fetching deep link data: \(error.localizedDescription)")
+                    storeUnverified("Could not reach the server")
                     return
                 }
                 
@@ -1120,15 +1136,18 @@ public struct InsertAffiliateSwift {
                             print("[Insert Affiliate] Deep link not found. The short code '\(shortCode)' may not exist for company '\(companyCode)'. Please check your Insert Affiliate dashboard.")
                         case 401, 403:
                             print("[Insert Affiliate] Authentication error. Please verify your company code.")
+                            storeUnverified("The server could not verify the request")
                         default:
                             print("[Insert Affiliate] Server error. Please try again later.")
+                            storeUnverified("The server returned an error")
                         }
                         return
                     }
                 }
-                
+
                 guard let data = data else {
                     print("[Insert Affiliate] No data received from deep link API")
+                    storeUnverified("The server returned no data")
                     return
                 }
                 
@@ -1168,13 +1187,16 @@ public struct InsertAffiliateSwift {
                                     print("[Insert Affiliate] DeepLink data: \(deepLink)")
                                 }
                             }
+                            storeUnverified("The server response did not include a user code")
                         }
                     } else {
                         print("[Insert Affiliate] Response is not a valid JSON object")
+                        storeUnverified("The server response was not valid")
                     }
                 } catch {
                     print("[Insert Affiliate] Failed to parse deep link data: \(error.localizedDescription)")
                     print("[Insert Affiliate] Data length: \(data.count) bytes")
+                    storeUnverified("The server response could not be parsed")
                 }
             }
             
