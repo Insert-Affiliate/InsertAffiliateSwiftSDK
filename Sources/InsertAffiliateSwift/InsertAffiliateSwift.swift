@@ -987,6 +987,8 @@ public struct InsertAffiliateSwift {
     /// Handle universal links from custom domains (e.g. https://share.getavo.co/companyId/shortCode)
     /// Since iOS only delivers universal links for domains in the app's Associated Domains entitlement,
     /// we trust that the URL is valid and just extract the short code from the path.
+    /// Returns true only when the first path segment is this app's company code, so the app's own
+    /// https links (which may also have two or more path segments) are left for the app to route.
     private static func handleCustomDomainUniversalLink(_ url: URL) -> Bool {
         let pathComponents = url.pathComponents.filter { $0 != "/" }
 
@@ -998,19 +1000,15 @@ public struct InsertAffiliateSwift {
         let urlCompanyCode = pathComponents[0]
         let shortCode = pathComponents[1]
 
-        // Validate company code matches the initialized one
-        Task {
-            if let initializedCompanyCode = await state.getCompanyCode() {
-                if urlCompanyCode.lowercased() != initializedCompanyCode.lowercased() {
-                    print("[Insert Affiliate] Custom domain universal link company code (\(urlCompanyCode)) doesn't match initialized company code (\(initializedCompanyCode)), ignoring")
-                    return
-                }
-
-                print("[Insert Affiliate] Custom domain universal link detected - Short code: \(shortCode)")
-                processAffiliateAttribution(shortCode: shortCode, companyCode: initializedCompanyCode, source: .universalLink)
-            }
+        // Checked synchronously (the actor's copy is async) so the return value is accurate
+        guard let initializedCompanyCode = syncCompanyCode, !initializedCompanyCode.isEmpty,
+              urlCompanyCode.lowercased() == initializedCompanyCode.lowercased() else {
+            print("[Insert Affiliate] Custom domain universal link doesn't start with this app's company code, not handling: \(url.absoluteString)")
+            return false
         }
 
+        print("[Insert Affiliate] Custom domain universal link detected - Short code: \(shortCode)")
+        processAffiliateAttribution(shortCode: shortCode, companyCode: initializedCompanyCode, source: .universalLink)
         return true
     }
 

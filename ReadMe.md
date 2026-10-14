@@ -675,6 +675,16 @@ struct MyApp: App {
 
 > **Note:** If you only add `.onOpenURL`, Universal Links will open the app but `handleInsertLinks` will never be called and attribution will not be tracked.
 
+**Using Short Code Only with "Include links that show the short code"?**
+
+The same setup lets those links open your app. If you have entered your Apple Team ID and iOS Bundle Identifier in the dashboard, `https://insertaffiliate.link/YOUR_COMPANY_CODE/SHORT_CODE` opens your app when it is installed and shows the short code page when it is not. To apply the code when the app opens:
+
+- Add the `applinks:insertaffiliate.link` Associated Domain (Step 1) and forward the URL to `handleInsertLinks` (Step 2).
+- Initialize the SDK with `insertLinksEnabled: true`. `handleInsertLinks` ignores every URL while it is `false`.
+- Make sure your own link router ignores `/{companyId}/{shortCode}` URLs, since `handleInsertLinks` has already handled them.
+
+If your company's app details are entered in the dashboard but your app does not forward the URL, the app will open from the link and the code will not be applied.
+
 **Testing Universal Links:**
 
 ```bash
