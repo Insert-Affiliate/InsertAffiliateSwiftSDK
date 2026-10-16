@@ -1137,6 +1137,8 @@ public struct InsertAffiliateSwift {
                         case 401, 403:
                             print("[Insert Affiliate] Authentication error. Please verify your company code.")
                             storeUnverified("The server could not verify the request")
+                        case 429:
+                            print("[Insert Affiliate] Rate limited. The short code '\(shortCode)' was not stored.")
                         default:
                             print("[Insert Affiliate] Server error. Please try again later.")
                             storeUnverified("The server returned an error")
