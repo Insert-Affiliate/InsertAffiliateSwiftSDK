@@ -168,7 +168,7 @@ InsertAffiliateSwift.initialize(
 | [**RevenueCat**](#option-1-revenuecat-recommended) | Most developers, managed infrastructure | ~10 min | ⭐ Simple |
 | [**Adapty**](#option-2-adapty) | Paywall A/B testing, analytics | ~10 min | ⭐ Simple |
 | [**Iaptic**](#option-3-iaptic) | Custom requirements, direct control | ~15 min | ⭐⭐ Medium |
-| [**App Store Direct**](#option-4-app-store-direct-beta) | No 3rd party fees (subscriptions only) | ~20 min | ⭐⭐ Medium |
+| [**App Store Direct**](#option-4-app-store-direct) | No 3rd party fees (subscriptions only) | ~20 min | ⭐⭐ Medium |
 | [**Apphud**](#option-5-apphud) | Alternative managed infrastructure | ~10 min | ⭐ Simple |
 
 <details open>
@@ -409,7 +409,7 @@ Replace:
 </details>
 
 <details>
-<summary><h4>Option 4: App Store Direct (Beta)</h4></summary>
+<summary><h4>Option 4: App Store Direct</h4></summary>
 
 **Step 1: Apple App Store Notification Setup**
 
@@ -779,7 +779,7 @@ if let affiliateId = InsertAffiliateSwift.returnInsertAffiliateIdentifier() {
 ## 🔧 Advanced Features
 
 <details>
-<summary><h3>Event Tracking (Beta)</h3></summary>
+<summary><h3>Event Tracking</h3></summary>
 
 Track custom events beyond purchases (e.g., signups, referrals) to incentivize affiliates for specific actions.
 
