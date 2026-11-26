@@ -943,7 +943,7 @@ InsertAffiliateSwift.showReferAFriend(
 }
 ```
 
-The screen handles everything: the "Get my link" step, the 6-digit email code for users who are already affiliates (with a "Use a different email" way back), then their code and link with Copy and Share buttons, their referral count and earnings, and an "Open my dashboard" link. When the referrer has earned rewards it also shows "Free premium until {date}" and a "Your rewards" list of App Store offer codes, each with a Redeem button. Google Play promo codes the referrer earned on an Android phone aren't shown on iPhone.
+The screen handles everything: the "Get my link" step, the 6-digit email code for users who are already affiliates (with a "Use a different email" way back), then their code and link with Copy and Share buttons, their referral count and earnings (cash, free-premium days or both, as set in the dashboard), and an "Open my dashboard" link. The short code can be hidden in the dashboard; the screen then shows only the link, and Copy copies the link. The code always shows when there is no web link to share, since it is then the only thing the referrer can pass on. When the referrer has earned rewards it also shows "Free premium until {date}" and a "Your rewards" list of App Store offer codes, each with a Redeem button. Google Play promo codes the referrer earned on an Android phone aren't shown on iPhone.
 
 `ReferAFriendOptions` fields (all optional):
 
@@ -978,7 +978,7 @@ InsertAffiliateSwift.showReferAFriend(options: ReferAFriendOptions(
 ))
 ```
 
-Keep the placeholders: `{email}` in `codeSentNotice` and `{date}` in `premiumUntil`. `ReferralStrings.defaultText(\.joinButton)` gives the English default for any label.
+Keep the placeholders: `{email}` in `codeSentNotice`, `{date}` in `premiumUntil` and `{count}` in `dayUnit` and `daysUnit`. `ReferralStrings.defaultText(\.joinButton)` gives the English default for any label.
 
 | Key | Default |
 |---|---|
@@ -994,9 +994,13 @@ Keep the placeholders: `{email}` in `codeSentNotice` and `{date}` in `premiumUnt
 | `codeLabelTitle` | Your code |
 | `copyButton` | Copy |
 | `copiedNotice` | Copied |
+| `copyLinkLabel` | Copy link (read out by VoiceOver when Copy copies the link) |
 | `shareButton` | Share |
 | `referralsLabel` | Referrals |
 | `earnedLabel` | Earned |
+| `daysEarnedLabel` | Days earned |
+| `dayUnit` | {count} day (used for 1 day) |
+| `daysUnit` | {count} days (used for any other number) |
 | `premiumUntil` | Free premium until {date} |
 | `rewardsHeading` | Your rewards |
 | `redeemButton` | Redeem |
@@ -1060,7 +1064,7 @@ await InsertAffiliateSwift.shareReferralLink(message: "Join me on MyApp! {link}"
 | `createAffiliateForUser(email:name:options:)` | `ReferralEnrolmentResult` with `status` (`.created`, `.verificationRequired`, `.error`), `affiliate`, `errorCode`, `errorMessage` |
 | `verifyAffiliateCode(email:code:name:options:)` | `ReferralEnrolmentResult` with `status` (`.connected`, `.created`, `.error`) |
 | `setReferrerAccount(appUserId:playPurchaseToken:)` | `Bool`: true when saved. Use it when the user subscribes or signs in after joining |
-| `getMyAffiliateDetails()` | `MyAffiliateDetails?`: code, link, `referralCount` (the count for your chosen trigger), `installCount`, `eventCount`, `purchaseCount`, `totalEarned`, `totalPaid`, `totalUnpaid`, `currency`, `dashboardUrl`, `rewardsGranted`, `premiumUntil` (`Date?`), `rewardCodes` (`[ReferralRewardCode]` with `code`, `redeemUrl`, `store` (`app_store` or `google_play`), `isAppStore`, `grantedAt`, newest first) |
+| `getMyAffiliateDetails()` | `MyAffiliateDetails?`: code, link, `referralCount` (the count for your chosen trigger), `installCount`, `eventCount`, `purchaseCount`, `totalEarned`, `totalPaid`, `totalUnpaid`, `currency`, `dashboardUrl`, `rewardsGranted`, `premiumUntil` (`Date?`), `rewardDaysEarned` (free-premium days granted automatically), `earnedDisplay` (`cash` and `days`: which earnings to show), `rewardCodes` (`[ReferralRewardCode]` with `code`, `redeemUrl`, `store` (`app_store` or `google_play`), `isAppStore`, `grantedAt`, newest first) |
 | `isUserAnAffiliate()` | `Bool` |
 | `signOutAffiliate()` | Clears this device's connection. The affiliate account is untouched |
 | `getReferralProgramConfig()` | `ReferralProgramConfig?` |
@@ -1074,11 +1078,11 @@ Error codes include `PROGRAM_DISABLED`, `AFFILIATE_LIMIT_REACHED`, `INVALID_EMAI
 
 The methods above are everything the drop-in screen uses, so you can ignore it and build your own with your own wording and design. Call them in this order:
 
-1. `getReferralProgramConfig()` when the screen opens. `enabled == false` means the program is off, so don't show the screen. It also carries the dashboard's `headline`, `rewardText` and `primaryColor` if you want them.
+1. `getReferralProgramConfig()` when the screen opens. `enabled == false` means the program is off, so don't show the screen. It also carries the dashboard's `headline`, `rewardText`, `primaryColor` and `showCode` (false means don't show the short code, unless there is no web link to share, in which case show it anyway) if you want them.
 2. `getMyAffiliateDetails()` at the same time. Details mean this device is connected, so show the joined state. `nil` means either no connection or a failed request; `isUserAnAffiliate()` tells you which, since it is true only while a connection is stored.
 3. **Not enrolled**: collect an email (and optionally a name) and call `createAffiliateForUser(email:name:options:)`. `.created` or `.connected` goes straight to the joined state; `.verificationRequired` moves to the code step; `.error` gives you `errorCode` and `errorMessage`.
 4. **Code needed**: collect the 6-digit code and call `verifyAffiliateCode(email:code:name:options:)`. Whitespace, dashes and digits from any script are handled for you. Calling `createAffiliateForUser` again sends a new code. Going back to the email step is just showing your form again.
-5. **Enrolled**: show `affiliateShortCode` and `deeplinkUrl` from `getMyAffiliateDetails()`, plus `referralCount`, `totalEarned` and `currency`. `shareReferralLink(message:from:)` opens the system share sheet, or build your own text from the code and link.
+5. **Enrolled**: show `affiliateShortCode` and `deeplinkUrl` from `getMyAffiliateDetails()`, plus `referralCount`, then `totalEarned` and `currency` if `earnedDisplay.cash`, and `rewardDaysEarned` if `earnedDisplay.days`. `shareReferralLink(message:from:)` opens the system share sheet, or build your own text from the code and link.
 6. **Rewards**: `rewardsGranted` and `premiumUntil` show free premium time. `rewardCodes` holds store codes; show only the ones where `isAppStore` is true, because Google Play codes can't be redeemed on iPhone. Each has `code` and `redeemUrl`.
 7. **Errors**: map `errorCode` to your own wording. `ReferralStrings.defaultText(\.errorInvalidCode)` gives ours if you want to start from it.
 8. `setReferrerAccount(appUserId:playPurchaseToken:)` when the user subscribes or signs in later, and `signOutAffiliate()` when they log out of your app.
