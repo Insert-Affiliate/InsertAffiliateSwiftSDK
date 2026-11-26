@@ -128,6 +128,30 @@ final class InsertAffiliateReferralsTests: XCTestCase {
         XCTAssertNil(notAList.premiumUntil)
     }
 
+    func testDecodesEarnedFields() throws {
+        let json = """
+        { "rewardDaysEarned": 90, "earnedDisplay": { "cash": false, "days": true } }
+        """
+        let details = try JSONDecoder().decode(InsertAffiliateSwift.MyAffiliateDetails.self, from: Data(json.utf8))
+        XCTAssertEqual(details.rewardDaysEarned, 90)
+        XCTAssertEqual(details.earnedDisplay, InsertAffiliateSwift.ReferralEarnedDisplay(cash: false, days: true))
+    }
+
+    func testEarnedFieldsFallBackForOlderServers() throws {
+        let missing = try JSONDecoder().decode(InsertAffiliateSwift.MyAffiliateDetails.self, from: Data("{}".utf8))
+        XCTAssertEqual(missing.rewardDaysEarned, 0)
+        XCTAssertEqual(missing.earnedDisplay, .cashOnly)
+
+        let junk = try JSONDecoder().decode(InsertAffiliateSwift.MyAffiliateDetails.self,
+                                            from: Data(#"{ "rewardDaysEarned": null, "earnedDisplay": "yes" }"#.utf8))
+        XCTAssertEqual(junk.rewardDaysEarned, 0)
+        XCTAssertEqual(junk.earnedDisplay, .cashOnly)
+
+        let partial = try JSONDecoder().decode(InsertAffiliateSwift.MyAffiliateDetails.self,
+                                               from: Data(#"{ "earnedDisplay": { "days": true } }"#.utf8))
+        XCTAssertEqual(partial.earnedDisplay, InsertAffiliateSwift.ReferralEarnedDisplay(cash: true, days: true))
+    }
+
     func testDecodesReferralProgramConfig() throws {
         let json = """
         {
@@ -147,6 +171,12 @@ final class InsertAffiliateReferralsTests: XCTestCase {
         XCTAssertEqual(config.headline, "Give a week, get a week")
         XCTAssertEqual(config.rewardText, "Get a free week for every friend who subscribes.")
         XCTAssertEqual(config.primaryColor, "#112233")
+        // Older servers don't send showCode.
+        XCTAssertTrue(config.showCode)
+
+        let hidden = try JSONDecoder().decode(InsertAffiliateSwift.ReferralProgramConfig.self,
+                                              from: Data(#"{ "showCode": false }"#.utf8))
+        XCTAssertFalse(hidden.showCode)
     }
 
     func testReferralProgramConfigDefaultsWhenFieldsMissing() throws {
@@ -483,6 +513,86 @@ final class InsertAffiliateReferralsTests: XCTestCase {
         XCTAssertTrue(text?.contains("2026") == true)
     }
 
+    @available(iOS 15.0, *)
+    @MainActor
+    func testStatsStripShowsOnlyTheEarningsTheCompanyShows() throws {
+        func details(_ extra: String) throws -> InsertAffiliateSwift.MyAffiliateDetails {
+            try JSONDecoder().decode(InsertAffiliateSwift.MyAffiliateDetails.self,
+                                     from: Data("{ \"referralCount\": 4, \"totalEarned\": 12.5, \"currency\": \"USD\"\(extra) }".utf8))
+        }
+        let model = ReferAFriendModel(options: ReferAFriendOptions())
+        let en = Locale(identifier: "en_US")
+
+        // Older server: referrals and cash only.
+        XCTAssertEqual(model.statItems(try details(""), locale: en).map(\.title), ["Referrals", "Earned"])
+
+        let cashAndDays = try details(#", "rewardDaysEarned": 90, "earnedDisplay": { "cash": true, "days": true }"#)
+        let all = model.statItems(cashAndDays, locale: en)
+        XCTAssertEqual(all.map(\.title), ["Referrals", "Earned", "Days earned"])
+        XCTAssertEqual(all.map(\.value), ["4", model.formattedEarned(cashAndDays), "90 days"])
+
+        let daysOnly = model.statItems(try details(#", "rewardDaysEarned": 1, "earnedDisplay": { "cash": false, "days": true }"#), locale: en)
+        XCTAssertEqual(daysOnly.map(\.title), ["Referrals", "Days earned"])
+        XCTAssertEqual(daysOnly.last?.value, "1 day")
+
+        let neither = model.statItems(try details(#", "earnedDisplay": { "cash": false, "days": false }"#), locale: en)
+        XCTAssertEqual(neither.map(\.title), ["Referrals"])
+        XCTAssertEqual(all.map(\.id), [.referrals, .earned, .days])
+
+        // Two labels reworded to the same text still get distinct ids.
+        let same = ReferAFriendModel(options: ReferAFriendOptions(
+            strings: ReferralStrings(referralsLabel: "Total", earnedLabel: "Total")))
+        XCTAssertEqual(Set(same.statItems(cashAndDays, locale: en).map(\.id)).count, 3)
+    }
+
+    @available(iOS 15.0, *)
+    @MainActor
+    func testDaysTextPluralisesAndHonoursOverrides() {
+        let en = Locale(identifier: "en_US")
+        XCTAssertEqual(ReferAFriendModel.daysText(0, dayTemplate: "{count} day", daysTemplate: "{count} days", locale: en), "0 days")
+        XCTAssertEqual(ReferAFriendModel.daysText(1, dayTemplate: "{count} day", daysTemplate: "{count} days", locale: en), "1 day")
+        XCTAssertEqual(ReferAFriendModel.daysText(1200, dayTemplate: "{count} day", daysTemplate: "{count} days", locale: en), "1,200 days")
+
+        let model = ReferAFriendModel(options: ReferAFriendOptions(
+            strings: ReferralStrings(daysEarnedLabel: "Dias ganados", dayUnit: "{count} dia", daysUnit: "{count} dias")))
+        XCTAssertEqual(model.text(\.daysEarnedLabel), "Dias ganados")
+        XCTAssertEqual(ReferAFriendModel.daysText(3, dayTemplate: model.text(\.dayUnit),
+                                                  daysTemplate: model.text(\.daysUnit), locale: en), "3 dias")
+    }
+
+    @available(iOS 15.0, *)
+    @MainActor
+    func testCodeIsShownAndCopiedUnlessThePortalHidesIt() throws {
+        func enrolled(link: String, showCode: String?) throws -> (ReferAFriendModel, InsertAffiliateSwift.AffiliateDetails) {
+            let details = try JSONDecoder().decode(
+                InsertAffiliateSwift.MyAffiliateDetails.self,
+                from: Data(#"{ "affiliateShortCode": "ABC123", "deeplinkurl": "\#(link)" }"#.utf8))
+            let config = try JSONDecoder().decode(
+                InsertAffiliateSwift.ReferralProgramConfig.self,
+                from: Data("{ \"enabled\": true\(showCode.map { ", \"showCode\": \($0)" } ?? "") }".utf8))
+            let model = ReferAFriendModel(options: ReferAFriendOptions())
+            model.apply(.loaded(details), config: config)
+            return (model, details.affiliate)
+        }
+
+        // showCode true, or an older server that doesn't send it: the code shows and is copied.
+        for flag in ["true", nil] {
+            let (model, affiliate) = try enrolled(link: "https://x.link/abc", showCode: flag)
+            XCTAssertTrue(model.showCodeBox)
+            XCTAssertEqual(model.copyText(for: affiliate), "ABC123")
+        }
+
+        // Code hidden and a web link: only the link shows, and Copy copies it.
+        let (hidden, hiddenAffiliate) = try enrolled(link: "https://x.link/abc", showCode: "false")
+        XCTAssertFalse(hidden.showCodeBox)
+        XCTAssertEqual(hidden.copyText(for: hiddenAffiliate), "https://x.link/abc")
+
+        // Code hidden but no web link: the code is all there is to share, so it still shows.
+        let (noLink, noLinkAffiliate) = try enrolled(link: "ABC123", showCode: "false")
+        XCTAssertTrue(noLink.showCodeBox)
+        XCTAssertEqual(noLink.copyText(for: noLinkAffiliate), "ABC123")
+    }
+
     // MARK: - Screen labels
 
     @available(iOS 15.0, *)
@@ -500,9 +610,13 @@ final class InsertAffiliateReferralsTests: XCTestCase {
         XCTAssertEqual(model.text(\.codeLabelTitle), "Your code")
         XCTAssertEqual(model.text(\.copyButton), "Copy")
         XCTAssertEqual(model.text(\.copiedNotice), "Copied")
+        XCTAssertEqual(model.text(\.copyLinkLabel), "Copy link")
         XCTAssertEqual(model.text(\.shareButton), "Share")
         XCTAssertEqual(model.text(\.referralsLabel), "Referrals")
         XCTAssertEqual(model.text(\.earnedLabel), "Earned")
+        XCTAssertEqual(model.text(\.daysEarnedLabel), "Days earned")
+        XCTAssertEqual(model.text(\.dayUnit), "{count} day")
+        XCTAssertEqual(model.text(\.daysUnit), "{count} days")
         XCTAssertEqual(model.text(\.rewardsHeading), "Your rewards")
         XCTAssertEqual(model.text(\.redeemButton), "Redeem")
         XCTAssertEqual(model.text(\.dashboardLink), "Open my dashboard")

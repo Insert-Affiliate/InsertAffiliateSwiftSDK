@@ -64,6 +64,10 @@ extension InsertAffiliateSwift {
         public let rewardsGranted: Int
         /// When the referrer's free premium from rewards ends, or nil when they have none.
         public let premiumUntil: Date?
+        /// Total free-premium days granted automatically. 0 from older servers.
+        public let rewardDaysEarned: Int
+        /// Which earnings the company shows referrers. Cash only from older servers.
+        public let earnedDisplay: ReferralEarnedDisplay
         /// App Store one-time offer codes given as rewards, newest first.
         public let rewardCodes: [ReferralRewardCode]
 
@@ -75,7 +79,7 @@ extension InsertAffiliateSwift {
         enum CodingKeys: String, CodingKey {
             case affiliateName, affiliateShortCode, referralTrigger, referralCount, installCount, eventCount,
                  purchaseCount, totalEarned, totalPaid, totalUnpaid, currency, dashboardUrl,
-                 rewardsGranted, premiumUntil, rewardCodes
+                 rewardsGranted, premiumUntil, rewardDaysEarned, earnedDisplay, rewardCodes
             case deeplinkUrl = "deeplinkurl"
         }
 
@@ -97,9 +101,35 @@ extension InsertAffiliateSwift {
             dashboardUrl = c.lenientString(.dashboardUrl)
             rewardsGranted = Int(c.lenientDouble(.rewardsGranted))
             premiumUntil = referralDate(c.lenientString(.premiumUntil))
+            rewardDaysEarned = max(0, Int(c.lenientDouble(.rewardDaysEarned)))
+            earnedDisplay = ((try? c.decodeIfPresent(ReferralEarnedDisplay.self, forKey: .earnedDisplay)) ?? nil) ?? .cashOnly
             // Codes that can't be read (no code or no valid link) are left out.
             let codes = (try? c.decodeIfPresent([LenientElement<ReferralRewardCode>].self, forKey: .rewardCodes)) ?? nil
             rewardCodes = codes?.compactMap { $0.value } ?? []
+        }
+    }
+
+    /// Which earnings the referrer sees: cash commission, free-premium days, or both.
+    public struct ReferralEarnedDisplay: Sendable, Equatable, Decodable {
+        public let cash: Bool
+        public let days: Bool
+
+        /// What older servers imply: cash only.
+        public static let cashOnly = ReferralEarnedDisplay(cash: true, days: false)
+
+        public init(cash: Bool, days: Bool) {
+            self.cash = cash
+            self.days = days
+        }
+
+        enum CodingKeys: String, CodingKey {
+            case cash, days
+        }
+
+        public init(from decoder: Decoder) throws {
+            let c = try decoder.container(keyedBy: CodingKeys.self)
+            cash = c.lenientBool(.cash, default: true)
+            days = c.lenientBool(.days, default: false)
         }
     }
 
@@ -169,9 +199,11 @@ extension InsertAffiliateSwift {
         public let rewardText: String
         /// `#RRGGBB`, or empty when not set.
         public let primaryColor: String
+        /// Whether the drop-in screen shows the short code. True when the server doesn't say.
+        public let showCode: Bool
 
         enum CodingKeys: String, CodingKey {
-            case enabled, companyName, referralTrigger, headline, rewardText, primaryColor
+            case enabled, companyName, referralTrigger, headline, rewardText, primaryColor, showCode
         }
 
         public init(from decoder: Decoder) throws {
@@ -182,6 +214,7 @@ extension InsertAffiliateSwift {
             headline = c.lenientString(.headline)
             rewardText = c.lenientString(.rewardText)
             primaryColor = c.lenientString(.primaryColor)
+            showCode = c.lenientBool(.showCode, default: true)
         }
     }
 
@@ -641,6 +674,10 @@ private extension KeyedDecodingContainer {
     // Missing or mistyped fields decode to empty/zero rather than failing the whole response.
     func lenientString(_ key: Key) -> String {
         return ((try? decodeIfPresent(String.self, forKey: key)) ?? nil) ?? ""
+    }
+
+    func lenientBool(_ key: Key, default fallback: Bool) -> Bool {
+        return ((try? decodeIfPresent(Bool.self, forKey: key)) ?? nil) ?? fallback
     }
 
     func lenientDouble(_ key: Key) -> Double {

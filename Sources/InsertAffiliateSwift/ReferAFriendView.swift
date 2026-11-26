@@ -8,7 +8,8 @@ import UIKit
 
 /// Every label on the drop-in "Refer a friend" screen, so an app can translate or
 /// reword it. Leave a field nil (or blank) to keep the English default. Keep the
-/// placeholders: `{email}` in `codeSentNotice` and `{date}` in `premiumUntil`.
+/// placeholders: `{email}` in `codeSentNotice`, `{date}` in `premiumUntil` and
+/// `{count}` in `dayUnit` (used for 1 day) and `daysUnit` (any other number).
 /// `headline` and `rewardText` are not here: they come from the portal and from
 /// `ReferAFriendOptions`.
 public struct ReferralStrings: Sendable, Equatable {
@@ -27,9 +28,14 @@ public struct ReferralStrings: Sendable, Equatable {
     public var codeLabelTitle: String?
     public var copyButton: String?
     public var copiedNotice: String?
+    /// Read out by VoiceOver for the Copy button when it copies the link.
+    public var copyLinkLabel: String?
     public var shareButton: String?
     public var referralsLabel: String?
     public var earnedLabel: String?
+    public var daysEarnedLabel: String?
+    public var dayUnit: String?
+    public var daysUnit: String?
     public var premiumUntil: String?
     public var rewardsHeading: String?
     public var redeemButton: String?
@@ -62,9 +68,13 @@ public struct ReferralStrings: Sendable, Equatable {
         codeLabelTitle: String? = nil,
         copyButton: String? = nil,
         copiedNotice: String? = nil,
+        copyLinkLabel: String? = nil,
         shareButton: String? = nil,
         referralsLabel: String? = nil,
         earnedLabel: String? = nil,
+        daysEarnedLabel: String? = nil,
+        dayUnit: String? = nil,
+        daysUnit: String? = nil,
         premiumUntil: String? = nil,
         rewardsHeading: String? = nil,
         redeemButton: String? = nil,
@@ -93,9 +103,13 @@ public struct ReferralStrings: Sendable, Equatable {
         self.codeLabelTitle = codeLabelTitle
         self.copyButton = copyButton
         self.copiedNotice = copiedNotice
+        self.copyLinkLabel = copyLinkLabel
         self.shareButton = shareButton
         self.referralsLabel = referralsLabel
         self.earnedLabel = earnedLabel
+        self.daysEarnedLabel = daysEarnedLabel
+        self.dayUnit = dayUnit
+        self.daysUnit = daysUnit
         self.premiumUntil = premiumUntil
         self.rewardsHeading = rewardsHeading
         self.redeemButton = redeemButton
@@ -127,9 +141,13 @@ public struct ReferralStrings: Sendable, Equatable {
         codeLabelTitle: "Your code",
         copyButton: "Copy",
         copiedNotice: "Copied",
+        copyLinkLabel: "Copy link",
         shareButton: "Share",
         referralsLabel: "Referrals",
         earnedLabel: "Earned",
+        daysEarnedLabel: "Days earned",
+        dayUnit: "{count} day",
+        daysUnit: "{count} days",
         premiumUntil: "Free premium until {date}",
         rewardsHeading: "Your rewards",
         redeemButton: "Redeem",
@@ -404,39 +422,51 @@ public struct ReferAFriendView: View {
 
     private func enrolledView(_ affiliate: InsertAffiliateSwift.AffiliateDetails) -> some View {
         VStack(alignment: .leading, spacing: 16) {
-            VStack(alignment: .leading, spacing: 8) {
-                Text(model.text(\.codeLabelTitle))
-                    .font(font(.caption, size: 12))
-                    .foregroundColor(.secondary)
-                HStack {
-                    Text(affiliate.affiliateShortCode)
-                        .font(font(.title3, size: 20).weight(.semibold).monospaced())
-                        .textSelection(.enabled)
-                    Spacer()
-                    Button(model.text(model.copied ? \.copiedNotice : \.copyButton)) { model.copyCode() }
-                        .foregroundColor(theme)
-                }
-                if model.hasLink {
-                    Text(affiliate.deeplinkUrl)
-                        .font(font(.footnote, size: 13))
+            if model.showCodeBox {
+                VStack(alignment: .leading, spacing: 8) {
+                    Text(model.text(\.codeLabelTitle))
+                        .font(font(.caption, size: 12))
                         .foregroundColor(.secondary)
-                        .lineLimit(2)
-                        .textSelection(.enabled)
+                    HStack {
+                        Text(affiliate.affiliateShortCode)
+                            .font(font(.title3, size: 20).weight(.semibold).monospaced())
+                            .textSelection(.enabled)
+                        Spacer()
+                        copyButton
+                    }
+                    if model.hasLink {
+                        linkText(affiliate)
+                    }
                 }
+                .padding(16)
+                .background(
+                    RoundedRectangle(cornerRadius: options.cornerRadius)
+                        .fill(theme.opacity(0.08))
+                )
+            } else {
+                // Code hidden (and there is a web link): the link box carries the Copy button.
+                HStack {
+                    linkText(affiliate)
+                    Spacer()
+                    copyButton
+                        .accessibilityLabel(model.text(model.copied ? \.copiedNotice : \.copyLinkLabel))
+                }
+                .padding(16)
+                .background(
+                    RoundedRectangle(cornerRadius: options.cornerRadius)
+                        .fill(theme.opacity(0.08))
+                )
             }
-            .padding(16)
-            .background(
-                RoundedRectangle(cornerRadius: options.cornerRadius)
-                    .fill(theme.opacity(0.08))
-            )
 
             primaryButton(model.text(\.shareButton)) { model.share() }
 
             if let stats = model.stats {
                 HStack(spacing: 12) {
-                    statTile(title: model.text(\.referralsLabel), value: "\(stats.referralCount)")
-                    statTile(title: model.text(\.earnedLabel), value: model.formattedEarned(stats))
+                    ForEach(model.statItems(stats)) { item in
+                        statTile(title: item.title, value: item.value)
+                    }
                 }
+                .fixedSize(horizontal: false, vertical: true)
             }
 
             if let premiumText = model.premiumUntilText {
@@ -456,6 +486,19 @@ public struct ReferAFriendView: View {
                     .foregroundColor(theme)
             }
         }
+    }
+
+    private var copyButton: some View {
+        Button(model.text(model.copied ? \.copiedNotice : \.copyButton)) { model.copyCode() }
+            .foregroundColor(theme)
+    }
+
+    private func linkText(_ affiliate: InsertAffiliateSwift.AffiliateDetails) -> some View {
+        Text(affiliate.deeplinkUrl)
+            .font(font(.footnote, size: 13))
+            .foregroundColor(.secondary)
+            .lineLimit(2)
+            .textSelection(.enabled)
     }
 
     private func rewardsList(_ codes: [InsertAffiliateSwift.ReferralRewardCode]) -> some View {
@@ -485,11 +528,14 @@ public struct ReferAFriendView: View {
         VStack(alignment: .leading, spacing: 4) {
             Text(value)
                 .font(font(.title3, size: 20).weight(.bold))
+                .lineLimit(1)
+                .minimumScaleFactor(0.5)
             Text(title)
                 .font(font(.caption, size: 12))
                 .foregroundColor(.secondary)
+                .lineLimit(2)
         }
-        .frame(maxWidth: .infinity, alignment: .leading)
+        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
         .padding(12)
         .background(
             RoundedRectangle(cornerRadius: options.cornerRadius)
@@ -593,7 +639,17 @@ final class ReferAFriendModel: ObservableObject {
 
     var hasLink: Bool {
         guard case .enrolled(let affiliate) = step else { return false }
-        return affiliate.deeplinkUrl.lowercased().hasPrefix("http")
+        return Self.isWebLink(affiliate.deeplinkUrl)
+    }
+
+    static func isWebLink(_ link: String) -> Bool {
+        link.lowercased().hasPrefix("http")
+    }
+
+    /// Whether the code box is shown. On unless the portal turned the code off, and
+    /// always on when there is no web link, since the code is then all there is to share.
+    var showCodeBox: Bool {
+        (config?.showCode ?? true) || !hasLink
     }
 
     var dashboardURL: URL? {
@@ -737,9 +793,14 @@ final class ReferAFriendModel: ObservableObject {
         }
     }
 
+    /// The code, or the link when the code box is hidden.
+    func copyText(for affiliate: InsertAffiliateSwift.AffiliateDetails) -> String {
+        showCodeBox || !Self.isWebLink(affiliate.deeplinkUrl) ? affiliate.affiliateShortCode : affiliate.deeplinkUrl
+    }
+
     func copyCode() {
         guard case .enrolled(let affiliate) = step else { return }
-        UIPasteboard.general.string = affiliate.affiliateShortCode
+        UIPasteboard.general.string = copyText(for: affiliate)
         copied = true
         Task { @MainActor in
             try? await Task.sleep(nanoseconds: 2_000_000_000)
@@ -755,6 +816,36 @@ final class ReferAFriendModel: ObservableObject {
             message: options.shareMessage
         )
         _ = InsertAffiliateSwift.presentReferralShareSheet(text: text, from: nil)
+    }
+
+    struct StatItem: Equatable, Identifiable {
+        enum Kind { case referrals, earned, days }
+        let id: Kind
+        let title: String
+        let value: String
+    }
+
+    /// Referrals always, then cash and days earned when the company shows them.
+    func statItems(_ details: InsertAffiliateSwift.MyAffiliateDetails, locale: Locale = .current) -> [StatItem] {
+        var items = [StatItem(id: .referrals, title: text(\.referralsLabel), value: "\(details.referralCount)")]
+        if details.earnedDisplay.cash {
+            items.append(StatItem(id: .earned, title: text(\.earnedLabel), value: formattedEarned(details)))
+        }
+        if details.earnedDisplay.days {
+            let value = Self.daysText(details.rewardDaysEarned, dayTemplate: text(\.dayUnit),
+                                      daysTemplate: text(\.daysUnit), locale: locale)
+            items.append(StatItem(id: .days, title: text(\.daysEarnedLabel), value: value))
+        }
+        return items
+    }
+
+    /// "1 day" or "90 days", from the `{count}` templates.
+    static func daysText(_ count: Int, dayTemplate: String, daysTemplate: String, locale: Locale = .current) -> String {
+        let formatter = NumberFormatter()
+        formatter.numberStyle = .decimal
+        formatter.locale = locale
+        let number = formatter.string(from: NSNumber(value: count)) ?? "\(count)"
+        return (count == 1 ? dayTemplate : daysTemplate).replacingOccurrences(of: "{count}", with: number)
     }
 
     func formattedEarned(_ details: InsertAffiliateSwift.MyAffiliateDetails) -> String {
